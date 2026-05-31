@@ -38,6 +38,9 @@ class ClientController:
             on_status=self._on_status,
         )
         self.input_capture.set_listener(self._forward_key_event)
+        set_message_handler = getattr(self.transport, "set_message_handler", None)
+        if set_message_handler is not None:
+            set_message_handler(self._handle_transport_message)
 
     @classmethod
     def build_for_tests(
@@ -71,6 +74,11 @@ class ClientController:
         if self.state.control_state != ControlState.CONTROLLING:
             return
         self.transport.send(RemoteMessageType.KEY, **event.to_remote_payload())
+
+    def _handle_transport_message(self, payload: dict[str, Any]) -> None:
+        if self.session.handle_message(payload):
+            return
+        self.router.handle_message(payload)
 
     def _on_status(self, status: dict[str, Any]) -> None:
         if status.get("kind") != "connection":

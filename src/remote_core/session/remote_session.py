@@ -33,11 +33,39 @@ class RemoteSession:
             channel=connection_info.key,
             mode=self._mode_value(connection_info.mode),
         )
-        self.on_status({"kind": "connection", "state": "connected"})
 
     def disconnect(self) -> None:
         self.transport.close()
         self.on_status({"kind": "connection", "state": "idle"})
+
+    def handle_message(self, payload: dict[str, Any]) -> bool:
+        match payload.get("type"):
+            case RemoteMessageType.CHANNEL_JOINED.value:
+                self.on_status({"kind": "connection", "state": "connected"})
+                return True
+            case RemoteMessageType.VERSION_MISMATCH.value:
+                self.on_status(
+                    {"kind": "connection", "state": "version_mismatch"}
+                )
+                return True
+            case (
+                RemoteMessageType.MOTD.value
+                | RemoteMessageType.CLIENT_JOINED.value
+                | RemoteMessageType.CLIENT_LEFT.value
+                | RemoteMessageType.ERROR.value
+            ):
+                self.on_status(
+                    {
+                        "kind": "remote",
+                        "type": payload.get("type"),
+                        "payload": payload,
+                    }
+                )
+                return True
+            case RemoteMessageType.PING.value:
+                return True
+            case _:
+                return False
 
     def _mode_value(self, mode: str | Enum) -> str:
         if isinstance(mode, Enum):
