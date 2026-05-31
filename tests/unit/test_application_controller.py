@@ -1,4 +1,5 @@
 from adapters.outputs.tone import LoggingToneOutput
+from adapters.windows.keyboard_hook import WindowsKeyboardCapture
 from remote_core.models.keys import KeyEvent
 from remote_core.protocol import RemoteMessageType
 
@@ -132,3 +133,27 @@ def test_connection_status_keeps_runtime_state_consistent():
 
 def test_logging_tone_output_exposes_beep_interface():
     assert LoggingToneOutput().beep(440, 100, left=40, right=60) is None
+
+
+def test_windows_keyboard_capture_emits_normalized_events():
+    seen = []
+    capture = WindowsKeyboardCapture()
+    capture.set_listener(seen.append)
+    capture._emit_for_tests(vk=9, scan=15, extended=False, pressed=True)
+    assert seen == [KeyEvent(vk=9, scan=15, extended=False, pressed=True)]
+
+
+def test_windows_keyboard_capture_emit_without_listener_does_not_crash():
+    capture = WindowsKeyboardCapture()
+
+    capture._emit_for_tests(vk=9, scan=15, extended=False, pressed=True)
+
+
+def test_windows_keyboard_capture_start_stop_toggles_running_state():
+    capture = WindowsKeyboardCapture()
+
+    assert capture.running is False
+    capture.start()
+    assert capture.running is True
+    capture.stop()
+    assert capture.running is False
