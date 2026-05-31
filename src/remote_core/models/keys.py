@@ -10,8 +10,8 @@ class KeyEvent:
 
     def to_remote_payload(self) -> dict[str, int | bool | None]:
         return {
-            "vk": self.vk,
-            "scan": self.scan,
+            "vk_code": self.vk,
+            "scan_code": self.scan,
             "extended": self.extended,
             "pressed": self.pressed,
         }
