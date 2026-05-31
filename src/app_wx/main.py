@@ -12,7 +12,7 @@ def main() -> int:
         transport=RelayTransport(JSONSerializer()),
         input_capture=WindowsKeyboardCapture(),
         clipboard=WindowsClipboardService(),
-        speech_output=NvdaControllerSpeechOutput(controller=None),
+        speech_output=NvdaControllerSpeechOutput.load_default(),
     )
     app = NvdaRemoteApp(controller=controller)
     return app.MainLoop()

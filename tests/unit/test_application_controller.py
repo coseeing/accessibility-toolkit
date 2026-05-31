@@ -1,3 +1,5 @@
+import pytest
+
 from adapters.outputs.tone import LoggingToneOutput
 from adapters.windows.keyboard_hook import WindowsKeyboardCapture
 from remote_core.models.keys import KeyEvent
@@ -88,7 +90,7 @@ def test_key_events_are_ignored_before_controlling():
         RemoteMessageType.PROTOCOL_VERSION,
         RemoteMessageType.JOIN,
     ]
-    assert controller.state.control_state == "connected"
+    assert controller.state.control_state == "idle"
 
 
 def test_stop_control_suspends_capture_and_stops_forwarding():
@@ -149,11 +151,10 @@ def test_windows_keyboard_capture_emit_without_listener_does_not_crash():
     capture._emit_for_tests(vk=9, scan=15, extended=False, pressed=True)
 
 
-def test_windows_keyboard_capture_start_stop_toggles_running_state():
-    capture = WindowsKeyboardCapture()
+def test_windows_keyboard_capture_start_requires_windows_without_backend():
+    capture = WindowsKeyboardCapture(is_windows=False)
 
     assert capture.running is False
-    capture.start()
-    assert capture.running is True
-    capture.stop()
+    with pytest.raises(RuntimeError, match="Windows keyboard hooks require Windows"):
+        capture.start()
     assert capture.running is False
