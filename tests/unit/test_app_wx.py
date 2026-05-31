@@ -2,6 +2,23 @@ import importlib
 import sys
 import types
 
+import pytest
+
+
+APP_WX_MODULES = ("app_wx.app", "app_wx.main_frame")
+
+
+def clear_app_wx_modules():
+    for module_name in APP_WX_MODULES:
+        sys.modules.pop(module_name, None)
+
+
+@pytest.fixture(autouse=True)
+def clean_app_wx_module_cache():
+    clear_app_wx_modules()
+    yield
+    clear_app_wx_modules()
+
 
 def install_fake_wx(monkeypatch):
     fake_wx = types.ModuleType("wx")
@@ -79,8 +96,7 @@ def install_fake_wx(monkeypatch):
     fake_wx.Button = Button
     fake_wx.App = App
     monkeypatch.setitem(sys.modules, "wx", fake_wx)
-    sys.modules.pop("app_wx.app", None)
-    sys.modules.pop("app_wx.main_frame", None)
+    clear_app_wx_modules()
     return fake_wx
 
 
@@ -113,6 +129,11 @@ def test_main_frame_exposes_connect_controls(monkeypatch):
     assert frame.connect_button.GetLabel() == "Connect"
     assert frame.control_button.GetLabel() == "Start Control"
     assert frame.clipboard_button.GetLabel() == "Push Clipboard"
+
+
+def test_fake_wx_imports_do_not_leave_app_wx_modules_cached():
+    assert "app_wx.app" not in sys.modules
+    assert "app_wx.main_frame" not in sys.modules
 
 
 def test_main_frame_dispatches_button_actions(monkeypatch):
