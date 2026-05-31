@@ -12,6 +12,9 @@ class FakeTransport:
     def __init__(self):
         self.sent = []
         self.connected_to = None
+        self.message_handler = None
+        self.reader_started = 0
+        self.reader_stopped = 0
 
     def connect(self, hostname, port, insecure=False):
         self.connected_to = (hostname, port, insecure)
@@ -21,6 +24,15 @@ class FakeTransport:
 
     def send(self, message_type, **payload):
         self.sent.append((message_type, payload))
+
+    def set_message_handler(self, handler):
+        self.message_handler = handler
+
+    def start_reader(self):
+        self.reader_started += 1
+
+    def stop_reader(self):
+        self.reader_stopped += 1
 
 
 class FakeCapture:
@@ -129,6 +141,27 @@ def test_connection_status_keeps_runtime_state_consistent():
 
     controller.start_control()
     controller._on_status({"kind": "connection", "state": "idle"})
+    assert controller.state.connection_state == "idle"
+    assert controller.state.control_state == "idle"
+
+
+def test_controller_starts_reader_and_consumes_inbound_channel_joined():
+    controller, transport, _capture, _clipboard = build_controller()
+
+    controller.connect("example.com", 6837, "secret")
+    transport.message_handler({"type": RemoteMessageType.CHANNEL_JOINED.value})
+
+    assert transport.reader_started == 1
+    assert controller.state.connection_state == "connected"
+    assert controller.state.control_state == "connected"
+
+
+def test_controller_disconnect_stops_reader_and_sets_idle():
+    controller, transport, _capture, _clipboard = build_controller()
+    controller.connect("example.com", 6837, "secret")
+    controller.disconnect()
+
+    assert transport.reader_stopped == 1
     assert controller.state.connection_state == "idle"
     assert controller.state.control_state == "idle"
 

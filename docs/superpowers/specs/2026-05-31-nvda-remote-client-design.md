@@ -425,9 +425,10 @@ These are execution details, not unresolved product scope.
 ## Verification Notes
 
 - Tested environment: Linux headless container (`x86_64`, Python 3.12.3). `DISPLAY` was unset and no Windows runtime was available.
-- Automated tests: `pytest tests/unit tests/integration -v` passed with 38 tests.
+- Automated tests: `pytest tests/unit tests/integration -v` passed with 53 tests.
 - UI/manual Windows checks: `PYTHONPATH=src python3 -m app_wx.main` was attempted, but manual UI smoke was not executed because `wxPython` is not installed (`ModuleNotFoundError: No module named 'wx'`) and the environment is headless. Real Windows UI, keyboard hook, NVDA, and clipboard checks remain unverified here.
-- Known limitations: real Windows hook integration, real relay socket integration, real NVDA DLL integration, and a real clipboard backend remain adapter follow-ups where not implemented by the v1 skeleton.
+- Implemented but not manually validated in this environment: TCP/TLS relay socket framing, Windows low-level keyboard hook adapter, Windows clipboard backend, and `nvdaControllerClient64.dll` loading path.
+- Known limitations: real end-to-end relay compatibility, real Windows UI behavior, keyboard hook behavior under Windows focus/security boundaries, actual clipboard updates, and NVDA DLL speech output still require Windows manual validation.
 - Speech normalization cases intentionally unsupported in the v1 skeleton include unknown NVDA speech command objects and malformed command payloads beyond the simplified text and break handling.
 
 ## Final Recommendation

@@ -58,6 +58,15 @@ class ClientController:
 
     def connect(self, host: str, port: int, key: str) -> None:
         self.session.connect(ConnectionInfo(hostname=host, port=port, key=key))
+        start_reader = getattr(self.transport, "start_reader", None)
+        if start_reader is not None:
+            start_reader()
+
+    def disconnect(self) -> None:
+        stop_reader = getattr(self.transport, "stop_reader", None)
+        if stop_reader is not None:
+            stop_reader()
+        self.session.disconnect()
 
     def start_control(self) -> None:
         self.input_capture.start()
