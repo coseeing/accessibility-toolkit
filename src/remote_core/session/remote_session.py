@@ -33,11 +33,11 @@ class RemoteSession:
             channel=connection_info.key,
             mode=self._mode_value(connection_info.mode),
         )
-        self.on_status({"state": "connected"})
+        self.on_status({"kind": "connection", "state": "connected"})
 
     def disconnect(self) -> None:
         self.transport.close()
-        self.on_status({"state": "idle"})
+        self.on_status({"kind": "connection", "state": "idle"})
 
     def _mode_value(self, mode: str | Enum) -> str:
         if isinstance(mode, Enum):
