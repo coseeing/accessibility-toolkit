@@ -141,7 +141,61 @@ def test_session_join_sends_protocol_and_join_messages():
     assert transport.sent[0] == (RemoteMessageType.PROTOCOL_VERSION, {"version": 2})
     assert transport.sent[1][0] == RemoteMessageType.JOIN
     assert transport.sent[1][1] == {"channel": "secret", "mode": "master"}
+    assert status_events == []
+
+
+def test_session_reports_connected_after_channel_joined():
+    transport = DummyTransport()
+    status_events = []
+    session = RemoteSession(
+        transport=transport,
+        on_status=status_events.append,
+    )
+
+    assert session.handle_message({"type": "channel_joined"}) is True
+
     assert status_events == [{"kind": "connection", "state": "connected"}]
+
+
+def test_session_reports_connection_and_remote_status_messages():
+    transport = DummyTransport()
+    status_events = []
+    session = RemoteSession(
+        transport=transport,
+        on_status=status_events.append,
+    )
+    motd = {"type": "motd", "message": "hello"}
+    client_joined = {"type": "client_joined", "id": "abc"}
+    client_left = {"type": "client_left", "id": "abc"}
+    error = {"type": "error", "message": "bad"}
+
+    assert session.handle_message({"type": "version_mismatch"}) is True
+    assert session.handle_message(motd) is True
+    assert session.handle_message(client_joined) is True
+    assert session.handle_message(client_left) is True
+    assert session.handle_message(error) is True
+    assert session.handle_message({"type": "ping"}) is True
+
+    assert status_events == [
+        {"kind": "connection", "state": "version_mismatch"},
+        {"kind": "remote", "type": "motd", "payload": motd},
+        {"kind": "remote", "type": "client_joined", "payload": client_joined},
+        {"kind": "remote", "type": "client_left", "payload": client_left},
+        {"kind": "remote", "type": "error", "payload": error},
+    ]
+
+
+def test_session_does_not_handle_output_messages():
+    transport = DummyTransport()
+    status_events = []
+    session = RemoteSession(
+        transport=transport,
+        on_status=status_events.append,
+    )
+
+    assert session.handle_message({"type": "speak", "sequence": ["hello"]}) is False
+
+    assert status_events == []
 
 
 def test_session_disconnect_closes_transport_and_sets_idle_status():
