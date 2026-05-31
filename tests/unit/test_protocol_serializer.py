@@ -1,3 +1,5 @@
+import pytest
+
 from remote_core.connection_info import ConnectionInfo, ConnectionMode
 from remote_core.models.keys import KeyEvent
 from remote_core.protocol import RemoteMessageType, address_to_host_port
@@ -39,3 +41,10 @@ def test_connection_info_defaults_to_master_mode():
     connection_info = ConnectionInfo(hostname="example.com", port=6837, key="secret")
     assert connection_info.mode is ConnectionMode.MASTER
     assert connection_info.mode.value == "master"
+
+
+@pytest.mark.parametrize("payload", [b"[]", b'"text"', b"null"])
+def test_serializer_deserialize_rejects_non_object_payloads(payload):
+    serializer = JSONSerializer()
+    with pytest.raises(ValueError, match="JSON object"):
+        serializer.deserialize(payload)

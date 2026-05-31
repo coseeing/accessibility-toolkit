@@ -14,7 +14,10 @@ class NormalizedSpeech:
     @classmethod
     def from_remote_payload(cls, payload: dict) -> "NormalizedSpeech":
         segments: list[SpeechSegment] = []
-        for item in payload.get("sequence", []):
+        sequence = payload.get("sequence", [])
+        if not isinstance(sequence, list | tuple):
+            sequence = []
+        for item in sequence:
             if isinstance(item, str):
                 segments.append(SpeechSegment(kind="text", value=item))
                 continue

@@ -30,3 +30,13 @@ def test_normalized_speech_ignores_unknown_and_malformed_commands():
         SpeechSegment(kind="text", value="Hello"),
         SpeechSegment(kind="break", value=50),
     )
+
+
+def test_normalized_speech_treats_none_sequence_as_empty():
+    normalized = NormalizedSpeech.from_remote_payload({"type": "speak", "sequence": None})
+    assert normalized.segments == ()
+
+
+def test_normalized_speech_treats_non_iterable_sequence_as_empty():
+    normalized = NormalizedSpeech.from_remote_payload({"type": "speak", "sequence": 123})
+    assert normalized.segments == ()
