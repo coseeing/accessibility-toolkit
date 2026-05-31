@@ -422,6 +422,14 @@ These items are deliberately left to the implementation planning step, not becau
 
 These are execution details, not unresolved product scope.
 
+## Verification Notes
+
+- Tested environment: Linux headless container (`x86_64`, Python 3.12.3). `DISPLAY` was unset and no Windows runtime was available.
+- Automated tests: `pytest tests/unit tests/integration -v` passed with 38 tests.
+- UI/manual Windows checks: `PYTHONPATH=src python3 -m app_wx.main` was attempted, but manual UI smoke was not executed because `wxPython` is not installed (`ModuleNotFoundError: No module named 'wx'`) and the environment is headless. Real Windows UI, keyboard hook, NVDA, and clipboard checks remain unverified here.
+- Known limitations: real Windows hook integration, real relay socket integration, real NVDA DLL integration, and a real clipboard backend remain adapter follow-ups where not implemented by the v1 skeleton.
+- Speech normalization cases intentionally unsupported in the v1 skeleton include unknown NVDA speech command objects and malformed command payloads beyond the simplified text and break handling.
+
 ## Final Recommendation
 
 Build the client as a layered Python application with:
