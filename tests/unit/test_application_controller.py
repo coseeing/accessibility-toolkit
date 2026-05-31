@@ -1,3 +1,4 @@
+from adapters.outputs.tone import LoggingToneOutput
 from remote_core.models.keys import KeyEvent
 from remote_core.protocol import RemoteMessageType
 
@@ -127,3 +128,7 @@ def test_connection_status_keeps_runtime_state_consistent():
     controller._on_status({"kind": "connection", "state": "idle"})
     assert controller.state.connection_state == "idle"
     assert controller.state.control_state == "idle"
+
+
+def test_logging_tone_output_exposes_beep_interface():
+    assert LoggingToneOutput().beep(440, 100, left=40, right=60) is None

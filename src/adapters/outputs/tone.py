@@ -3,18 +3,32 @@ from typing import Protocol
 
 
 class ToneOutput(Protocol):
-    def play(self, frequency: int, duration_ms: int) -> None: ...
+    def beep(
+        self,
+        hz: int,
+        length: int,
+        left: int = 50,
+        right: int = 50,
+    ) -> None: ...
 
 
 class LoggingToneOutput:
     def __init__(self, logger: logging.Logger | None = None) -> None:
         self._logger = logger or logging.getLogger(__name__)
 
-    def play(self, frequency: int, duration_ms: int) -> None:
+    def beep(
+        self,
+        hz: int,
+        length: int,
+        left: int = 50,
+        right: int = 50,
+    ) -> None:
         self._logger.info(
             "tone output requested",
             extra={
-                "frequency": frequency,
-                "duration_ms": duration_ms,
+                "hz": hz,
+                "length": length,
+                "left": left,
+                "right": right,
             },
         )
