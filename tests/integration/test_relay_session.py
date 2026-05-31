@@ -21,6 +21,7 @@ def test_relay_session_connect_serializes_join_sequence():
 
     session.connect(ConnectionInfo(hostname="example.com", port=6837, key="secret"))
 
+    assert transport.connected is True
     assert transport.connected_to == ("example.com", 6837, False)
     decoded = [serializer.deserialize(message.strip()) for message in transport.sent]
     assert decoded == [
