@@ -50,7 +50,81 @@ def test_router_dispatches_unknown_messages_to_status():
 
     router.handle_message(payload)
 
-    assert seen == [("status", payload)]
+    assert seen == [
+        (
+            "status",
+            {"kind": "remote", "type": "motd", "payload": payload},
+        )
+    ]
+
+
+def test_router_reports_missing_clipboard_text_as_invalid_message():
+    seen = []
+    router = MessageRouter(
+        on_speech=lambda speech: seen.append(("speech", speech)),
+        on_clipboard=lambda text: seen.append(("clipboard", text)),
+        on_status=lambda event: seen.append(("status", event)),
+    )
+    payload = {"type": "set_clipboard_text"}
+
+    router.handle_message(payload)
+
+    assert seen == [
+        (
+            "status",
+            {
+                "kind": "invalid_message",
+                "reason": "clipboard_text_must_be_string",
+                "payload": payload,
+            },
+        )
+    ]
+
+
+def test_router_reports_none_clipboard_text_as_invalid_message():
+    seen = []
+    router = MessageRouter(
+        on_speech=lambda speech: seen.append(("speech", speech)),
+        on_clipboard=lambda text: seen.append(("clipboard", text)),
+        on_status=lambda event: seen.append(("status", event)),
+    )
+    payload = {"type": "set_clipboard_text", "text": None}
+
+    router.handle_message(payload)
+
+    assert seen == [
+        (
+            "status",
+            {
+                "kind": "invalid_message",
+                "reason": "clipboard_text_must_be_string",
+                "payload": payload,
+            },
+        )
+    ]
+
+
+def test_router_reports_non_string_clipboard_text_as_invalid_message():
+    seen = []
+    router = MessageRouter(
+        on_speech=lambda speech: seen.append(("speech", speech)),
+        on_clipboard=lambda text: seen.append(("clipboard", text)),
+        on_status=lambda event: seen.append(("status", event)),
+    )
+    payload = {"type": "set_clipboard_text", "text": 123}
+
+    router.handle_message(payload)
+
+    assert seen == [
+        (
+            "status",
+            {
+                "kind": "invalid_message",
+                "reason": "clipboard_text_must_be_string",
+                "payload": payload,
+            },
+        )
+    ]
 
 
 def test_session_join_sends_protocol_and_join_messages():
@@ -67,7 +141,7 @@ def test_session_join_sends_protocol_and_join_messages():
     assert transport.sent[0] == (RemoteMessageType.PROTOCOL_VERSION, {"version": 2})
     assert transport.sent[1][0] == RemoteMessageType.JOIN
     assert transport.sent[1][1] == {"channel": "secret", "mode": "master"}
-    assert status_events == [{"state": "connected"}]
+    assert status_events == [{"kind": "connection", "state": "connected"}]
 
 
 def test_session_disconnect_closes_transport_and_sets_idle_status():
@@ -81,4 +155,4 @@ def test_session_disconnect_closes_transport_and_sets_idle_status():
     session.disconnect()
 
     assert transport.closed is True
-    assert status_events == [{"state": "idle"}]
+    assert status_events == [{"kind": "connection", "state": "idle"}]

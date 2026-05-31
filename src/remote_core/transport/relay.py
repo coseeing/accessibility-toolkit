@@ -8,10 +8,12 @@ class RelayTransport:
     def __init__(self, serializer: JSONSerializer) -> None:
         self.serializer = serializer
         self.connected = False
+        self.connected_to: tuple[str, int, bool] | None = None
         self.sent: list[bytes] = []
 
     def connect(self, hostname: str, port: int, insecure: bool = False) -> None:
         self.connected = True
+        self.connected_to = (hostname, port, insecure)
 
     def close(self) -> None:
         self.connected = False
