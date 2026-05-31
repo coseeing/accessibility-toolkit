@@ -12,4 +12,7 @@ class JSONSerializer:
         return json.dumps(payload).encode("utf-8") + self.SEP
 
     def deserialize(self, data: bytes) -> dict[str, Any]:
-        return json.loads(data.decode("utf-8"))
+        payload = json.loads(data.decode("utf-8"))
+        if not isinstance(payload, dict):
+            raise ValueError("Expected JSON object payload")
+        return payload
