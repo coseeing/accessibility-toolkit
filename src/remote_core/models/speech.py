@@ -9,7 +9,7 @@ class SpeechSegment:
 
 @dataclass(frozen=True, slots=True)
 class NormalizedSpeech:
-    segments: list[SpeechSegment]
+    segments: tuple[SpeechSegment, ...]
 
     @classmethod
     def from_remote_payload(cls, payload: dict) -> "NormalizedSpeech":
@@ -18,6 +18,11 @@ class NormalizedSpeech:
             if isinstance(item, str):
                 segments.append(SpeechSegment(kind="text", value=item))
                 continue
-            if isinstance(item, list) and item and item[0] == "BreakCommand":
+            if (
+                isinstance(item, list)
+                and len(item) >= 2
+                and item[0] == "BreakCommand"
+                and isinstance(item[1], dict)
+            ):
                 segments.append(SpeechSegment(kind="break", value=item[1].get("time", 0)))
-        return cls(segments=segments)
+        return cls(segments=tuple(segments))
