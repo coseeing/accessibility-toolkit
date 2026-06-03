@@ -14,14 +14,14 @@
 - 讓 `nvda-remote-client` 能重用 `WorldVoice` core，作為完整 speech backend，而不只是單純呼叫 speak。
 - 將核心設定來源從 `config.conf` 轉為單一 JSON 設定檔。
 - 保留與 NVDA 生態相近的資料語意，因此核心以 NVDA-style speech sequence 作為主要輸入模型。
-- 第一階段 driver 支援聚焦在 `VE` 與 `pyttsx3`，避免同時重構所有 engine。
+- 第一階段 driver 策略聚焦在 `VE` 與 `pyttsx3`，但 `WorldVoice` 端保留既有 NVDA 相依 driver，真正的 driver 改寫發生在 `nvda-remote-client` 端。
 
 ## 不在這份設計第一階段內的範圍
 
 - 直接把 `WorldVoice` core 抽成獨立新 repo 或公開新 package。
 - 一次完成 Linux、macOS、iOS、Android 宿主實作。
 - 將 NVDA 專屬 UI 直接搬進 `nvda-remote-client`。
-- 重寫 `WorldVoice` 的所有語音引擎 driver。
+- 在 `WorldVoice` 第一階段重寫既有外部引入的 NVDA 相依 driver。
 - 第一階段就讓所有既有 WorldVoice engines 全部完成 core 化。
 - 修改 NVDA Remote protocol。
 
@@ -58,17 +58,22 @@
 
 ### 5. Driver 收斂策略採最小可行覆蓋
 
-第一階段不追求所有既有 `WorldVoice` engines 同步完成抽離。新的 core 應先以兩條代表性路徑為目標：
+第一階段不追求所有既有 `WorldVoice` engines 同步完成抽離，也不要求先把 `WorldVoice` 內目前大量來自外部 copy 的 NVDA 相依 driver 改寫成 host-agnostic 版本。新的架構應先以兩條代表性路徑為目標：
 
 - `VE`
 - `pyttsx3`
 
 選這兩條路徑的原因是：
 
-- `VE` 代表 `WorldVoice` 既有的重要 NVDA 生態整合能力。
-- `pyttsx3` 代表一條不依賴 NVDA runtime、且更容易被 `nvda-remote-client` 直接重用的通用本機 TTS 路徑。
+- `VE` 代表 `WorldVoice` 既有的重要 NVDA 生態整合能力，且可驗證 core 是否能正確承載 NVDA 宿主上的既有 driver。
+- `pyttsx3` 代表一條不依賴 NVDA runtime、且適合作為 `nvda-remote-client` 端第一個自行改寫與直接使用的通用本機 TTS 路徑。
 
-第一階段只要能讓這兩個 driver 路徑透過同一套 `worldvoice_core` 運作，就足以驗證核心邊界是否正確。其他 engines 應在後續階段逐步遷移，而不是在第一輪一起納入。
+第一階段只要能讓這兩個 driver 路徑透過同一套 `worldvoice_core` 運作，就足以驗證核心邊界是否正確。但兩者的落地方式不同：
+
+- `VE` 在 `WorldVoice` 端仍可沿用既有、依賴 NVDA 的 driver 實作，透過 `worldvoice_nvda` adapter 接到 core。
+- `pyttsx3` 以 `nvda-remote-client` 端的重寫 driver 為主，驗證 core 能被非 NVDA 宿主直接使用。
+
+其他 engines 應在後續階段逐步遷移，而不是在第一輪一起納入。
 
 ## 建議架構
 
@@ -87,10 +92,12 @@
 - 接收 NVDA-style speech sequence
 - 管理 speech task scheduling
 - 管理 voice registry、voice selection、instance cache
-- 管理 engine discovery 與 lifecycle
+- 管理 engine abstraction、engine registration 與 lifecycle
 - 執行 speech sequence pipeline transform
 - 讀寫 JSON 設定
 - 發出宿主中立的 speech 與 settings 事件
+
+核心應定義 engine/driver 抽象介面，但不要求第一階段把 `WorldVoice` 現有所有 driver 直接搬進 core。
 
 ### `worldvoice_nvda`
 
@@ -103,6 +110,7 @@ NVDA 宿主 adapter。
 - 將 core event 轉成 `synthIndexReached`、`synthDoneSpeaking`
 - 整合 NVDA settings ring、dialogs、global plugin、speech hook
 - 將 NVDA runtime 需求轉為 core 可接受的呼叫
+- 保留並包裝目前 `WorldVoice` 內既有、依賴 NVDA 的 driver 實作
 
 ### `worldvoice_client_adapter`
 
@@ -114,6 +122,7 @@ NVDA 宿主 adapter。
 - 建立並控制 `SpeechRuntime`
 - 將 core settings 對接到 client 端設定與 UI
 - 消費 core event，供 client 更新狀態或輸出控制
+- 承接 `nvda-remote-client` 端自行改寫的 driver 實作
 
 ## 核心元件設計
 
@@ -153,12 +162,12 @@ NVDA 宿主 adapter。
 
 保留目前 `voiceManager.py` 的主要責任：
 
-- enabled engine 篩選
+- enabled engine / driver 篩選
 - voice catalog 建立
 - default voice 決策
 - voice instance cache
 - voice parameter consistency
-- engine lifecycle coordination
+- engine / driver lifecycle coordination
 
 但它不能再直接依賴：
 
@@ -174,7 +183,7 @@ NVDA 宿主 adapter。
 - `EngineDescriptor`
 - `CoreSettings`
 
-第一階段 `VoiceManager` 的 engine 啟用與 voice catalog 驗證，也應優先只保證 `VE` 與 `pyttsx3` 兩條路徑可正常運作。其餘 engine 可以先保留為未遷移狀態，只要不阻塞核心 API 定義即可。
+第一階段 `VoiceManager` 的 engine / driver 啟用與 voice catalog 驗證，也應優先只保證 `VE` 與 `pyttsx3` 兩條路徑可正常運作。其餘 engine 可以先保留為未遷移狀態，只要不阻塞核心 API 定義即可。
 
 ### `PipelineProcessor`
 
@@ -226,7 +235,7 @@ NVDA adapter 會把它翻譯成 NVDA event。`nvda-remote-client` 則會用它�
 4. `SpeechRuntime` 呼叫 `PipelineProcessor`
 5. `VoiceManager` 根據 sequence、locale、settings 選擇 voice instance
 6. `TaskManager` 排程 speak / break / cancel 任務
-7. engine instance 執行實際語音輸出
+7. engine 或 driver instance 執行實際語音輸出
 8. engine callback 透過 `EventHub` 發送事件
 9. adapter 視宿主需求轉換為 NVDA 或 client 事件
 
@@ -247,7 +256,7 @@ NVDA adapter 會把它翻譯成 NVDA event。`nvda-remote-client` 則會用它�
 
 - `TaskManager`
 - `VoiceManager`
-- engine discovery / lifecycle
+- engine / driver abstraction 與 lifecycle policy
 - pipeline settings 與 sequence transform
 - voice parameter persistence
 - speech event model
@@ -260,12 +269,12 @@ NVDA adapter 會把它翻譯成 NVDA event。`nvda-remote-client` 則會用它�
 
 - default voice
 - per-voice settings
-- engine enablement
+- engine 或 driver enablement
 - pipeline scope
 - wait factor 相關參數
 - auto language switching 相關參數
 
-第一階段 JSON 設定也應至少能描述 `VE` 與 `pyttsx3` 所需的 engine enablement、default voice 與 per-voice settings。其他 engine 的設定欄位可在後續 migration 中逐步補齊。
+第一階段 JSON 設定也應至少能描述 `VE` 與 `pyttsx3` 所需的 engine / driver enablement、default voice 與 per-voice settings。其他 engine 的設定欄位可在後續 migration 中逐步補齊。
 
 建議原則：
 
@@ -289,7 +298,7 @@ NVDA adapter 會把它翻譯成 NVDA event。`nvda-remote-client` 則會用它�
 - settings load/save
 - speech event consumption
 
-第一波整合的 driver 範圍先以 `pyttsx3` 為 `nvda-remote-client` 直接可用目標，並保留 `VE` 在 core 中的支援與驗證能力。是否在 `nvda-remote-client` 第一版就直接暴露 `VE`，可以在 implementation plan 階段依實際宿主依賴條件再決定，但核心 API 必須從一開始就能容納這兩條路徑。
+第一波整合的 driver 範圍先以 `pyttsx3` 為 `nvda-remote-client` 直接可用目標，並保留 `VE` 在 core 中的支援與驗證能力。`VE` 在 `WorldVoice` 端可以繼續沿用既有 NVDA 相依 driver；若 `nvda-remote-client` 未來也要使用 `VE`，則應在 client 端另行改寫對應 driver，而不是直接複用 `WorldVoice` 內既有那份 NVDA 相依實作。
 
 不應只做一條最小 speak path，否則後續仍要在 client 側重建 voice 與 pipeline 邏輯，失去這次重構的主要價值。
 
@@ -306,7 +315,7 @@ NVDA adapter 會把它翻譯成 NVDA event。`nvda-remote-client` 則會用它�
 - `SettingsStore`
 - `EventHub`
 
-這一階段的成功標準是，NVDA adapter 已可開始委派給 core，但不要求 `nvda-remote-client` 當下立即接入。此外，核心設計與最小驗證必須至少覆蓋 `VE` 與 `pyttsx3`。
+這一階段的成功標準是，NVDA adapter 已可開始委派給 core，但不要求 `nvda-remote-client` 當下立即接入。此外，核心設計與最小驗證必須至少覆蓋 `VE` 與 `pyttsx3`，且要維持 `WorldVoice` 端既有 NVDA 相依 driver 可繼續使用。
 
 ### Phase 2: NVDA adapter rewire
 
@@ -315,7 +324,7 @@ NVDA adapter 會把它翻譯成 NVDA event。`nvda-remote-client` 則會用它�
 成功標準：
 
 - 既有 NVDA 使用情境不退化
-- `VE` 路徑已能透過 core 驅動
+- `VE` 路徑已能透過 core 驅動，且仍可沿用 `WorldVoice` 內既有 NVDA 相依 driver
 - voice selection 仍可用
 - rate / pitch / volume 仍可用
 - pipeline settings 仍可用
@@ -340,7 +349,7 @@ NVDA adapter 會把它翻譯成 NVDA event。`nvda-remote-client` 則會用它�
 - `nvda-remote-client` 不直接 import NVDA runtime
 - voice manager、task scheduling、pipeline、settings、events 都走同一套 core
 - backend 切換與 client 設定能控制 `WorldVoice` core
-- `pyttsx3` 路徑可作為 `nvda-remote-client` 第一個完整接入的 backend
+- `pyttsx3` 路徑可作為 `nvda-remote-client` 第一個完整接入、並由 client 端自行改寫的 backend
 
 ## 驗收標準
 
@@ -349,12 +358,13 @@ NVDA adapter 會把它翻譯成 NVDA event。`nvda-remote-client` 則會用它�
 - `worldvoice_core` 不 import `config`、`synthDriverHandler`、`speech.extensions`、`gui`、`addonHandler`
 - `worldvoice_nvda` 只承擔宿主橋接責任
 - `nvda-remote-client` 不需要依賴 NVDA runtime 即可使用 `WorldVoice` core
+- `WorldVoice` 端既有 NVDA 相依 driver 不被強迫搬進 core
 
 ### 行為驗收
 
 - NVDA 中既有 `WorldVoice` 核心功能不退化
 - `VE` 在 NVDA 宿主中可透過新 core 正常運作
-- `pyttsx3` 在 `nvda-remote-client` 中可作為完整 speech backend 使用
+- `pyttsx3` 在 `nvda-remote-client` 中可作為完整 speech backend 使用，且其 driver 實作不依賴 NVDA runtime
 - `taskManager`、`VoiceManager`、pipeline、settings 在兩個宿主中走同一套邏輯
 
 ### 遷移驗收
@@ -372,19 +382,21 @@ NVDA adapter 會把它翻譯成 NVDA event。`nvda-remote-client` 則會用它�
 - `PipelineProcessor` 的 sequence transform
 - `SettingsStore` 的 load / save / validate / migrate
 - `EventHub` 的事件發送與監聽
-- `VE` 與 `pyttsx3` 的 engine descriptor / voice registration / lifecycle
+- `VE` 與 `pyttsx3` 的 engine / driver descriptor、voice registration、lifecycle policy
 
 ### NVDA Adapter 測試
 
 - core event 是否正確轉成 NVDA event
 - JSON 與 `config.conf` 的橋接是否符合預期
 - `SynthDriver` 是否已正確委派給 core
+- 既有 `WorldVoice` 的 NVDA 相依 driver 是否仍可透過 adapter 運作
 
 ### nvda-remote-client 測試
 
 - `WorldVoice` backend 是否可被建立與切換
 - speech sequence 是否能正確送進 core
 - settings 與 voice 控制是否可透過 client 層生效
+- client 端改寫的 `pyttsx3` driver 是否可不依賴 NVDA runtime 獨立運作
 
 ## 風險與注意事項
 
@@ -393,6 +405,7 @@ NVDA adapter 會把它翻譯成 NVDA event。`nvda-remote-client` 則會用它�
 - JSON 設定遷移若沒有明確定義主來源，容易出現 `config.conf` 與 JSON 雙真實來源衝突。
 - `nvda-remote-client` 若直接繞過 core 自行處理部分語音流程，會破壞這次重構的主要價值。
 - 若第一階段同時要求所有 engines 遷移，範圍會明顯失控，且會稀釋對 `VE` 與 `pyttsx3` 兩條代表性路徑的驗證深度。
+- 若沒有明確區分「WorldVoice 保留既有 NVDA 相依 driver」與「client 端自行改寫 driver」，很容易把 driver 遷移策略和 core 抽離策略混在一起，導致範圍與責任失焦。
 
 ## 最終建議
 
