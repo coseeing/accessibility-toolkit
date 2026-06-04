@@ -124,6 +124,10 @@ class Pyttsx3SpeechOutput:
             if self._voice_id is not None:
                 engine.setProperty("voice", self._voice_id)
             engine.setProperty("rate", self._rate)
+            try:
+                engine.setProperty("pitch", self._pitch)
+            except Exception:
+                logger.debug("pyttsx3 engine does not support pitch property")
             engine.setProperty("volume", self._volume / 100.0)
             engine.say(text)
             engine.runAndWait()
