@@ -20,6 +20,9 @@ class SpeechSequence:
             if isinstance(item, str):
                 restored.append(item)
                 continue
+            if isinstance(item, SpeechCommand):
+                restored.append(item)
+                continue
             if (
                 isinstance(item, (list, tuple))
                 and len(item) >= 2

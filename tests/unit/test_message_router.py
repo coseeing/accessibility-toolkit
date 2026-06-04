@@ -35,7 +35,7 @@ def test_router_dispatches_speech_and_clipboard():
     router.handle_message(
         {
             "type": "speak",
-            "sequence": ["hello", BreakCommand(time=50), "world"],
+            "sequence": ["hello", ["BreakCommand", {"time": 50}], "world"],
         }
     )
     router.handle_message({"type": "set_clipboard_text", "text": "abc"})
@@ -45,6 +45,31 @@ def test_router_dispatches_speech_and_clipboard():
         SpeechSequence(items=("hello", BreakCommand(time=50), "world")),
     )
     assert seen[1] == ("clipboard", "abc")
+
+
+def test_router_preserves_already_restored_speech_commands():
+    seen = []
+    router = MessageRouter(
+        on_speech=lambda speech: seen.append(("speech", speech)),
+        on_cancel=lambda: seen.append(("cancel", None)),
+        on_pause=lambda paused: seen.append(("pause", paused)),
+        on_clipboard=lambda text: seen.append(("clipboard", text)),
+        on_status=lambda event: seen.append(("status", event)),
+    )
+
+    router.handle_message(
+        {
+            "type": "speak",
+            "sequence": ["hello", BreakCommand(time=50), "world"],
+        }
+    )
+
+    assert seen == [
+        (
+            "speech",
+            SpeechSequence(items=("hello", BreakCommand(time=50), "world")),
+        )
+    ]
 
 
 def test_router_dispatches_unknown_messages_to_status():
