@@ -1,5 +1,6 @@
 from remote_core.models.speech_commands import (
     BreakCommand,
+    IndexCommand,
     PitchCommand,
     RateCommand,
     SpeechCommand,
@@ -12,6 +13,7 @@ def test_speech_sequence_restores_text_and_supported_commands():
     payload = {
         "sequence": [
             "hello",
+            ["IndexCommand", {"index": 4}],
             ["BreakCommand", {"time": 75}],
             ["PitchCommand", {"offset": 12}],
             ["RateCommand", {"multiplier": 1.5}],
@@ -24,6 +26,7 @@ def test_speech_sequence_restores_text_and_supported_commands():
 
     assert restored.items == (
         "hello",
+        IndexCommand(index=4),
         BreakCommand(time=75),
         PitchCommand(offset=12),
         RateCommand(multiplier=1.5),

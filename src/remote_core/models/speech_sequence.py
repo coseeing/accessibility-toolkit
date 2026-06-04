@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 from remote_core.models.speech_commands import (
     BreakCommand,
+    IndexCommand,
     PitchCommand,
     RateCommand,
     SpeechCommand,
@@ -10,6 +11,7 @@ from remote_core.models.speech_commands import (
 
 
 _FACTORIES = {
+    "IndexCommand": lambda data: IndexCommand(index=int(data.get("index", 0))),
     "BreakCommand": lambda data: BreakCommand(time=int(data.get("time", 0))),
     "PitchCommand": lambda data: PitchCommand(offset=int(data.get("offset", 0))),
     "RateCommand": lambda data: RateCommand(
