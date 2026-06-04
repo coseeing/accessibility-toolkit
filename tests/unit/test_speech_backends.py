@@ -7,6 +7,7 @@ import pytest
 from adapters.windows.pyttsx3_output import Pyttsx3SpeechOutput
 from application.config import SpeechBackendConfigStore
 from application.speech_backends import SpeechBackendManager, SpeechBackendOption
+from application.services import OutputManager
 from remote_core.models.speech_commands import (
     BreakCommand,
     PitchCommand,
@@ -14,6 +15,8 @@ from remote_core.models.speech_commands import (
     VolumeCommand,
 )
 from remote_core.models.speech_sequence import SpeechSequence
+from remote_core.routing.message_router import MessageRouter
+from remote_core.serializer import JSONSerializer
 
 
 class FakeSpeechOutput:
@@ -167,6 +170,17 @@ class FakeTaskManager:
         self.calls.append(("cancel", None))
 
 
+class FakeClipboard:
+    def __init__(self) -> None:
+        self.text = ""
+
+    def set_text(self, text: str) -> None:
+        self.text = text
+
+    def get_text(self) -> str:
+        return self.text
+
+
 def test_speech_backend_manager_switches_backend_and_cancels_previous():
     events: list[tuple[str, str]] = []
     manager = SpeechBackendManager(
@@ -223,6 +237,35 @@ def test_pyttsx3_backend_schedules_real_breaks_between_text_chunks():
         ("speak", "world"),
     ]
     assert engine.say_calls == ["hello", "world"]
+
+
+def test_raw_json_speak_payload_reaches_real_pyttsx3_sequence_path():
+    serializer = JSONSerializer()
+    engine = FakeEngine()
+    task_manager = FakeTaskManager()
+    output = Pyttsx3SpeechOutput(engine=engine, task_manager=task_manager)
+    manager = OutputManager(speech_output=output, clipboard=FakeClipboard())
+    router = MessageRouter(
+        on_speech=manager.handle_speech,
+        on_cancel=manager.handle_cancel,
+        on_pause=manager.handle_pause,
+        on_clipboard=manager.handle_clipboard,
+        on_status=lambda event: None,
+    )
+    payload = serializer.deserialize(
+        b'{"type":"speak","sequence":["hello",["BreakCommand",{"time":10}],["PitchCommand",{"offset":2}],"world"]}'
+    )
+
+    router.handle_message(payload)
+
+    assert task_manager.calls == [
+        ("speak", "hello"),
+        ("break", 0.01),
+        ("speak", "world"),
+    ]
+    assert engine.say_calls == ["hello", "world"]
+    assert engine.properties["pitch"] == 2
+
 
 def test_pyttsx3_backend_tracks_rate_pitch_and_volume_commands():
     engine = FakeEngine()
