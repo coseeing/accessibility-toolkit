@@ -80,10 +80,10 @@ class MainFrame(wx.Frame):
             self._sync_connection_fields()
             self._sync_clipboard_button()
             return
-        host = self.host_ctrl.GetValue()
-        port = int(self.port_ctrl.GetValue())
-        key = self.key_ctrl.GetValue()
         try:
+            host = self.host_ctrl.GetValue()
+            port = int(self.port_ctrl.GetValue())
+            key = self.key_ctrl.GetValue()
             self.controller.connect(host, port, key)
         except ssl.SSLCertVerificationError:
             self.controller.connect(host, port, key, insecure=True)
@@ -190,7 +190,9 @@ class MainFrame(wx.Frame):
 
     def _sync_speech_controls(self) -> None:
         self._voice_options = self._get_available_voices()
-        self.voice_choice.choices = [label for _voice_id, label in self._voice_options]
+        self.voice_choice.Clear()
+        for _voice_id, label in self._voice_options:
+            self.voice_choice.Append(label)
         self.voice_choice.SetSelection(self._voice_selection_for_current_value())
         self.rate_ctrl.SetValue(self._stringify_optional_int(self._get_rate()))
         self.pitch_ctrl.SetValue(self._stringify_optional_int(self._get_pitch()))

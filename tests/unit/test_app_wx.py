@@ -126,6 +126,15 @@ def install_fake_wx(monkeypatch):
         def SetSelection(self, index):
             self.selection = index
 
+        def Clear(self):
+            self.choices = []
+            self.selection = -1
+
+        def Append(self, label):
+            self.choices.append(label)
+            if self.selection < 0:
+                self.selection = 0
+
         def Enable(self, enabled=True):
             self.enabled = enabled
 
@@ -457,6 +466,23 @@ def test_main_frame_retries_self_signed_certificate_in_insecure_mode(monkeypatch
     ]
     assert controller.connected_to == ("114.34.83.41", 6837, "secret", True)
     assert fake_wx.message_box_calls == []
+
+
+def test_main_frame_shows_connection_error_for_invalid_port(monkeypatch):
+    fake_wx = install_fake_wx(monkeypatch)
+    MainFrame = importlib.import_module("ui.main_frame").MainFrame
+    controller = FakeController()
+    frame = MainFrame(controller=controller)
+    frame.host_ctrl.SetValue("relay.example")
+    frame.port_ctrl.SetValue("bad-port")
+    frame.key_ctrl.SetValue("secret")
+
+    frame._on_connect(None)
+
+    assert controller.connect_calls == []
+    assert fake_wx.message_box_calls == [
+        ("invalid literal for int() with base 10: 'bad-port'", "Connection Error", fake_wx.OK | fake_wx.ICON_ERROR)
+    ]
 
 
 def test_main_frame_switches_speech_backend_from_dropdown(monkeypatch):
