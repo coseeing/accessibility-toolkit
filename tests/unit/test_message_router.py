@@ -1,5 +1,6 @@
 from remote_core.connection_info import ConnectionInfo
-from remote_core.models.speech import NormalizedSpeech, SpeechSegment
+from remote_core.models.speech_commands import BreakCommand
+from remote_core.models.speech_sequence import SpeechSequence
 from remote_core.protocol import RemoteMessageType
 from remote_core.routing.message_router import MessageRouter
 from remote_core.session.remote_session import RemoteSession
@@ -25,16 +26,23 @@ def test_router_dispatches_speech_and_clipboard():
     seen = []
     router = MessageRouter(
         on_speech=lambda speech: seen.append(("speech", speech)),
+        on_cancel=lambda: seen.append(("cancel", None)),
+        on_pause=lambda paused: seen.append(("pause", paused)),
         on_clipboard=lambda text: seen.append(("clipboard", text)),
         on_status=lambda event: seen.append(("status", event)),
     )
 
-    router.handle_message({"type": "speak", "sequence": ["hello"]})
+    router.handle_message(
+        {
+            "type": "speak",
+            "sequence": ["hello", BreakCommand(time=50), "world"],
+        }
+    )
     router.handle_message({"type": "set_clipboard_text", "text": "abc"})
 
     assert seen[0] == (
         "speech",
-        NormalizedSpeech(segments=(SpeechSegment(kind="text", value="hello"),)),
+        SpeechSequence(items=("hello", BreakCommand(time=50), "world")),
     )
     assert seen[1] == ("clipboard", "abc")
 
@@ -43,6 +51,8 @@ def test_router_dispatches_unknown_messages_to_status():
     seen = []
     router = MessageRouter(
         on_speech=lambda speech: seen.append(("speech", speech)),
+        on_cancel=lambda: seen.append(("cancel", None)),
+        on_pause=lambda paused: seen.append(("pause", paused)),
         on_clipboard=lambda text: seen.append(("clipboard", text)),
         on_status=lambda event: seen.append(("status", event)),
     )
@@ -62,6 +72,8 @@ def test_router_reports_missing_clipboard_text_as_invalid_message():
     seen = []
     router = MessageRouter(
         on_speech=lambda speech: seen.append(("speech", speech)),
+        on_cancel=lambda: seen.append(("cancel", None)),
+        on_pause=lambda paused: seen.append(("pause", paused)),
         on_clipboard=lambda text: seen.append(("clipboard", text)),
         on_status=lambda event: seen.append(("status", event)),
     )
@@ -85,6 +97,8 @@ def test_router_reports_none_clipboard_text_as_invalid_message():
     seen = []
     router = MessageRouter(
         on_speech=lambda speech: seen.append(("speech", speech)),
+        on_cancel=lambda: seen.append(("cancel", None)),
+        on_pause=lambda paused: seen.append(("pause", paused)),
         on_clipboard=lambda text: seen.append(("clipboard", text)),
         on_status=lambda event: seen.append(("status", event)),
     )
@@ -108,6 +122,8 @@ def test_router_reports_non_string_clipboard_text_as_invalid_message():
     seen = []
     router = MessageRouter(
         on_speech=lambda speech: seen.append(("speech", speech)),
+        on_cancel=lambda: seen.append(("cancel", None)),
+        on_pause=lambda paused: seen.append(("pause", paused)),
         on_clipboard=lambda text: seen.append(("clipboard", text)),
         on_status=lambda event: seen.append(("status", event)),
     )
@@ -142,6 +158,50 @@ def test_session_join_sends_protocol_and_join_messages():
     assert transport.sent[1][0] == RemoteMessageType.JOIN
     assert transport.sent[1][1] == {"channel": "secret", "mode": "master"}
     assert status_events == []
+
+
+def test_router_dispatches_cancel_and_pause_messages():
+    seen = []
+    router = MessageRouter(
+        on_speech=lambda speech: seen.append(("speech", speech)),
+        on_cancel=lambda: seen.append(("cancel", None)),
+        on_pause=lambda paused: seen.append(("pause", paused)),
+        on_clipboard=lambda text: seen.append(("clipboard", text)),
+        on_status=lambda event: seen.append(("status", event)),
+    )
+
+    router.handle_message({"type": "cancel"})
+    router.handle_message({"type": "pause_speech", "switch": True})
+
+    assert seen == [
+        ("cancel", None),
+        ("pause", True),
+    ]
+
+
+def test_router_reports_invalid_pause_payload():
+    seen = []
+    router = MessageRouter(
+        on_speech=lambda speech: seen.append(("speech", speech)),
+        on_cancel=lambda: seen.append(("cancel", None)),
+        on_pause=lambda paused: seen.append(("pause", paused)),
+        on_clipboard=lambda text: seen.append(("clipboard", text)),
+        on_status=lambda event: seen.append(("status", event)),
+    )
+    payload = {"type": "pause_speech", "switch": "yes"}
+
+    router.handle_message(payload)
+
+    assert seen == [
+        (
+            "status",
+            {
+                "kind": "invalid_message",
+                "reason": "pause_switch_must_be_bool",
+                "payload": payload,
+            },
+        )
+    ]
 
 
 def test_session_reports_connected_after_channel_joined():
