@@ -65,3 +65,21 @@ def test_speech_sequence_degrades_safely_for_malformed_supported_command_values(
         RateCommand(multiplier=1.0),
         VolumeCommand(multiplier=1.0),
     )
+
+
+def test_speech_sequence_preserves_already_restored_command_instances():
+    payload = {
+        "sequence": [
+            "hello",
+            BreakCommand(time=75),
+            PitchCommand(offset=12),
+        ]
+    }
+
+    restored = SpeechSequence.from_remote_payload(payload)
+
+    assert restored.items == (
+        "hello",
+        BreakCommand(time=75),
+        PitchCommand(offset=12),
+    )

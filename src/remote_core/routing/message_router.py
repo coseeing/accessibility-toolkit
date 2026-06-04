@@ -23,7 +23,7 @@ class MessageRouter:
     def handle_message(self, payload: dict[str, Any]) -> None:
         match payload.get("type"):
             case RemoteMessageType.SPEAK.value:
-                self._on_speech(SpeechSequence(items=tuple(payload.get("sequence", ()))))
+                self._on_speech(SpeechSequence.from_remote_payload(payload))
             case RemoteMessageType.CANCEL.value:
                 self._on_cancel()
             case RemoteMessageType.PAUSE_SPEECH.value:
