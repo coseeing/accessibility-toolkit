@@ -1,23 +1,24 @@
 import importlib
+import ssl
 import sys
 import types
 
 import pytest
 
 
-APP_WX_MODULES = ("app_wx.app", "app_wx.main_frame")
+UI_MODULES = ("ui.app", "ui.main_frame")
 
 
-def clear_app_wx_modules():
-    for module_name in APP_WX_MODULES:
+def clear_ui_modules():
+    for module_name in UI_MODULES:
         sys.modules.pop(module_name, None)
 
 
 @pytest.fixture(autouse=True)
 def clean_app_wx_module_cache():
-    clear_app_wx_modules()
+    clear_ui_modules()
     yield
-    clear_app_wx_modules()
+    clear_ui_modules()
 
 
 def install_fake_wx(monkeypatch):
@@ -26,6 +27,12 @@ def install_fake_wx(monkeypatch):
     fake_wx.EXPAND = 2
     fake_wx.ALL = 4
     fake_wx.EVT_BUTTON = object()
+    fake_wx.EVT_CHOICE = object()
+    fake_wx.EVT_TEXT = object()
+    fake_wx.OK = 16
+    fake_wx.ICON_ERROR = 32
+    fake_wx.message_box_calls = []
+    fake_wx.call_after_calls = []
 
     class Frame:
         def __init__(self, parent=None, title=""):
@@ -59,6 +66,8 @@ def install_fake_wx(monkeypatch):
         def __init__(self, parent, value=""):
             self.parent = parent
             self._value = value
+            self.enabled = True
+            self.bindings = {}
 
         def GetValue(self):
             return self._value
@@ -66,14 +75,62 @@ def install_fake_wx(monkeypatch):
         def SetValue(self, value):
             self._value = value
 
+        def Enable(self, enabled=True):
+            self.enabled = enabled
+
+        def Disable(self):
+            self.enabled = False
+
+        def Bind(self, event, handler):
+            self.bindings[event] = handler
+
     class Button:
         def __init__(self, parent, label):
             self.parent = parent
             self._label = label
             self.bindings = {}
+            self.enabled = True
 
         def GetLabel(self):
             return self._label
+
+        def SetLabel(self, label):
+            self._label = label
+
+        def Enable(self, enabled=True):
+            self.enabled = enabled
+
+        def Disable(self):
+            self.enabled = False
+
+        def Bind(self, event, handler):
+            self.bindings[event] = handler
+
+    class Choice:
+        def __init__(self, parent, choices):
+            self.parent = parent
+            self.choices = list(choices)
+            self.bindings = {}
+            self.enabled = True
+            self.selection = 0 if self.choices else -1
+
+        def GetString(self, index):
+            return self.choices[index]
+
+        def GetCount(self):
+            return len(self.choices)
+
+        def GetSelection(self):
+            return self.selection
+
+        def SetSelection(self, index):
+            self.selection = index
+
+        def Enable(self, enabled=True):
+            self.enabled = enabled
+
+        def Disable(self):
+            self.enabled = False
 
         def Bind(self, event, handler):
             self.bindings[event] = handler
@@ -89,36 +146,141 @@ def install_fake_wx(monkeypatch):
         def MainLoop(self):
             return 0
 
+    def MessageBox(message, caption, style):
+        fake_wx.message_box_calls.append((message, caption, style))
+        return 0
+
+    def CallAfter(callback, *args, **kwargs):
+        fake_wx.call_after_calls.append((callback, args, kwargs))
+        return callback(*args, **kwargs)
+
     fake_wx.Frame = Frame
     fake_wx.Panel = Panel
     fake_wx.BoxSizer = BoxSizer
     fake_wx.TextCtrl = TextCtrl
     fake_wx.Button = Button
+    fake_wx.Choice = Choice
     fake_wx.App = App
+    fake_wx.MessageBox = MessageBox
+    fake_wx.CallAfter = CallAfter
     monkeypatch.setitem(sys.modules, "wx", fake_wx)
-    clear_app_wx_modules()
+    clear_ui_modules()
     return fake_wx
 
 
 class FakeController:
     def __init__(self):
         self.connected_to = None
+        self.connect_calls = []
+        self.disconnect_calls = 0
         self.started_control = 0
+        self.stopped_control = 0
         self.pushed_clipboard = 0
+        self.state = types.SimpleNamespace(
+            connection_state="idle",
+            control_state="idle",
+        )
+        self.status_listener = None
+        self.speech_backend_id = "nvda_controller"
+        self.speech_backend_calls = []
+        self.backend_switch_error = None
+        self.available_voices = ()
+        self.selected_voice = None
+        self.rate = None
+        self.pitch = None
+        self.volume = None
+        self.voice_calls = []
+        self.rate_calls = []
+        self.pitch_calls = []
+        self.volume_calls = []
 
-    def connect(self, host, port, key):
-        self.connected_to = (host, port, key)
+    def connect(self, host, port, key, insecure=False):
+        self.connect_calls.append((host, port, key, insecure))
+        self.connected_to = (host, port, key, insecure)
+        self.state.connection_state = "connected"
+        self.state.control_state = "connected"
+        if self.status_listener is not None:
+            self.status_listener({"kind": "connection", "state": "connected"})
+
+    def disconnect(self):
+        if self.state.control_state == "controlling":
+            self.stop_control()
+        self.disconnect_calls += 1
+        self.state.connection_state = "idle"
+        self.state.control_state = "idle"
+        if self.status_listener is not None:
+            self.status_listener({"kind": "connection", "state": "idle"})
 
     def start_control(self):
         self.started_control += 1
+        self.state.control_state = "controlling"
+        if self.status_listener is not None:
+            self.status_listener({"kind": "connection", "state": "connected"})
+
+    def stop_control(self):
+        self.stopped_control += 1
+        self.state.control_state = "connected" if self.state.connection_state != "idle" else "idle"
+        if self.status_listener is not None:
+            self.status_listener({"kind": "connection", "state": self.state.connection_state})
 
     def push_clipboard(self):
         self.pushed_clipboard += 1
 
+    def set_status_listener(self, listener):
+        self.status_listener = listener
+
+    def get_speech_backend_options(self):
+        return (
+            ("nvda_controller", "NVDA Controller"),
+            ("pyttsx3", "pyttsx3"),
+        )
+
+    def get_selected_speech_backend(self):
+        return self.speech_backend_id
+
+    def set_speech_backend(self, backend_id):
+        self.speech_backend_calls.append(backend_id)
+        if self.backend_switch_error is not None:
+            raise self.backend_switch_error
+        self.speech_backend_id = backend_id
+        if self.status_listener is not None:
+            self.status_listener({"kind": "speech_backend", "backend_id": backend_id})
+
+    def get_available_voices(self):
+        return self.available_voices
+
+    def get_selected_voice(self):
+        return self.selected_voice
+
+    def set_selected_voice(self, voice_id):
+        self.voice_calls.append(voice_id)
+        self.selected_voice = voice_id
+
+    def get_rate(self):
+        return self.rate
+
+    def set_rate(self, value):
+        self.rate_calls.append(value)
+        self.rate = value
+
+    def get_pitch(self):
+        return self.pitch
+
+    def set_pitch(self, value):
+        self.pitch_calls.append(value)
+        self.pitch = value
+
+    def get_volume(self):
+        return self.volume
+
+    def set_volume(self, value):
+        self.volume_calls.append(value)
+        self.volume = value
+
 
 def test_main_frame_exposes_connect_controls(monkeypatch):
     install_fake_wx(monkeypatch)
-    MainFrame = importlib.import_module("app_wx.main_frame").MainFrame
+    MainFrame = importlib.import_module("ui.main_frame").MainFrame
 
     frame = MainFrame(controller=None)
 
@@ -128,17 +290,25 @@ def test_main_frame_exposes_connect_controls(monkeypatch):
     assert frame.key_ctrl.GetValue() == ""
     assert frame.connect_button.GetLabel() == "Connect"
     assert frame.control_button.GetLabel() == "Start Control"
+    assert frame.control_button.enabled is False
     assert frame.clipboard_button.GetLabel() == "Push Clipboard"
+    assert frame.clipboard_button.enabled is False
+    assert frame.speech_backend_choice.GetCount() == 2
+    assert frame.speech_backend_choice.GetString(0) == "NVDA Controller"
+    assert frame.speech_backend_choice.GetString(1) == "pyttsx3"
+    assert frame.host_ctrl.enabled is True
+    assert frame.port_ctrl.enabled is True
+    assert frame.key_ctrl.enabled is True
 
 
 def test_fake_wx_imports_do_not_leave_app_wx_modules_cached():
-    assert "app_wx.app" not in sys.modules
-    assert "app_wx.main_frame" not in sys.modules
+    assert "ui.app" not in sys.modules
+    assert "ui.main_frame" not in sys.modules
 
 
 def test_main_frame_dispatches_button_actions(monkeypatch):
     install_fake_wx(monkeypatch)
-    MainFrame = importlib.import_module("app_wx.main_frame").MainFrame
+    MainFrame = importlib.import_module("ui.main_frame").MainFrame
     controller = FakeController()
     frame = MainFrame(controller=controller)
     frame.host_ctrl.SetValue("relay.example")
@@ -149,14 +319,222 @@ def test_main_frame_dispatches_button_actions(monkeypatch):
     frame._on_start_control(None)
     frame._on_push_clipboard(None)
 
-    assert controller.connected_to == ("relay.example", 7000, "secret")
+    assert controller.connected_to == ("relay.example", 7000, "secret", False)
     assert controller.started_control == 1
     assert controller.pushed_clipboard == 1
+    assert frame.connect_button.GetLabel() == "Disconnect"
+    assert frame.control_button.GetLabel() == "Stop Control"
+    assert frame.control_button.enabled is True
+    assert frame.clipboard_button.enabled is True
+    assert frame.host_ctrl.enabled is False
+    assert frame.port_ctrl.enabled is False
+    assert frame.key_ctrl.enabled is False
+
+
+def test_main_frame_toggles_disconnect_when_already_connected(monkeypatch):
+    install_fake_wx(monkeypatch)
+    MainFrame = importlib.import_module("ui.main_frame").MainFrame
+    controller = FakeController()
+    frame = MainFrame(controller=controller)
+
+    frame._on_connect(None)
+    frame._on_connect(None)
+
+    assert controller.connect_calls == [("", 6837, "", False)]
+    assert controller.disconnect_calls == 1
+    assert frame.connect_button.GetLabel() == "Connect"
+    assert frame.control_button.GetLabel() == "Start Control"
+    assert frame.control_button.enabled is False
+    assert frame.clipboard_button.enabled is False
+    assert frame.host_ctrl.enabled is True
+    assert frame.port_ctrl.enabled is True
+    assert frame.key_ctrl.enabled is True
+
+
+def test_main_frame_control_button_is_disabled_until_connected(monkeypatch):
+    install_fake_wx(monkeypatch)
+    MainFrame = importlib.import_module("ui.main_frame").MainFrame
+    controller = FakeController()
+    frame = MainFrame(controller=controller)
+
+    assert frame.control_button.enabled is False
+
+    frame._on_connect(None)
+
+    assert frame.control_button.enabled is True
+    assert frame.control_button.GetLabel() == "Start Control"
+    assert frame.clipboard_button.enabled is True
+
+
+def test_main_frame_locks_connection_fields_while_connected(monkeypatch):
+    install_fake_wx(monkeypatch)
+    MainFrame = importlib.import_module("ui.main_frame").MainFrame
+    controller = FakeController()
+    frame = MainFrame(controller=controller)
+
+    frame._on_connect(None)
+
+    assert frame.host_ctrl.enabled is False
+    assert frame.port_ctrl.enabled is False
+    assert frame.key_ctrl.enabled is False
+
+    frame._on_connect(None)
+
+    assert frame.host_ctrl.enabled is True
+    assert frame.port_ctrl.enabled is True
+    assert frame.key_ctrl.enabled is True
+
+
+def test_main_frame_control_button_toggles_start_and_stop(monkeypatch):
+    install_fake_wx(monkeypatch)
+    MainFrame = importlib.import_module("ui.main_frame").MainFrame
+    controller = FakeController()
+    frame = MainFrame(controller=controller)
+
+    frame._on_connect(None)
+    frame._on_start_control(None)
+    frame._on_start_control(None)
+
+    assert controller.started_control == 1
+    assert controller.stopped_control == 1
+    assert frame.control_button.GetLabel() == "Start Control"
+    assert frame.control_button.enabled is True
+
+
+def test_main_frame_disconnect_stops_control_first(monkeypatch):
+    install_fake_wx(monkeypatch)
+    MainFrame = importlib.import_module("ui.main_frame").MainFrame
+    controller = FakeController()
+    frame = MainFrame(controller=controller)
+
+    frame._on_connect(None)
+    frame._on_start_control(None)
+    frame._on_connect(None)
+
+    assert controller.stopped_control == 1
+    assert controller.disconnect_calls == 1
+    assert frame.control_button.GetLabel() == "Start Control"
+    assert frame.control_button.enabled is False
+
+
+def test_main_frame_syncs_buttons_after_control_stops_outside_ui(monkeypatch):
+    install_fake_wx(monkeypatch)
+    MainFrame = importlib.import_module("ui.main_frame").MainFrame
+    controller = FakeController()
+    frame = MainFrame(controller=controller)
+
+    frame._on_connect(None)
+    frame._on_start_control(None)
+    controller.stop_control()
+
+    assert frame.connect_button.GetLabel() == "Disconnect"
+    assert frame.control_button.GetLabel() == "Start Control"
+    assert frame.control_button.enabled is True
+
+
+def test_main_frame_retries_self_signed_certificate_in_insecure_mode(monkeypatch):
+    fake_wx = install_fake_wx(monkeypatch)
+    MainFrame = importlib.import_module("ui.main_frame").MainFrame
+
+    class SelfSignedController(FakeController):
+        def connect(self, host, port, key, insecure=False):
+            self.connect_calls.append((host, port, key, insecure))
+            if not insecure:
+                raise ssl.SSLCertVerificationError("self-signed certificate")
+            self.connected_to = (host, port, key, insecure)
+
+    controller = SelfSignedController()
+    frame = MainFrame(controller=controller)
+    frame.host_ctrl.SetValue("114.34.83.41")
+    frame.port_ctrl.SetValue("6837")
+    frame.key_ctrl.SetValue("secret")
+
+    frame._on_connect(None)
+
+    assert controller.connect_calls == [
+        ("114.34.83.41", 6837, "secret", False),
+        ("114.34.83.41", 6837, "secret", True),
+    ]
+    assert controller.connected_to == ("114.34.83.41", 6837, "secret", True)
+    assert fake_wx.message_box_calls == []
+
+
+def test_main_frame_switches_speech_backend_from_dropdown(monkeypatch):
+    install_fake_wx(monkeypatch)
+    MainFrame = importlib.import_module("ui.main_frame").MainFrame
+    controller = FakeController()
+    frame = MainFrame(controller=controller)
+    frame.speech_backend_choice.SetSelection(1)
+
+    frame._on_speech_backend_change(None)
+
+    assert controller.speech_backend_calls == ["pyttsx3"]
+    assert frame.speech_backend_choice.GetSelection() == 1
+
+
+def test_main_frame_reverts_dropdown_when_backend_switch_fails(monkeypatch):
+    fake_wx = install_fake_wx(monkeypatch)
+    MainFrame = importlib.import_module("ui.main_frame").MainFrame
+    controller = FakeController()
+    controller.backend_switch_error = RuntimeError("pyttsx3 init failed")
+    frame = MainFrame(controller=controller)
+    frame.speech_backend_choice.SetSelection(1)
+
+    frame._on_speech_backend_change(None)
+
+    assert controller.speech_backend_calls == ["pyttsx3"]
+    assert controller.get_selected_speech_backend() == "nvda_controller"
+    assert frame.speech_backend_choice.GetSelection() == 0
+    assert fake_wx.message_box_calls == [
+        ("pyttsx3 init failed", "Speech Backend Error", fake_wx.OK | fake_wx.ICON_ERROR)
+    ]
+
+
+def test_main_frame_exposes_voice_and_prosody_controls(monkeypatch):
+    install_fake_wx(monkeypatch)
+    MainFrame = importlib.import_module("ui.main_frame").MainFrame
+    controller = FakeController()
+    controller.speech_backend_id = "pyttsx3"
+    controller.available_voices = (("voice-1", "Voice 1"), ("voice-2", "Voice 2"))
+    controller.selected_voice = "voice-2"
+    controller.rate = 120
+    controller.pitch = 3
+    controller.volume = 80
+
+    frame = MainFrame(controller=controller)
+
+    assert frame.voice_choice.GetCount() == 2
+    assert frame.voice_choice.GetSelection() == 1
+    assert frame.rate_ctrl.GetValue() == "120"
+    assert frame.pitch_ctrl.GetValue() == "3"
+    assert frame.volume_ctrl.GetValue() == "80"
+
+
+def test_main_frame_routes_voice_and_prosody_changes_to_controller(monkeypatch):
+    install_fake_wx(monkeypatch)
+    MainFrame = importlib.import_module("ui.main_frame").MainFrame
+    controller = FakeController()
+    controller.available_voices = (("voice-1", "Voice 1"), ("voice-2", "Voice 2"))
+    frame = MainFrame(controller=controller)
+
+    frame.voice_choice.SetSelection(1)
+    frame._on_voice_change(None)
+    frame.rate_ctrl.SetValue("120")
+    frame._on_rate_change(None)
+    frame.pitch_ctrl.SetValue("3")
+    frame._on_pitch_change(None)
+    frame.volume_ctrl.SetValue("80")
+    frame._on_volume_change(None)
+
+    assert controller.voice_calls == ["voice-2"]
+    assert controller.rate_calls == [120]
+    assert controller.pitch_calls == [3]
+    assert controller.volume_calls == [80]
 
 
 def test_nvda_remote_app_creates_and_shows_main_frame(monkeypatch):
     install_fake_wx(monkeypatch)
-    NvdaRemoteApp = importlib.import_module("app_wx.app").NvdaRemoteApp
+    NvdaRemoteApp = importlib.import_module("ui.app").NvdaRemoteApp
     controller = FakeController()
     app = NvdaRemoteApp(controller=controller)
 
