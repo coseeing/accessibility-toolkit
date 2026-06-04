@@ -4,6 +4,7 @@ from remote_core.models.speech_sequence import SpeechSequence
 from remote_core.protocol import RemoteMessageType
 from remote_core.routing.message_router import MessageRouter
 from remote_core.session.remote_session import RemoteSession
+from application.services import OutputManager
 
 
 class DummyTransport:
@@ -20,6 +21,17 @@ class DummyTransport:
 
     def close(self):
         self.closed = True
+
+
+class FakeClipboard:
+    def __init__(self):
+        self.text = ""
+
+    def set_text(self, text: str) -> None:
+        self.text = text
+
+    def get_text(self) -> str:
+        return self.text
 
 
 def test_router_dispatches_speech_and_clipboard():
@@ -45,6 +57,68 @@ def test_router_dispatches_speech_and_clipboard():
         SpeechSequence(items=("hello", BreakCommand(time=50), "world")),
     )
     assert seen[1] == ("clipboard", "abc")
+
+
+def test_sequence_routes_from_router_to_backend_through_output_manager():
+    seen = []
+
+    class FakeBackend:
+        def speak(self, sequence):
+            seen.append(sequence)
+
+        def cancel(self):
+            return None
+
+        def pause(self, is_paused):
+            return None
+
+        def list_voices(self):
+            return ()
+
+        def get_voice(self):
+            return None
+
+        def set_voice(self, voice_id):
+            return None
+
+        def get_rate(self):
+            return None
+
+        def set_rate(self, value):
+            return None
+
+        def get_pitch(self):
+            return None
+
+        def set_pitch(self, value):
+            return None
+
+        def get_volume(self):
+            return None
+
+        def set_volume(self, value):
+            return None
+
+    router = MessageRouter(
+        on_speech=lambda sequence: OutputManager(
+            FakeBackend(), FakeClipboard()
+        ).handle_speech(sequence),
+        on_cancel=lambda: None,
+        on_pause=lambda paused: None,
+        on_clipboard=lambda text: None,
+        on_status=lambda event: None,
+    )
+
+    router.handle_message(
+        {
+            "type": "speak",
+            "sequence": ["hello", ["BreakCommand", {"time": 10}], "world"],
+        }
+    )
+
+    assert seen == [
+        SpeechSequence(items=("hello", BreakCommand(time=10), "world"))
+    ]
 
 
 def test_router_preserves_already_restored_speech_commands():
