@@ -2,6 +2,7 @@ import pytest
 
 from remote_core.connection_info import ConnectionInfo, ConnectionMode
 from remote_core.models.keys import KeyEvent
+from remote_core.models.speech_commands import BreakCommand, PitchCommand
 from remote_core.protocol import RemoteMessageType, address_to_host_port
 from remote_core.serializer import JSONSerializer
 
@@ -41,6 +42,21 @@ def test_connection_info_defaults_to_master_mode():
     connection_info = ConnectionInfo(hostname="example.com", port=6837, key="secret")
     assert connection_info.mode is ConnectionMode.MASTER
     assert connection_info.mode.value == "master"
+
+
+def test_serializer_restores_speak_sequence_during_deserialize():
+    serializer = JSONSerializer()
+    payload = (
+        b'{"type":"speak","sequence":["hello",["BreakCommand",{"time":40}],["PitchCommand",{"offset":2}]]}\n'
+    )
+
+    decoded = serializer.deserialize(payload.strip())
+
+    assert decoded["sequence"] == [
+        "hello",
+        BreakCommand(time=40),
+        PitchCommand(offset=2),
+    ]
 
 
 @pytest.mark.parametrize("payload", [b"[]", b'"text"', b"null"])
