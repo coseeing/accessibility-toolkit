@@ -83,6 +83,13 @@ class FakeEngine:
         self.stop_count += 1
 
 
+class NoPitchEngine(FakeEngine):
+    def setProperty(self, name: str, value: object) -> None:
+        if name == "pitch":
+            raise RuntimeError("pitch unsupported")
+        super().setProperty(name, value)
+
+
 class BlockingEngine:
     def __init__(self) -> None:
         self.say_calls: list[str] = []
@@ -235,6 +242,19 @@ def test_pyttsx3_backend_tracks_rate_pitch_and_volume_commands():
     assert output.get_pitch() == 3
     assert output.get_rate() == 120
     assert output.get_volume() == 80
+    assert engine.properties["pitch"] == 3
+
+
+def test_pyttsx3_backend_ignores_unsupported_pitch_property():
+    engine = NoPitchEngine()
+    task_manager = FakeTaskManager()
+    output = Pyttsx3SpeechOutput(engine=engine, task_manager=task_manager)
+    sequence = SpeechSequence(items=(PitchCommand(offset=7), "hello"))
+
+    output.speak(sequence)
+
+    assert engine.say_calls == ["hello"]
+    assert "pitch" not in engine.properties
 
 
 def test_pyttsx3_speech_output_ignores_empty_sequence():
