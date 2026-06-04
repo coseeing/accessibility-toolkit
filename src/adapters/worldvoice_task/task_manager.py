@@ -34,11 +34,19 @@ class SpeechFuture(Future):
 
                 result = fn(future)
                 if isinstance(result, Future):
-                    result.add_done_callback(
-                        lambda chained: next_future.set_exception(chained.exception())
-                        if chained.exception()
-                        else next_future.set_result(chained.result())
-                    )
+                    def _on_chained_done(chained: Future) -> None:
+                        if next_future.done():
+                            return
+                        if chained.cancelled():
+                            next_future.cancel()
+                            return
+                        exception = chained.exception()
+                        if exception is not None:
+                            next_future.set_exception(exception)
+                            return
+                        next_future.set_result(chained.result())
+
+                    result.add_done_callback(_on_chained_done)
                     return
 
                 next_future.set_result(result)
@@ -69,6 +77,7 @@ class TaskManager:
         self._current_voice: object | None = None
         self._current_token: CancellationToken | None = None
         self._current_done_event: threading.Event | None = None
+        self._current_future: SpeechFuture | None = None
 
         self._thread = threading.Thread(target=self._worker, daemon=True)
         self._thread.start()
@@ -109,9 +118,13 @@ class TaskManager:
             token = self._current_token
             voice = self._current_voice
             done = self._current_done_event
+            future = self._current_future
 
         if token is not None:
             token.cancel()
+
+        if future is not None and not future.done():
+            future.cancel()
 
         if voice is not None and hasattr(voice, "stop"):
             try:
@@ -183,10 +196,15 @@ class TaskManager:
         with self._state_lock:
             self._current_voice = task.voice_instance
             self._current_token = task.token
+            self._current_future = task.future
 
         try:
             if not task.wait_done:
                 result = task.run()
+                if task.token is not None and task.token.is_cancelled():
+                    if not task.future.done():
+                        task.future.cancel()
+                    return
                 self._try_set_result(task.future, result)
                 return
 
@@ -220,3 +238,4 @@ class TaskManager:
                 self._current_voice = None
                 self._current_token = None
                 self._current_done_event = None
+                self._current_future = None
