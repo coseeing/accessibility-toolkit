@@ -8,16 +8,6 @@ class SpeechCommand:
 
 
 @dataclass(frozen=True, slots=True)
-class IndexCommand(SpeechCommand):
-    index: int = 0
-
-    def __init__(self, index: int) -> None:
-        object.__setattr__(self, "kind", "IndexCommand")
-        object.__setattr__(self, "data", {"index": index})
-        object.__setattr__(self, "index", index)
-
-
-@dataclass(frozen=True, slots=True)
 class BreakCommand(SpeechCommand):
     time: int = 0
 
