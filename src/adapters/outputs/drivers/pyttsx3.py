@@ -2,7 +2,7 @@ import logging
 import threading
 from typing import Any
 
-from adapters.worldvoice_task.task_manager import TaskManager
+from adapters.task.task_manager import TaskManager
 from remote_core.models.speech_commands import (
     BreakCommand,
     PitchCommand,
@@ -75,13 +75,15 @@ class Pyttsx3SpeechOutput:
 
     def cancel(self) -> None:
         self._task_manager.cancel()
+        logger.debug("pyttsx3 stop requested")
+
+    def stop(self) -> None:
         with self._lock:
             active_engine = self._active_engine
             if self._recreate_engine_per_utterance:
                 self._engine = None
         if active_engine is not None:
             active_engine.stop()
-        logger.debug("pyttsx3 stop requested")
 
     def pause(self, is_paused: bool) -> None:
         logger.debug("pyttsx3 pause requested: is_paused=%s", is_paused)
@@ -89,8 +91,21 @@ class Pyttsx3SpeechOutput:
 
     def list_voices(self) -> tuple[tuple[str, str], ...]:
         engine = self._acquire_engine()
-        voices = getattr(engine, "getProperty", lambda _name: [])("voices")
-        return tuple((voice.id, voice.name) for voice in voices)
+        try:
+            voices = getattr(engine, "getProperty", lambda _name: [])("voices")
+        except Exception:
+            logger.exception("pyttsx3 failed to enumerate voices")
+            return self._list_voices_from_engine_fallback(engine)
+        available: list[tuple[str, str]] = []
+        for voice in voices:
+            voice_id = getattr(voice, "id", None)
+            voice_name = getattr(voice, "name", None)
+            if not isinstance(voice_id, str) or not voice_id:
+                continue
+            if not isinstance(voice_name, str) or not voice_name:
+                voice_name = voice_id
+            available.append((voice_id, voice_name))
+        return tuple(available)
 
     def get_voice(self) -> str | None:
         return self._voice_id
@@ -147,3 +162,29 @@ class Pyttsx3SpeechOutput:
             self._engine = self._engine_factory()
             logger.debug("Initialized pyttsx3 speech engine")
             return self._engine
+
+    @staticmethod
+    def _list_voices_from_engine_fallback(engine: Any) -> tuple[tuple[str, str], ...]:
+        try:
+            proxy = getattr(engine, "proxy", None)
+            driver = getattr(proxy, "_driver", None)
+            tts = getattr(driver, "_tts", None)
+            get_voices = getattr(tts, "GetVoices", None)
+            if get_voices is None:
+                return ()
+            available: list[tuple[str, str]] = []
+            for token in get_voices():
+                voice_id = getattr(token, "Id", None)
+                if not isinstance(voice_id, str) or not voice_id:
+                    continue
+                try:
+                    voice_name = token.GetDescription()
+                except Exception:
+                    voice_name = voice_id
+                if not isinstance(voice_name, str) or not voice_name:
+                    voice_name = voice_id
+                available.append((voice_id, voice_name))
+            return tuple(available)
+        except Exception:
+            logger.exception("pyttsx3 fallback voice enumeration failed")
+            return ()

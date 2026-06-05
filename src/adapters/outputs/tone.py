@@ -1,15 +1,5 @@
 import logging
-from typing import Protocol
-
-
-class ToneOutput(Protocol):
-    def beep(
-        self,
-        hz: int,
-        length: int,
-        left: int = 50,
-        right: int = 50,
-    ) -> None: ...
+from adapters.outputs.interfaces import ToneOutput
 
 
 class LoggingToneOutput:

@@ -1,17 +1,33 @@
 import ctypes
+import html
+import logging
 import sys
 from typing import Any
 
-from remote_core.models.speech import NormalizedSpeech
+from remote_core.models.speech_commands import (
+    BreakCommand,
+    PitchCommand,
+    RateCommand,
+    VolumeCommand,
+)
+from remote_core.models.speech_sequence import SpeechSequence
+from runtime_paths import resource_path
 
 
-NVDA_CONTROLLER_DLL = "nvdaControllerClient64.dll"
+VENDORED_X64_DLL = "adapters/windows/vendor/nvda/x64/nvdaControllerClient.dll"
+logger = logging.getLogger(__name__)
+SPEAK_SSML_FUNCTION = "nvdaController_speakSsml"
+CANCEL_SPEECH_FUNCTION = "nvdaController_cancelSpeech"
 
 
 class NvdaControllerSpeechOutput:
-    def __init__(self, controller: Any | None) -> None:
-        self.controller = controller
-        self.available = controller is not None
+    def __init__(self, controller: Any | None, *, loaded_from: str | None = None) -> None:
+        self.controller = controller if self._supports_ssml(controller) else None
+        self.available = self.controller is not None
+        self.loaded_from = loaded_from
+        self._rate = 100
+        self._pitch = 100
+        self._volume = 100
 
     @classmethod
     def load_default(
@@ -22,28 +38,152 @@ class NvdaControllerSpeechOutput:
     ) -> "NvdaControllerSpeechOutput":
         running_windows = sys.platform == "win32" if is_windows is None else is_windows
         if not running_windows:
+            logger.debug("NVDA controller unavailable: not running on Windows")
             return cls(controller=None)
         if loader is None:
             loader = ctypes.WinDLL
+        candidate = str(resource_path(VENDORED_X64_DLL))
         try:
-            return cls(controller=loader(NVDA_CONTROLLER_DLL))
-        except OSError:
-            return cls(controller=None)
+            controller = loader(candidate)
+            if not cls._supports_ssml(controller):
+                logger.debug(
+                    "Rejected NVDA controller DLL from %s: missing %s",
+                    candidate,
+                    SPEAK_SSML_FUNCTION,
+                )
+                return cls(controller=None)
+            logger.debug("Loaded NVDA controller DLL from %s", candidate)
+            return cls(controller=controller, loaded_from=candidate)
+        except OSError as error:
+            logger.debug("Failed to load NVDA controller DLL from %s: %s", candidate, error)
+        logger.warning("NVDA controller DLL could not be loaded from vendored path")
+        return cls(controller=None)
 
-    def speak(self, speech: NormalizedSpeech) -> None:
+    @staticmethod
+    def _supports_ssml(controller: Any | None) -> bool:
+        if controller is None:
+            return False
+        return callable(getattr(controller, SPEAK_SSML_FUNCTION, None))
+
+    def speak(self, speech: SpeechSequence) -> None:
         if not self.available:
+            logger.debug("NVDA controller unavailable; speech output skipped")
             return
-        text = " ".join(
-            str(segment.value)
-            for segment in speech.segments
-            if segment.kind == "text" and segment.value
+        logger.debug("NVDA controller received speech sequence: %r", speech)
+        ssml = self._speech_to_ssml(speech)
+        logger.debug(
+            "NVDA controller speak requested: ssml=%r",
+            ssml,
         )
-        if text:
-            self.controller.speakText(text)
+        if not ssml:
+            logger.debug("NVDA controller speech SSML is empty; speak skipped")
+            return
+        try:
+            result = getattr(self.controller, SPEAK_SSML_FUNCTION)(ssml, 0, 0, True)
+            logger.debug("NVDA controller speakSsml returned %r", result)
+        except Exception:
+            logger.exception("NVDA controller speech call raised an exception")
 
     def cancel(self) -> None:
         if self.available:
-            self.controller.cancelSpeech()
+            try:
+                result = getattr(self.controller, CANCEL_SPEECH_FUNCTION)()
+                logger.debug("NVDA controller cancelSpeech returned %r", result)
+            except Exception:
+                logger.exception("NVDA controller cancelSpeech raised an exception")
+        else:
+            logger.debug("NVDA controller unavailable; cancel skipped")
 
     def pause(self, is_paused: bool) -> None:
         return None
+
+    def list_voices(self) -> tuple[tuple[str, str], ...]:
+        return ()
+
+    def get_voice(self) -> str | None:
+        return None
+
+    def set_voice(self, voice_id: str) -> None:
+        return None
+
+    def get_rate(self) -> int | None:
+        if not self.available:
+            return None
+        return self._rate
+
+    def set_rate(self, value: int) -> None:
+        self._rate = int(value)
+
+    def get_pitch(self) -> int | None:
+        if not self.available:
+            return None
+        return self._pitch
+
+    def set_pitch(self, value: int) -> None:
+        self._pitch = int(value)
+
+    def get_volume(self) -> int | None:
+        if not self.available:
+            return None
+        return self._volume
+
+    def set_volume(self, value: int) -> None:
+        self._volume = int(value)
+
+    def _speech_to_ssml(self, speech: SpeechSequence) -> str:
+        segments: list[tuple[dict[str, int], str]] = []
+        active_prosody: dict[str, int] = {}
+        content_parts: list[str] = []
+
+        for item in speech.items:
+            if isinstance(item, str):
+                if item:
+                    content_parts.append(html.escape(item, quote=True))
+                continue
+            if isinstance(item, BreakCommand):
+                content_parts.append(f'<break time="{item.time}ms"/>')
+                continue
+            prosody_attr = self._resolve_prosody_attr(item)
+            if prosody_attr is not None:
+                if content_parts:
+                    segments.append((dict(active_prosody), "".join(content_parts)))
+                    content_parts = []
+                name, value = prosody_attr
+                active_prosody[name] = value
+                continue
+
+        if content_parts:
+            segments.append((dict(active_prosody), "".join(content_parts)))
+
+        body = "".join(self._wrap_prosody(attrs, content) for attrs, content in segments)
+        if not body:
+            return ""
+        return f"<speak>{body}</speak>"
+
+    def _resolve_prosody_attr(self, item: object) -> tuple[str, int] | None:
+        if isinstance(item, PitchCommand):
+            return ("pitch", self._prosody_percent(item, baseline=self._pitch))
+        if isinstance(item, RateCommand):
+            return ("rate", self._prosody_percent(item, baseline=self._rate))
+        if isinstance(item, VolumeCommand):
+            return ("volume", self._prosody_percent(item, baseline=self._volume))
+        return None
+
+    @staticmethod
+    def _prosody_percent(command: PitchCommand | RateCommand | VolumeCommand, *, baseline: int) -> int:
+        if command.mode == "multiplier":
+            return round(command.multiplier * 100)
+        if command.mode == "offset":
+            if baseline == 0:
+                return 100
+            return round(((baseline + command.offset) / baseline) * 100)
+        return 100
+
+    @staticmethod
+    def _wrap_prosody(attrs: dict[str, int], content: str) -> str:
+        if not content:
+            return ""
+        wrapped = content
+        for name, value in reversed(tuple(attrs.items())):
+            wrapped = f'<prosody {name}="{value}%">{wrapped}</prosody>'
+        return wrapped

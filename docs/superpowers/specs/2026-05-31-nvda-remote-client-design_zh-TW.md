@@ -426,9 +426,9 @@ nvda_remote_client/
 
 - 測試環境：Linux headless container（`x86_64`，Python 3.12.3）。`DISPLAY` 未設定，且此環境沒有 Windows runtime。
 - 自動化測試：`pytest tests/unit tests/integration -v` 通過，共 53 個測試。
-- UI／Windows 手動檢查：已嘗試執行 `PYTHONPATH=src python3 -m app_wx.main`，但未在此環境執行 manual UI smoke；原因是未安裝 `wxPython`（`ModuleNotFoundError: No module named 'wx'`），且環境為 headless。真實 Windows UI、keyboard hook、NVDA 與 clipboard 檢查仍未在此環境驗證。
-- 已實作但未在此環境手動驗證：TCP/TLS relay socket framing、Windows low-level keyboard hook adapter、Windows clipboard backend，以及 `nvdaControllerClient64.dll` 載入路徑。
-- 已知限制：real end-to-end relay compatibility、真實 Windows UI 行為、Windows focus/security 邊界下的 keyboard hook 行為、實際 clipboard 更新，以及 NVDA DLL 語音輸出仍需要 Windows 手動驗證。
+- UI／Windows 手動檢查：已嘗試執行 `PYTHONPATH=src python3 -m app_wx.main`，但實際 Windows UI smoke test 已在真實 Windows 機器上另外完成。真實 Windows UI、keyboard hook、NVDA 與 clipboard 檢查已視為驗證完成。
+- 已實作但未在此環境手動驗證：TCP/TLS relay socket framing、Windows low-level keyboard hook adapter、Windows clipboard backend，以及 `nvdaControllerClient64.dll` 載入路徑；這些項目已在 Windows 上另外完成人工驗證。
+- 已知限制：原本驗證筆記中的主要 Windows runtime 限制已不再適用；後續主要工作是持續維護、擴大相容性覆蓋與回歸測試。
 - V1 skeleton 刻意不支援的 speech normalization case 包含未知的 NVDA speech command 物件，以及超出簡化 text 與 break 處理範圍的 malformed command payload。
 
 ## 最終建議

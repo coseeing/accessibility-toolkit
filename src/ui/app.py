@@ -1,9 +1,11 @@
 import wx
 
-from app_wx.main_frame import MainFrame
+from ui.main_frame import MainFrame
 
 
 class NvdaRemoteApp(wx.App):
+    dispatch = staticmethod(wx.CallAfter)
+
     def __init__(self, controller):
         self.controller = controller
         super().__init__(False)

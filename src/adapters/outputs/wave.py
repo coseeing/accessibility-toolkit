@@ -1,9 +1,5 @@
 import logging
-from typing import Protocol
-
-
-class WaveOutput(Protocol):
-    def play(self, path: str) -> None: ...
+from adapters.outputs.interfaces import WaveOutput
 
 
 class LoggingWaveOutput:

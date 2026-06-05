@@ -4,6 +4,7 @@ import sys
 from ctypes import wintypes
 from typing import Any
 
+from adapters.inputs.base import KeyEventDecision
 from remote_core.models.keys import KeyEvent
 
 
@@ -42,7 +43,7 @@ class WindowsKeyboardCapture:
         kernel32: Any | None = None,
         is_windows: bool | None = None,
     ) -> None:
-        self._listener: Callable[[KeyEvent], None] | None = None
+        self._listener: Callable[[KeyEvent], KeyEventDecision] | None = None
         self._running = False
         self._is_windows = sys.platform == "win32" if is_windows is None else is_windows
         self._user32 = user32
@@ -54,7 +55,7 @@ class WindowsKeyboardCapture:
     def running(self) -> bool:
         return self._running
 
-    def set_listener(self, listener: Callable[[KeyEvent], None]) -> None:
+    def set_listener(self, listener: Callable[[KeyEvent], KeyEventDecision]) -> None:
         self._listener = listener
 
     def start(self) -> None:
@@ -117,19 +118,26 @@ class WindowsKeyboardCapture:
     def _handle_keyboard_event(self, n_code: int, w_param: int, l_param: int) -> int:
         if n_code >= 0 and w_param in (WM_KEYDOWN, WM_KEYUP, WM_SYSKEYDOWN, WM_SYSKEYUP):
             data = ctypes.cast(l_param, ctypes.POINTER(KBDLLHOOKSTRUCT)).contents
-            self._emit_for_tests(
+            decision = self._emit_for_tests(
                 vk=int(data.vkCode),
                 scan=int(data.scanCode),
                 extended=bool(data.flags & LLKHF_EXTENDED),
                 pressed=w_param in (WM_KEYDOWN, WM_SYSKEYDOWN),
             )
+            if decision in (
+                KeyEventDecision.FORWARD_AND_SUPPRESS,
+                KeyEventDecision.LOCAL_ONLY_SUPPRESS,
+            ):
+                return 1
         if self._user32 is None:
             return 0
         return int(self._user32.CallNextHookEx(self._hook_handle, n_code, w_param, l_param))
 
     def _emit_for_tests(
         self, vk: int, scan: int | None, extended: bool, pressed: bool
-    ) -> None:
+    ) -> KeyEventDecision:
         if self._listener is None:
-            return
-        self._listener(KeyEvent(vk=vk, scan=scan, extended=extended, pressed=pressed))
+            return KeyEventDecision.PASS_THROUGH
+        return self._listener(
+            KeyEvent(vk=vk, scan=scan, extended=extended, pressed=pressed)
+        )

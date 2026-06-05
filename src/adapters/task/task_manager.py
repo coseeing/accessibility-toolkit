@@ -5,7 +5,7 @@ from concurrent.futures import Future
 from dataclasses import dataclass
 from typing import Callable
 
-from adapters.worldvoice_task.events import SpeechEventCallbacks
+from adapters.task.events import SpeechEventCallbacks
 
 
 class CancellationToken:

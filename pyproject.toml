@@ -8,6 +8,8 @@ version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
   "wxPython",
+  "pyinstaller",
+  "pyttsx3",
 ]
 
 [tool.setuptools]
@@ -15,6 +17,9 @@ package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+"adapters.windows" = ["vendor/nvda/x64/*.dll"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

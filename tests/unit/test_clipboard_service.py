@@ -1,6 +1,7 @@
 from adapters.windows.clipboard import WindowsClipboardService
 from adapters.windows.nvda_controller import NvdaControllerSpeechOutput
-from remote_core.models.speech import NormalizedSpeech, SpeechSegment
+from remote_core.models.speech_commands import BreakCommand
+from remote_core.models.speech_sequence import SpeechSequence
 
 
 def test_windows_clipboard_service_round_trip(monkeypatch):
@@ -15,7 +16,7 @@ def test_windows_clipboard_service_round_trip(monkeypatch):
 
 def test_nvda_speech_output_gracefully_degrades_when_unavailable():
     output = NvdaControllerSpeechOutput(controller=None)
-    speech = NormalizedSpeech((SpeechSegment(kind="text", value="hello"),))
+    speech = SpeechSequence(items=("hello",))
     output.speak(speech)
     assert output.available is False
 
@@ -23,42 +24,52 @@ def test_nvda_speech_output_gracefully_degrades_when_unavailable():
 def test_nvda_speech_output_speaks_joined_text_segments_only():
     class Controller:
         def __init__(self):
-            self.spoken: list[str] = []
+            self.spoken: list[tuple[str, int, int, bool]] = []
 
-        def speakText(self, text: str) -> None:
-            self.spoken.append(text)
+        def nvdaController_speakSsml(
+            self,
+            ssml: str,
+            symbol_level: int,
+            priority: int,
+            asynchronous: bool,
+        ) -> None:
+            self.spoken.append((ssml, symbol_level, priority, asynchronous))
 
     controller = Controller()
     output = NvdaControllerSpeechOutput(controller=controller)
-    speech = NormalizedSpeech(
-        (
-            SpeechSegment(kind="text", value="hello"),
-            SpeechSegment(kind="break", value=100),
-            SpeechSegment(kind="text", value="world"),
-        )
-    )
+    speech = SpeechSequence(items=("hello", BreakCommand(time=100), "world"))
 
     output.speak(speech)
 
     assert output.available is True
-    assert controller.spoken == ["hello world"]
+    assert controller.spoken == [
+        ('<speak>hello<break time="100ms"/>world</speak>', 0, 0, True)
+    ]
 
 
-def test_nvda_speech_output_ignores_empty_or_non_text_speech():
+def test_nvda_speech_output_skips_empty_speech_but_emits_break_only_ssml():
     class Controller:
         def __init__(self):
-            self.spoken: list[str] = []
+            self.spoken: list[tuple[str, int, int, bool]] = []
 
-        def speakText(self, text: str) -> None:
-            self.spoken.append(text)
+        def nvdaController_speakSsml(
+            self,
+            ssml: str,
+            symbol_level: int,
+            priority: int,
+            asynchronous: bool,
+        ) -> None:
+            self.spoken.append((ssml, symbol_level, priority, asynchronous))
 
     controller = Controller()
     output = NvdaControllerSpeechOutput(controller=controller)
 
-    output.speak(NormalizedSpeech(()))
-    output.speak(NormalizedSpeech((SpeechSegment(kind="break", value=100),)))
+    output.speak(SpeechSequence(items=()))
+    output.speak(SpeechSequence(items=(BreakCommand(time=100),)))
 
-    assert controller.spoken == []
+    assert controller.spoken == [
+        ('<speak><break time="100ms"/></speak>', 0, 0, True)
+    ]
 
 
 def test_nvda_speech_output_cancel_only_when_available():
@@ -66,8 +77,17 @@ def test_nvda_speech_output_cancel_only_when_available():
         def __init__(self):
             self.cancel_count = 0
 
-        def cancelSpeech(self) -> None:
+        def nvdaController_cancelSpeech(self) -> None:
             self.cancel_count += 1
+
+        def nvdaController_speakSsml(
+            self,
+            ssml: str,
+            symbol_level: int,
+            priority: int,
+            asynchronous: bool,
+        ) -> None:
+            return None
 
     controller = Controller()
     NvdaControllerSpeechOutput(controller=controller).cancel()
