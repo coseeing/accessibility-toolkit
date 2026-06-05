@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import threading
 
 from adapters.outputs.drivers.pyttsx3 import Pyttsx3SpeechOutput
 from adapters.windows.keyboard_hook import WindowsKeyboardCapture
@@ -14,6 +15,10 @@ class KeyEchoRuntime:
     speech_service: SpeechService
     input_service: KeyboardInputService
     app_service: KeyEchoAppService
+
+
+def _run_until_interrupted() -> None:
+    threading.Event().wait()
 
 
 def build_runtime() -> KeyEchoRuntime:
@@ -32,4 +37,10 @@ def build_runtime() -> KeyEchoRuntime:
 def main() -> int:
     runtime = build_runtime()
     runtime.input_service.start()
+    try:
+        _run_until_interrupted()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        runtime.input_service.stop()
     return 0

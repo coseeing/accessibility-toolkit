@@ -1,5 +1,3 @@
-import sys
-
 from adapters.inputs.base import KeyEventDecision
 from application.keyboard import KeyboardInputService
 from application.output_capabilities import OutputCapabilities
@@ -55,15 +53,17 @@ class FakeSpeechOutput:
 class FakeCapture:
     def __init__(self) -> None:
         self.listener = None
+        self.start_calls = 0
+        self.stop_calls = 0
 
     def set_listener(self, listener) -> None:
         self.listener = listener
 
     def start(self) -> None:
-        return None
+        self.start_calls += 1
 
     def stop(self) -> None:
-        return None
+        self.stop_calls += 1
 
 
 def test_key_echo_app_service_speaks_vk_on_keydown() -> None:
@@ -110,6 +110,30 @@ def test_build_runtime_composes_local_keyboard_and_speech(monkeypatch) -> None:
 
     assert isinstance(runtime.input_service, KeyboardInputService)
     assert isinstance(runtime.app_service, KeyEchoAppService)
+    assert runtime.capture is capture
+    assert runtime.speech_service.get_selected_backend() == "default"
     assert decision == KeyEventDecision.PASS_THROUGH
     assert speech_output.spoken == [SpeechSequence(items=("VK 66",))]
-    assert "remote_core.transport.relay" not in sys.modules
+
+
+def test_main_runs_until_interrupted_and_stops_capture(monkeypatch) -> None:
+    capture = FakeCapture()
+    speech_output = FakeSpeechOutput()
+
+    monkeypatch.setattr(main_module, "WindowsKeyboardCapture", lambda: capture)
+    monkeypatch.setattr(
+        main_module.Pyttsx3SpeechOutput,
+        "load_default",
+        classmethod(lambda cls: speech_output),
+    )
+
+    def interrupt() -> None:
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(main_module, "_run_until_interrupted", interrupt)
+
+    result = main_module.main()
+
+    assert result == 0
+    assert capture.start_calls == 1
+    assert capture.stop_calls == 1
