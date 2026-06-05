@@ -49,16 +49,27 @@ def default_config_path() -> Path:
 
 def configure_logging() -> Path:
     log_path = default_log_path()
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-        filename=log_path,
-        filemode="a",
-        force=True,
-    )
-    logging.getLogger(__name__).info("Logging initialized at %s", log_path)
+    try:
+        logging.basicConfig(
+            level=logging.DEBUG,
+            format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+            filename=log_path,
+            filemode="a",
+            force=True,
+        )
+        logging.getLogger(__name__).info("Logging initialized at %s", log_path)
+    except OSError as error:
+        logging.basicConfig(
+            level=logging.DEBUG,
+            format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+            force=True,
+        )
+        logging.getLogger(__name__).warning(
+            "File logging unavailable at %s: %s",
+            log_path,
+            error,
+        )
     return log_path
-
 
 def _default_backend_options() -> tuple[SpeechBackendOption, ...]:
     return (
@@ -128,7 +139,18 @@ def build_runtime() -> NvdaRemoteRuntime:
 
 
 def main() -> int:
-    configure_logging()
+    try:
+        configure_logging()
+    except OSError:
+        logging.basicConfig(
+            level=logging.DEBUG,
+            format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+            force=True,
+        )
+        logging.getLogger(__name__).warning(
+            "Logging initialization failed; continuing without file logging",
+            exc_info=True,
+        )
     runtime = build_runtime()
     return runtime.app.MainLoop()
 

@@ -79,6 +79,9 @@ class FakeSpeechService:
         self.spoken = []
         self.cancelled = 0
         self.paused = []
+        self.backend_options = (("nvda_controller", "NVDA Controller"),)
+        self.selected_backend = "nvda_controller"
+        self.backend_calls = []
 
     def speak(self, sequence):
         self.spoken.append(sequence)
@@ -89,24 +92,69 @@ class FakeSpeechService:
     def pause(self, is_paused):
         self.paused.append(is_paused)
 
+    def get_backend_options(self):
+        return self.backend_options
 
-def build_service():
+    def get_selected_backend(self):
+        return self.selected_backend
+
+    def set_backend(self, backend_id):
+        self.backend_calls.append(backend_id)
+        self.selected_backend = backend_id
+
+    def list_voices(self):
+        return ()
+
+    def get_voice(self):
+        return None
+
+    def set_voice(self, _voice_id):
+        return None
+
+    def get_rate(self):
+        return None
+
+    def set_rate(self, _value):
+        return None
+
+    def get_pitch(self):
+        return None
+
+    def set_pitch(self, _value):
+        return None
+
+    def get_volume(self):
+        return None
+
+    def set_volume(self, _value):
+        return None
+
+
+def build_service(*, dispatch=None):
     transport = FakeTransport()
     capture = FakeCapture()
     hotkey = FakeHotkey()
+    dispatch_calls = []
+
+    def dispatch_wrapper(callback):
+        dispatch_calls.append(callback)
+        if dispatch is not None:
+            return dispatch(callback)
+        return callback()
+
     service = NvdaRemoteAppService(
         transport=transport,
         input_capture=capture,
         hotkey_capture=hotkey,
         clipboard=FakeClipboard(),
         speech=FakeSpeechService(),
-        main_thread_dispatch=lambda callback: callback(),
+        main_thread_dispatch=dispatch_wrapper,
     )
-    return service, transport, capture, hotkey
+    return service, transport, capture, hotkey, dispatch_calls
 
 
 def test_nvda_remote_service_forwards_keys_when_controlling():
-    service, transport, capture, hotkey = build_service()
+    service, transport, capture, hotkey, _dispatch_calls = build_service()
     service.bind()
     service.state.connection_state = service.state.connection_state.CONNECTED
     service.start_control()
@@ -122,7 +170,7 @@ def test_nvda_remote_service_forwards_keys_when_controlling():
 
 
 def test_nvda_remote_service_passes_through_keys_before_control():
-    service, transport, _capture, _hotkey = build_service()
+    service, transport, _capture, _hotkey, _dispatch_calls = build_service()
     service.state.connection_state = service.state.connection_state.CONNECTED
 
     decision = service.handle_key_event(
@@ -134,7 +182,7 @@ def test_nvda_remote_service_passes_through_keys_before_control():
 
 
 def test_nvda_remote_service_uses_f11_as_local_stop():
-    service, transport, capture, hotkey = build_service()
+    service, transport, capture, hotkey, _dispatch_calls = build_service()
     service.bind()
     service.state.connection_state = service.state.connection_state.CONNECTED
     service.start_control()
@@ -156,7 +204,7 @@ def test_nvda_remote_service_uses_f11_as_local_stop():
 
 
 def test_nvda_remote_service_routes_remote_speech_commands_into_speech_facade():
-    service, transport, _capture, _hotkey = build_service()
+    service, transport, _capture, _hotkey, _dispatch_calls = build_service()
     service.bind()
 
     transport.message_handler({"type": RemoteMessageType.SPEAK.value, "sequence": ["hi"]})
@@ -169,7 +217,7 @@ def test_nvda_remote_service_routes_remote_speech_commands_into_speech_facade():
 
 
 def test_nvda_remote_service_registers_transport_message_handler():
-    service, transport, capture, hotkey = build_service()
+    service, transport, capture, hotkey, _dispatch_calls = build_service()
 
     assert transport.message_handler is None
     assert capture.listener is None
@@ -187,7 +235,7 @@ def test_nvda_remote_service_registers_transport_message_handler():
 
 
 def test_nvda_remote_service_does_not_swallow_f11_when_not_controlling():
-    service, transport, _capture, _hotkey = build_service()
+    service, transport, _capture, _hotkey, _dispatch_calls = build_service()
     service.bind()
     service.state.connection_state = service.state.connection_state.CONNECTED
     service.state.control_state = service.state.control_state.SUSPENDED
@@ -203,3 +251,53 @@ def test_nvda_remote_service_does_not_swallow_f11_when_not_controlling():
     assert keyup_decision == KeyEventDecision.PASS_THROUGH
     assert service.state.control_state == service.state.control_state.SUSPENDED
     assert transport.sent == []
+
+
+def test_nvda_remote_service_dispatches_status_updates_through_main_thread_callback():
+    delivered = []
+
+    def deferred_dispatch(callback):
+        pending.append(callback)
+
+    pending = []
+    service, transport, _capture, hotkey, dispatch_calls = build_service(
+        dispatch=deferred_dispatch
+    )
+    service.bind()
+    service.set_status_listener(delivered.append)
+
+    transport.message_handler({"type": RemoteMessageType.CHANNEL_JOINED.value})
+
+    assert delivered == []
+    assert len(dispatch_calls) == 1
+    assert hotkey.started == 1
+
+    pending.pop()()
+
+    assert delivered == [{"kind": "connection", "state": "connected"}]
+
+
+def test_nvda_remote_service_dispatches_speech_backend_notifications():
+    delivered = []
+    saved_backend_ids = []
+    pending = []
+
+    def deferred_dispatch(callback):
+        pending.append(callback)
+
+    service, _transport, _capture, _hotkey, dispatch_calls = build_service(
+        dispatch=deferred_dispatch
+    )
+    service._on_speech_backend_changed = saved_backend_ids.append
+    service.set_status_listener(delivered.append)
+
+    service.set_speech_backend("pyttsx3")
+
+    assert service.speech.backend_calls == ["pyttsx3"]
+    assert saved_backend_ids == ["pyttsx3"]
+    assert delivered == []
+    assert len(dispatch_calls) == 1
+
+    pending.pop()()
+
+    assert delivered == [{"kind": "speech_backend", "backend_id": "pyttsx3"}]
