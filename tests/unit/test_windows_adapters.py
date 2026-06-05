@@ -202,28 +202,17 @@ def test_nvda_controller_load_default_does_not_fallback_when_vendored_path_fails
 
 
 def test_main_uses_nvda_controller_loader(monkeypatch):
-    fake_app_module = types.ModuleType("ui.app")
-    created = {}
+    fake_main_module = types.ModuleType("apps.nvda_remote.main")
+    called = {}
 
-    class FakeApp:
-        def __init__(self, controller):
-            created["controller"] = controller
+    def fake_main():
+        called["ran"] = True
+        return 0
 
-        def MainLoop(self):
-            return 0
-
-    fake_app_module.NvdaRemoteApp = FakeApp
-    monkeypatch.setitem(sys.modules, "ui.app", fake_app_module)
-
+    fake_main_module.main = fake_main
+    sys.modules.pop("ui.main", None)
+    monkeypatch.setitem(sys.modules, "apps.nvda_remote.main", fake_main_module)
     import ui.main as main_module
 
-    speech_output = object()
-    monkeypatch.setattr(
-        main_module.NvdaControllerSpeechOutput,
-        "load_default",
-        staticmethod(lambda: speech_output),
-    )
-    monkeypatch.setattr(main_module, "configure_logging", lambda: None)
-
     assert main_module.main() == 0
-    assert created["controller"].output_manager.speech_output is speech_output
+    assert called == {"ran": True}

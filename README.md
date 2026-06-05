@@ -9,7 +9,8 @@ This project is intended to connect to an existing NVDA Remote relay/server endp
 The repository currently includes:
 
 - Relay protocol, JSON framing, and session state handling
-- A modular application/controller layer
+- Shared application services for keyboard and speech coordination
+- App-specific services for `nvda_remote` and `key_echo`
 - Windows adapter implementations for:
   - low-level keyboard hook setup
   - clipboard access
@@ -23,8 +24,9 @@ What has been implemented in code has been manually validated on a real Windows 
 
 ```text
 src/
+  apps/          App-specific composition roots and services
   remote_core/   Protocol, transport, session, routing, models
-  application/   Controller, state, app-facing services
+  application/   Shared keyboard/speech services and state
   adapters/      Input/output abstractions and Windows implementations
   ui/            wxPython app shell
 tests/
@@ -58,26 +60,41 @@ On Windows PowerShell, activate the virtual environment with:
 
 ## Run
 
-Start the GUI with:
+Start the NVDA Remote GUI with:
 
 ```bash
-PYTHONPATH=src python -m ui.main
+PYTHONPATH=src python -m apps.nvda_remote.main
 ```
 
-The application is wired to:
+Start the standalone key echo demo with:
+
+```bash
+PYTHONPATH=src python -m apps.key_echo.main
+```
+
+The NVDA Remote app is wired to:
 
 - create a `RelayTransport`
-- create a `ClientController`
+- create a `SpeechService`
+- create a `NvdaRemoteAppService`
 - use `WindowsKeyboardCapture`
+- use `WindowsHotkeyCapture`
 - use `WindowsClipboardService`
-- attempt to load `src/adapters/windows/vendor/nvda/x64/nvdaControllerClient.dll` first, then fall back to `nvdaControllerClient64.dll` on the system path
+- load `src/adapters/windows/vendor/nvda/x64/nvdaControllerClient.dll`
+
+The key echo demo is wired to:
+
+- create a single-backend `SpeechService`
+- create a `KeyEchoAppService`
+- use `WindowsKeyboardCapture`
+- keep the process alive with a Windows message pump so the low-level hook can receive events
 
 ## Package
 
 Build a Windows executable with `PyInstaller`:
 
 ```bash
-pyinstaller --name nvda-remote-client --windowed --onefile --paths src --add-binary "src/adapters/windows/vendor/nvda/x64/nvdaControllerClient.dll;adapters/windows/vendor/nvda/x64" --collect-submodules pyttsx3 src/ui/main.py
+pyinstaller --name nvda-remote-client --windowed --onefile --paths src --add-binary "src/adapters/windows/vendor/nvda/x64/nvdaControllerClient.dll;adapters/windows/vendor/nvda/x64" --collect-submodules pyttsx3 src/apps/nvda_remote/main.py
 ```
 
 The packaged output will be written under:
@@ -89,7 +106,7 @@ dist/
 If you want a directory-style build instead of `--onefile`:
 
 ```bash
-pyinstaller --name nvda-remote-client --windowed --paths src --add-binary "src/adapters/windows/vendor/nvda/x64/nvdaControllerClient.dll;adapters/windows/vendor/nvda/x64" --collect-submodules pyttsx3 src/ui/main.py
+pyinstaller --name nvda-remote-client --windowed --paths src --add-binary "src/adapters/windows/vendor/nvda/x64/nvdaControllerClient.dll;adapters/windows/vendor/nvda/x64" --collect-submodules pyttsx3 src/apps/nvda_remote/main.py
 ```
 
 `pyttsx3` is imported dynamically at runtime, so the PyInstaller command includes `--collect-submodules pyttsx3` to ensure the packaged build can switch to the `pyttsx3` speech backend successfully.
@@ -102,17 +119,17 @@ Run the test suite with:
 pytest tests/unit tests/integration -v
 ```
 
-At the time of writing, the suite passes with 70 tests.
+At the time of writing, the suite includes both unit and integration coverage for the shared keyboard service, shared speech service, NVDA Remote app service, and key echo app service.
 
 ## Notes
 
 - The relay transport now includes TCP/TLS socket framing logic and buffered newline-delimited message parsing.
 - Session state moves to `connected` only after `channel_joined` is received.
-- The Windows keyboard hook, clipboard backend, and NVDA controller DLL path are implemented behind adapters so `remote_core` stays free of `wx`, Win32, and DLL-specific imports.
+- The Windows keyboard hook, hotkey capture, clipboard backend, and NVDA controller DLL path are implemented behind adapters so `remote_core` stays free of `wx`, Win32, and DLL-specific imports.
 - The vendored controller client DLL was taken from NVDA official controller client release zip and stored at `src/adapters/windows/vendor/nvda/x64/nvdaControllerClient.dll`.
 - Remote `speak` payloads are deserialized into local speech command objects before routing, then carried through as full speech sequences to the active speech backend.
 - The `pyttsx3` backend now schedules real breaks from remote `BreakCommand` items and applies rate, pitch, volume, and voice selection on a best-effort basis.
-- The GUI exposes `pyttsx3` voice, rate, pitch, and volume controls through the main window.
+- The GUI exposes speech backend, voice, rate, pitch, and volume controls through the main window via `SpeechService`.
 
 ## Related Docs
 
