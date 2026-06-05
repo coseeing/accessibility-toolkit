@@ -1,0 +1,120 @@
+from application.output_capabilities import OutputCapabilities
+from application.speech_backends import SpeechBackendOption
+from application.speech_service import SpeechService
+from remote_core.models.speech_sequence import SpeechSequence
+
+
+class FakeSpeechOutput:
+    def __init__(self, name: str) -> None:
+        self.name = name
+        self.spoken: list[SpeechSequence] = []
+        self.cancelled = 0
+        self.paused: list[bool] = []
+        self.voice: str | None = None
+        self.rate = 100
+        self.pitch = 100
+        self.volume = 100
+
+    def speak(self, sequence: SpeechSequence) -> None:
+        self.spoken.append(sequence)
+
+    def cancel(self) -> None:
+        self.cancelled += 1
+
+    def pause(self, is_paused: bool) -> None:
+        self.paused.append(is_paused)
+
+    def list_voices(self) -> tuple[tuple[str, str], ...]:
+        return (("voice-1", "Voice 1"),)
+
+    def get_voice(self) -> str | None:
+        return self.voice
+
+    def set_voice(self, voice_id: str) -> None:
+        self.voice = voice_id
+
+    def get_rate(self) -> int | None:
+        return self.rate
+
+    def set_rate(self, value: int) -> None:
+        self.rate = value
+
+    def get_pitch(self) -> int | None:
+        return self.pitch
+
+    def set_pitch(self, value: int) -> None:
+        self.pitch = value
+
+    def get_volume(self) -> int | None:
+        return self.volume
+
+    def set_volume(self, value: int) -> None:
+        self.volume = value
+
+
+def test_speech_service_switches_backends_and_routes_calls() -> None:
+    created: list[FakeSpeechOutput] = []
+
+    def build(name: str):
+        def factory() -> FakeSpeechOutput:
+            output = FakeSpeechOutput(name)
+            created.append(output)
+            return output
+
+        return factory
+
+    service = SpeechService(
+        backend_options=(
+            SpeechBackendOption(
+                backend_id="nvda_controller",
+                label="NVDA Controller",
+                factory=build("nvda"),
+            ),
+            SpeechBackendOption(
+                backend_id="pyttsx3",
+                label="pyttsx3",
+                factory=build("pyttsx3"),
+            ),
+        ),
+        selected_backend_id="nvda_controller",
+    )
+
+    speech = SpeechSequence(items=("hello",))
+    service.speak(speech)
+    service.pause(True)
+    service.set_voice("voice-1")
+    service.set_rate(80)
+    service.set_pitch(70)
+    service.set_volume(60)
+
+    assert service.get_backend_options() == (
+        ("nvda_controller", "NVDA Controller"),
+        ("pyttsx3", "pyttsx3"),
+    )
+    assert service.get_selected_backend() == "nvda_controller"
+    assert created[0].spoken == [speech]
+    assert created[0].paused == [True]
+    assert created[0].get_voice() == "voice-1"
+    assert created[0].get_rate() == 80
+    assert created[0].get_pitch() == 70
+    assert created[0].get_volume() == 60
+
+    service.set_backend("pyttsx3")
+    service.cancel()
+    service.speak(SpeechSequence(items=("world",)))
+
+    assert service.get_selected_backend() == "pyttsx3"
+    assert created[0].cancelled == 1
+    assert created[1].cancelled == 1
+    assert created[1].spoken == [SpeechSequence(items=("world",))]
+    assert service.list_voices() == (("voice-1", "Voice 1"),)
+
+
+def test_output_capabilities_exposes_shared_outputs() -> None:
+    speech = FakeSpeechOutput("nvda")
+
+    capabilities = OutputCapabilities(speech=SpeechService.single_backend(speech))
+
+    assert capabilities.speech.get_selected_backend() == "default"
+    assert capabilities.tone is None
+    assert capabilities.braille is None
