@@ -1,11 +1,15 @@
 import socket
 import ssl
 import threading
+import logging
 from collections.abc import Callable
 from enum import Enum
 from typing import Any
 
 from remote_core.serializer import JSONSerializer
+
+
+logger = logging.getLogger(__name__)
 
 
 class RelayTransport:
@@ -31,8 +35,12 @@ class RelayTransport:
 
     def connect(self, hostname: str, port: int, insecure: bool = False) -> None:
         raw_socket = self._socket_factory(hostname, port)
-        if self._use_tls and not insecure:
-            raw_socket = self._ssl_context_factory().wrap_socket(
+        if self._use_tls:
+            context = self._ssl_context_factory()
+            if insecure:
+                context.check_hostname = False
+                context.verify_mode = ssl.CERT_NONE
+            raw_socket = context.wrap_socket(
                 raw_socket,
                 server_hostname=hostname,
             )
@@ -77,7 +85,10 @@ class RelayTransport:
                 )
                 if not frame:
                     continue
-                return self.serializer.deserialize(frame)
+                logger.debug("Relay transport received frame: %r", frame)
+                payload = self.serializer.deserialize(frame)
+                logger.debug("Relay transport decoded payload type=%r", payload.get("type"))
+                return payload
 
             chunk = self._socket.recv(4096)
             if chunk == b"":

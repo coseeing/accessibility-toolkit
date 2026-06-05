@@ -1,7 +1,8 @@
 from typing import Any
 
 from adapters.inputs.base import HotkeyCapture, InputCapture, KeyEventDecision
-from adapters.outputs.speech import NullSpeechOutput, SpeechOutput
+from adapters.outputs.interfaces import SpeechOutput
+from adapters.outputs.speech import NullSpeechOutput
 from application.speech_backends import SpeechBackendManager
 from application.services import ClipboardService, OutputManager
 from application.state import ConnectionState, ControlState, RuntimeState

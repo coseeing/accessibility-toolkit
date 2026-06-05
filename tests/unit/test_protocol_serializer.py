@@ -2,7 +2,14 @@ import pytest
 
 from remote_core.connection_info import ConnectionInfo, ConnectionMode
 from remote_core.models.keys import KeyEvent
-from remote_core.models.speech_commands import BreakCommand, PitchCommand
+from remote_core.models.speech_commands import (
+    BreakCommand,
+    PitchCommand,
+    RateCommand,
+    SpeechCommand,
+    VolumeCommand,
+)
+from remote_core.models.speech_sequence import SpeechSequence
 from remote_core.protocol import RemoteMessageType, address_to_host_port
 from remote_core.serializer import JSONSerializer
 
@@ -59,8 +66,95 @@ def test_serializer_restores_speak_sequence_during_deserialize():
     ]
 
 
+@pytest.mark.parametrize(
+    ("payload", "expected_sequence"),
+    [
+        (
+            b'{"type":"speak","sequence":[["PitchCommand",{"offset":2}],["RateCommand",{"offset":-5}],["VolumeCommand",{"offset":9}]]}\n',
+            [
+                PitchCommand(offset=2),
+                RateCommand(offset=-5),
+                VolumeCommand(offset=9),
+            ],
+        ),
+        (
+            b'{"type":"speak","sequence":[["PitchCommand",{"multiplier":1.3}],["RateCommand",{"multiplier":1.5}],["VolumeCommand",{"multiplier":0.5}]]}\n',
+            [
+                PitchCommand(multiplier=1.3),
+                RateCommand(multiplier=1.5),
+                VolumeCommand(multiplier=0.5),
+            ],
+        ),
+    ],
+)
+def test_serializer_deserialize_restores_prosody_payload_variants(
+    payload, expected_sequence
+):
+    serializer = JSONSerializer()
+
+    decoded = serializer.deserialize(payload.strip())
+
+    assert decoded["sequence"] == expected_sequence
+    assert SpeechSequence.from_remote_payload(decoded) == SpeechSequence(
+        items=tuple(expected_sequence)
+    )
+
+
+def test_serializer_restores_nvda_internal_prosody_fields():
+    serializer = JSONSerializer()
+    payload = (
+        b'{"type":"speak","sequence":[["PitchCommand",{"_offset":30,"_multiplier":1,"isDefault":false}],["RateCommand",{"_offset":-5,"_multiplier":1,"isDefault":false}],["VolumeCommand",{"_offset":0,"_multiplier":0.8,"isDefault":false}]]}\n'
+    )
+
+    decoded = serializer.deserialize(payload.strip())
+
+    assert decoded["sequence"] == [
+        PitchCommand(offset=30),
+        RateCommand(offset=-5),
+        VolumeCommand(multiplier=0.8),
+    ]
+
+
+def test_serializer_deserialize_preserves_unrecognized_sequence_items():
+    serializer = JSONSerializer()
+    payload = (
+        b'{"type":"speak","sequence":["hello",{"text":"raw"},["UnknownCommand",{"value":1}],17,["PitchCommand",{"offset":2}]]}\n'
+    )
+
+    decoded = serializer.deserialize(payload.strip())
+
+    assert decoded["sequence"] == [
+        "hello",
+        {"text": "raw"},
+        SpeechCommand(kind="UnknownCommand", data={"value": 1}),
+        17,
+        PitchCommand(offset=2),
+    ]
+    assert SpeechSequence.from_remote_payload(decoded) == SpeechSequence(
+        items=(
+            "hello",
+            SpeechCommand(kind="UnknownCommand", data={"value": 1}),
+            PitchCommand(offset=2),
+        )
+    )
+
+
 @pytest.mark.parametrize("payload", [b"[]", b'"text"', b"null"])
 def test_serializer_deserialize_rejects_non_object_payloads(payload):
     serializer = JSONSerializer()
     with pytest.raises(ValueError, match="JSON object"):
         serializer.deserialize(payload)
+
+
+def test_serializer_logs_raw_and_decoded_speak_payload(caplog):
+    serializer = JSONSerializer()
+    payload = (
+        b'{"type":"speak","sequence":["hello",["PitchCommand",{"offset":20}],"W"]}\n'
+    )
+
+    with caplog.at_level("DEBUG"):
+        decoded = serializer.deserialize(payload.strip())
+
+    assert decoded["type"] == "speak"
+    assert "JSONSerializer.deserialize input" in caplog.text
+    assert "JSONSerializer.deserialize output type='speak'" in caplog.text

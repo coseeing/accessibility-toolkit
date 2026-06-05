@@ -1,4 +1,5 @@
 import socket
+import ssl
 
 import pytest
 
@@ -79,3 +80,76 @@ def test_relay_transport_sends_and_receives_newline_json_with_partial_frames():
     assert transport.receive_once() == {"type": "ping"}
     transport.close()
     server.close()
+
+
+def test_relay_transport_logs_received_speak_frame(caplog):
+    serializer = JSONSerializer()
+    client, server = socket.socketpair()
+    transport = RelayTransport(
+        serializer=serializer,
+        socket_factory=lambda _host, _port: client,
+        use_tls=False,
+    )
+    transport.connect("example.com", 6837)
+
+    server.sendall(
+        b'{"type":"speak","sequence":["hello",["PitchCommand",{"offset":20}],"W"]}\n'
+    )
+
+    with caplog.at_level("DEBUG"):
+        payload = transport.receive_once()
+
+    assert payload["type"] == "speak"
+    assert "Relay transport received frame" in caplog.text
+    assert "PitchCommand" in caplog.text
+    transport.close()
+    server.close()
+
+
+class FakeWrappedSocket:
+    def __init__(self):
+        self.sent = []
+
+    def sendall(self, data):
+        self.sent.append(data)
+
+    def recv(self, _size):
+        return b""
+
+    def close(self):
+        return None
+
+    def shutdown(self, _how):
+        return None
+
+
+class FakeSSLContext:
+    def __init__(self):
+        self.check_hostname = True
+        self.verify_mode = ssl.CERT_REQUIRED
+        self.calls = []
+
+    def wrap_socket(self, raw_socket, server_hostname):
+        self.calls.append(
+            (raw_socket, server_hostname, self.check_hostname, self.verify_mode)
+        )
+        return raw_socket
+
+
+def test_relay_transport_insecure_connection_still_uses_tls_without_verification():
+    serializer = JSONSerializer()
+    fake_socket = FakeWrappedSocket()
+    fake_context = FakeSSLContext()
+    transport = RelayTransport(
+        serializer=serializer,
+        socket_factory=lambda _host, _port: fake_socket,
+        ssl_context_factory=lambda: fake_context,
+        use_tls=True,
+    )
+
+    transport.connect("example.com", 6837, insecure=True)
+
+    assert transport.connected is True
+    assert fake_context.calls == [
+        (fake_socket, "example.com", False, ssl.CERT_NONE),
+    ]

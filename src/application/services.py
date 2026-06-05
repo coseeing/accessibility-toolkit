@@ -1,6 +1,6 @@
 from typing import Protocol
 
-from adapters.outputs.speech import SpeechOutput
+from adapters.outputs.interfaces import SpeechOutput
 from remote_core.models.speech_sequence import SpeechSequence
 from remote_core.protocol import RemoteMessageType
 from remote_core.transport.base import Transport

@@ -1,12 +1,16 @@
 import ctypes
 import sys
 import types
+from pathlib import Path
 
 import pytest
 
 from adapters.windows.clipboard import WindowsClipboardService
 from adapters.windows.keyboard_hook import WindowsKeyboardCapture
-from adapters.windows.nvda_controller import NvdaControllerSpeechOutput
+from adapters.windows.nvda_controller import (
+    VENDORED_X64_DLL,
+    NvdaControllerSpeechOutput,
+)
 from remote_core.models.keys import KeyEvent
 
 
@@ -141,29 +145,64 @@ def test_nvda_controller_load_default_uses_loader_and_marks_available():
         def __init__(self):
             self.spoken = []
 
-        def speakText(self, text):
-            self.spoken.append(text)
+        def nvdaController_speakSsml(
+            self,
+            ssml,
+            symbol_level,
+            priority,
+            asynchronous,
+        ):
+            self.spoken.append((ssml, symbol_level, priority, asynchronous))
 
     dll = FakeDll()
+    loaded = []
+    vendored_path = Path("/tmp/nvdaControllerClient.dll")
 
-    output = NvdaControllerSpeechOutput.load_default(loader=lambda _name: dll, is_windows=True)
+    def fake_loader(name):
+        loaded.append(name)
+        return dll
 
+    from adapters.windows import nvda_controller as module
+
+    output = None
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(module, "resource_path", lambda relative_path: vendored_path)
+    try:
+        output = NvdaControllerSpeechOutput.load_default(loader=fake_loader, is_windows=True)
+    finally:
+        monkeypatch.undo()
+
+    assert loaded == [str(vendored_path)]
     assert output.available is True
     assert output.controller is dll
+    assert output.loaded_from == str(vendored_path)
 
 
-def test_nvda_controller_load_default_failure_returns_unavailable():
-    def fail(_name):
+def test_nvda_controller_load_default_does_not_fallback_when_vendored_path_fails():
+    loaded = []
+    vendored_path = Path("/tmp/nvdaControllerClient.dll")
+
+    def fail(name):
+        loaded.append(name)
         raise OSError("missing")
 
-    output = NvdaControllerSpeechOutput.load_default(loader=fail, is_windows=True)
+    from adapters.windows import nvda_controller as module
 
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(module, "resource_path", lambda relative_path: vendored_path)
+    try:
+        output = NvdaControllerSpeechOutput.load_default(loader=fail, is_windows=True)
+    finally:
+        monkeypatch.undo()
+
+    assert loaded == [str(vendored_path)]
     assert output.available is False
     assert output.controller is None
+    assert output.loaded_from is None
 
 
 def test_main_uses_nvda_controller_loader(monkeypatch):
-    fake_app_module = types.ModuleType("app_wx.app")
+    fake_app_module = types.ModuleType("ui.app")
     created = {}
 
     class FakeApp:
@@ -174,9 +213,9 @@ def test_main_uses_nvda_controller_loader(monkeypatch):
             return 0
 
     fake_app_module.NvdaRemoteApp = FakeApp
-    monkeypatch.setitem(sys.modules, "app_wx.app", fake_app_module)
+    monkeypatch.setitem(sys.modules, "ui.app", fake_app_module)
 
-    import app_wx.main as main_module
+    import ui.main as main_module
 
     speech_output = object()
     monkeypatch.setattr(
@@ -184,6 +223,7 @@ def test_main_uses_nvda_controller_loader(monkeypatch):
         "load_default",
         staticmethod(lambda: speech_output),
     )
+    monkeypatch.setattr(main_module, "configure_logging", lambda: None)
 
     assert main_module.main() == 0
     assert created["controller"].output_manager.speech_output is speech_output

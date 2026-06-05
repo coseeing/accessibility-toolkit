@@ -1,8 +1,4 @@
-from typing import Protocol
-
-
-class BrailleOutput(Protocol):
-    def display(self, text: str) -> None: ...
+from adapters.outputs.interfaces import BrailleOutput
 
 
 class NullBrailleOutput:

@@ -1,8 +1,12 @@
 import json
+import logging
 from enum import Enum
 from typing import Any
 
-from remote_core.models.speech_commands import restore_speech_command
+from remote_core.models.speech_sequence import restore_sequence_items
+
+
+logger = logging.getLogger(__name__)
 
 
 def _as_sequence(payload: dict[str, Any]) -> dict[str, Any]:
@@ -13,21 +17,9 @@ def _as_sequence(payload: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(raw_sequence, list):
         return payload
 
-    sequence: list[Any] = []
-    for item in raw_sequence:
-        if isinstance(item, str):
-            sequence.append(item)
-            continue
-        if (
-            isinstance(item, list)
-            and len(item) >= 2
-            and isinstance(item[0], str)
-            and isinstance(item[1], dict)
-        ):
-            sequence.append(restore_speech_command(item[0], item[1]))
-            continue
-        sequence.append(item)
-    payload["sequence"] = sequence
+    payload["sequence"] = list(
+        restore_sequence_items(raw_sequence, preserve_unrecognized=True)
+    )
     return payload
 
 
@@ -40,7 +32,13 @@ class JSONSerializer:
         return json.dumps(payload).encode("utf-8") + self.SEP
 
     def deserialize(self, data: bytes) -> dict[str, Any]:
+        logger.debug("JSONSerializer.deserialize input=%r", data)
         payload = json.loads(data.decode("utf-8"), object_hook=_as_sequence)
         if not isinstance(payload, dict):
             raise ValueError("Expected JSON object payload")
+        logger.debug(
+            "JSONSerializer.deserialize output type=%r keys=%s",
+            payload.get("type"),
+            sorted(payload.keys()),
+        )
         return payload

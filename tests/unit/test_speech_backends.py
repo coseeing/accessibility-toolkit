@@ -4,14 +4,16 @@ import time
 
 import pytest
 
-from adapters.windows.pyttsx3_output import Pyttsx3SpeechOutput
+from adapters.outputs.drivers.pyttsx3 import Pyttsx3SpeechOutput
 from application.config import SpeechBackendConfigStore
 from application.speech_backends import SpeechBackendManager, SpeechBackendOption
 from application.services import OutputManager
+from adapters.windows.nvda_controller import NvdaControllerSpeechOutput
 from remote_core.models.speech_commands import (
     BreakCommand,
     PitchCommand,
     RateCommand,
+    SpeechCommand,
     VolumeCommand,
 )
 from remote_core.models.speech_sequence import SpeechSequence
@@ -84,6 +86,43 @@ class FakeEngine:
 
     def stop(self) -> None:
         self.stop_count += 1
+
+
+class BrokenVoicesEngine(FakeEngine):
+    def getProperty(self, name: str) -> object:
+        if name == "voices":
+            raise ValueError("invalid literal for int() with base 16: '804;4;7804'")
+        return super().getProperty(name)
+
+
+class FakeSapiToken:
+    def __init__(self, voice_id: str, description: str) -> None:
+        self.Id = voice_id
+        self._description = description
+
+    def GetDescription(self) -> str:
+        return self._description
+
+
+class BrokenVoicesEngineWithSapiFallback(BrokenVoicesEngine):
+    def __init__(self) -> None:
+        super().__init__()
+
+        class FakeTts:
+            @staticmethod
+            def GetVoices():
+                return (
+                    FakeSapiToken("HKEY_FAKE_1", "Voice One"),
+                    FakeSapiToken("HKEY_FAKE_2", "Voice Two"),
+                )
+
+        class FakeDriver:
+            _tts = FakeTts()
+
+        class FakeProxy:
+            _driver = FakeDriver()
+
+        self.proxy = FakeProxy()
 
 
 class NoPitchEngine(FakeEngine):
@@ -181,6 +220,30 @@ class FakeClipboard:
         return self.text
 
 
+class FakeNvdaController:
+    def __init__(self) -> None:
+        self.speak_ssml_calls: list[tuple[str, int, int, bool]] = []
+
+    def nvdaController_speakSsml(
+        self,
+        ssml: str,
+        symbol_level: int,
+        priority: int,
+        asynchronous: bool,
+    ) -> int:
+        self.speak_ssml_calls.append((ssml, symbol_level, priority, asynchronous))
+        return 0
+
+
+class LegacyOnlyNvdaController:
+    def __init__(self) -> None:
+        self.speak_text_calls: list[str] = []
+
+    def nvdaController_speakText(self, text: str) -> int:
+        self.speak_text_calls.append(text)
+        return 0
+
+
 def test_speech_backend_manager_switches_backend_and_cancels_previous():
     events: list[tuple[str, str]] = []
     manager = SpeechBackendManager(
@@ -267,6 +330,148 @@ def test_raw_json_speak_payload_reaches_real_pyttsx3_sequence_path():
     assert engine.properties["pitch"] == 2
 
 
+def test_raw_json_speak_payload_reaches_real_nvda_controller_sequence_path():
+    serializer = JSONSerializer()
+    controller = FakeNvdaController()
+    output = NvdaControllerSpeechOutput(controller=controller)
+    manager = OutputManager(speech_output=output, clipboard=FakeClipboard())
+    router = MessageRouter(
+        on_speech=manager.handle_speech,
+        on_cancel=manager.handle_cancel,
+        on_pause=manager.handle_pause,
+        on_clipboard=manager.handle_clipboard,
+        on_status=lambda event: None,
+    )
+    payload = serializer.deserialize(
+        b'{"type":"speak","sequence":["hello",["PitchCommand",{"offset":20}],"W"]}'
+    )
+
+    router.handle_message(payload)
+
+    assert controller.speak_ssml_calls == [
+        ("<speak>hello<prosody pitch=\"120%\">W</prosody></speak>", 0, 0, True)
+    ]
+
+
+def test_nvda_controller_backend_logs_received_speech_sequence(caplog):
+    controller = FakeNvdaController()
+    output = NvdaControllerSpeechOutput(controller=controller)
+
+    with caplog.at_level("DEBUG"):
+        output.speak(SpeechSequence(items=("hello", PitchCommand(offset=20), "W")))
+
+    assert "NVDA controller received speech sequence" in caplog.text
+    assert "PitchCommand" in caplog.text
+
+
+def test_nvda_controller_backend_converts_text_to_ssml_and_escapes_content():
+    controller = FakeNvdaController()
+    output = NvdaControllerSpeechOutput(controller=controller)
+
+    output.speak(SpeechSequence(items=("hello", ' <tag attr="1"> & ', "world")))
+
+    assert controller.speak_ssml_calls == [
+        ("<speak>hello &lt;tag attr=&quot;1&quot;&gt; &amp; world</speak>", 0, 0, True)
+    ]
+
+
+def test_nvda_controller_backend_maps_breaks_and_ignores_unsupported_commands():
+    controller = FakeNvdaController()
+    output = NvdaControllerSpeechOutput(controller=controller)
+    sequence = SpeechSequence(
+        items=("hello", BreakCommand(time=50), SpeechCommand(kind="Unknown"), "world")
+    )
+
+    output.speak(sequence)
+
+    assert controller.speak_ssml_calls == [
+        ("<speak>hello<break time=\"50ms\"/>world</speak>", 0, 0, True)
+    ]
+
+
+def test_nvda_controller_backend_maps_prosody_commands_into_nested_ssml():
+    controller = FakeNvdaController()
+    output = NvdaControllerSpeechOutput(controller=controller)
+    sequence = SpeechSequence(
+        items=(
+            PitchCommand(multiplier=1.2),
+            RateCommand(offset=10),
+            VolumeCommand(multiplier=0.8),
+            "hello",
+        )
+    )
+
+    output.speak(sequence)
+
+    assert controller.speak_ssml_calls == [
+        (
+            '<speak><prosody pitch="120%"><prosody rate="110%"><prosody volume="80%">hello'
+            "</prosody></prosody></prosody></speak>",
+            0,
+            0,
+            True,
+        )
+    ]
+
+
+def test_nvda_controller_backend_uses_local_state_as_offset_baseline():
+    controller = FakeNvdaController()
+    output = NvdaControllerSpeechOutput(controller=controller)
+    output.set_rate(80)
+    output.set_pitch(90)
+    output.set_volume(70)
+
+    output.speak(
+        SpeechSequence(
+            items=(
+                RateCommand(offset=20),
+                PitchCommand(offset=10),
+                VolumeCommand(offset=14),
+                "hello",
+            )
+        )
+    )
+
+    assert output.get_rate() == 80
+    assert output.get_pitch() == 90
+    assert output.get_volume() == 70
+    assert controller.speak_ssml_calls == [
+        (
+            '<speak><prosody rate="125%"><prosody pitch="111%"><prosody volume="120%">hello'
+            "</prosody></prosody></prosody></speak>",
+            0,
+            0,
+            True,
+        )
+    ]
+
+
+def test_nvda_controller_backend_skips_empty_ssml_output():
+    controller = FakeNvdaController()
+    output = NvdaControllerSpeechOutput(controller=controller)
+
+    output.speak(SpeechSequence(items=()))
+    output.speak(SpeechSequence(items=(SpeechCommand(kind="Unknown"),)))
+
+    assert controller.speak_ssml_calls == []
+
+
+def test_nvda_controller_backend_does_not_fallback_to_legacy_speak_text():
+    controller = LegacyOnlyNvdaController()
+    output = NvdaControllerSpeechOutput(controller=controller)
+
+    assert output.available is False
+    output.speak(SpeechSequence(items=("hello",)))
+
+    assert controller.speak_text_calls == []
+
+
+def test_nvda_controller_backend_marks_controller_without_speak_ssml_unavailable():
+    output = NvdaControllerSpeechOutput(controller=LegacyOnlyNvdaController())
+
+    assert output.available is False
+
+
 def test_pyttsx3_backend_tracks_rate_pitch_and_volume_commands():
     engine = FakeEngine()
     task_manager = FakeTaskManager()
@@ -298,6 +503,23 @@ def test_pyttsx3_backend_ignores_unsupported_pitch_property():
 
     assert engine.say_calls == ["hello"]
     assert "pitch" not in engine.properties
+
+
+def test_pyttsx3_backend_gracefully_handles_voice_enumeration_failure():
+    engine = BrokenVoicesEngine()
+    output = Pyttsx3SpeechOutput(engine=engine, task_manager=FakeTaskManager())
+
+    assert output.list_voices() == ()
+
+
+def test_pyttsx3_backend_falls_back_to_raw_sapi_tokens_for_voices():
+    engine = BrokenVoicesEngineWithSapiFallback()
+    output = Pyttsx3SpeechOutput(engine=engine, task_manager=FakeTaskManager())
+
+    assert output.list_voices() == (
+        ("HKEY_FAKE_1", "Voice One"),
+        ("HKEY_FAKE_2", "Voice Two"),
+    )
 
 
 def test_pyttsx3_speech_output_ignores_empty_sequence():

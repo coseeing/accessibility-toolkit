@@ -3,8 +3,8 @@ from concurrent.futures import CancelledError
 
 import pytest
 
-from adapters.worldvoice_task.events import SpeechEventCallbacks
-from adapters.worldvoice_task.task_manager import SpeechFuture, TaskManager
+from adapters.task.events import SpeechEventCallbacks
+from adapters.task.task_manager import SpeechFuture, TaskManager
 
 
 class FakeVoice:

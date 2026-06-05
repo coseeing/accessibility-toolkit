@@ -4,7 +4,7 @@
 
 本文件定義一個較小範圍的移植工作，用來優先滿足 `nvda-remote-client` 的語音輸出需求，而不立即啟動先前那份完整 `WorldVoice` host-agnostic core 重構方案。這次工作聚焦於兩件事：
 
-- 在 `nvda-remote-client` 還原遠端 NVDA 機器送來的完整 speech sequence
+- 在 `nvda-remote-client` 以比照 NVDA `_remoteClient.serializer` 的方式，於反序列化階段還原遠端 NVDA 機器送來的完整 speech sequence
 - 從 `WorldVoice` 搬入 `taskManager` 的調度能力，並強化現有 `pyttsx3` backend，讓它可處理主要的 NVDA speech command
 
 這次小移植的目標不是把 `WorldVoice` 全部搬進來，也不是先移植 `VE` driver。這一版只針對 `pyttsx3`、`taskManager`、speech command restoration，以及 GUI 中最小必要的語音控制介面進行定向修改。
@@ -54,7 +54,7 @@
 
 ### 1. Client 還原 speech sequence，但不解讀 command
 
-`nvda-remote-client` 必須完整還原遠端 NVDA speech sequence 中的 command object，但不在 client 層執行這些 command 的語意。client 只負責重建 object sequence，然後把 sequence 原樣交給 backend。
+`nvda-remote-client` 必須完整還原遠端 NVDA speech sequence 中的 command object，但不在 client 層執行這些 command 的語意。這個還原動作應比照 NVDA `_remoteClient.serializer` 的作法，優先放在反序列化階段，而不是放在後續 router 或 backend 前處理階段。client 只負責重建 object sequence，然後把 sequence 原樣交給 backend。
 
 ### 2. Backend 保有 command interpretation 權限
 
@@ -100,13 +100,21 @@ client 不替 backend 做 command fallback、prosody 模擬或支援判斷。
 
 ## 建議架構
 
+### `remote_core` / serializer 層
+
+職責調整為：
+
+- 在 JSON 反序列化時直接重建 `speak` 訊息中的 speech command object
+- 比照 NVDA `_remoteClient.serializer.asSequence` 的模式，只在 `type == "speak"` 且有 `sequence` 時進行還原
+- 不先把 speech 扁平化成簡化模型
+
 ### `remote_core` / routing 層
 
 職責調整為：
 
-- 接收遠端 speech payload
-- 還原成 NVDA-style speech sequence object list
-- 不先把 speech 扁平化成簡化模型
+- 接收已完成 command object 還原的 speech payload
+- 直接轉交完整 speech sequence
+- 不負責還原 speech command
 
 ### `application` 層
 
@@ -161,11 +169,16 @@ client 不替 backend 做 command fallback、prosody 模擬或支援判斷。
 
 ### `SpeechSequence restoration`
 
-新增 payload 還原邏輯，將遠端 speech payload 還原為：
+新增反序列化 hook 邏輯，將遠端 speech payload 還原為：
 
 - `list[str | SpeechCommand]`
 
-這會成為新的 backend 主要輸入。
+這會成為新的 backend 主要輸入。作法應比照 NVDA `_remoteClient.serializer`：
+
+- serialize 時把 command 轉成 `[class_name, instance_vars]`
+- deserialize 時用 hook 檢查 `type == "speak"`
+- 對 sequence 中的 list 項目，用 class name 找對應 command 類別
+- 用 `__new__` 加 `__dict__.update(...)` 或等價方式重建物件
 
 ### `SpeechOutput` contract update
 
@@ -215,7 +228,7 @@ client 不替 backend 做 command fallback、prosody 模擬或支援判斷。
 建議資料流如下：
 
 1. relay 收到遠端 speech payload
-2. router 將 payload 還原成 NVDA-style speech sequence object list
+2. serializer 在 deserialize 階段將 payload 還原成 NVDA-style speech sequence object list
 3. `OutputManager` 將 sequence 交給目前 active backend
 4. `pyttsx3` backend 在 `speak(sequence)` 內逐項處理文字與 command
 5. backend 遇到：
@@ -227,7 +240,7 @@ client 不替 backend 做 command fallback、prosody 模擬或支援判斷。
 
 這個流程的關鍵是：
 
-- client 負責 restoration
+- serializer 負責 restoration
 - backend 負責 interpretation
 - `taskManager` 負責 execution scheduling
 
@@ -264,6 +277,7 @@ client 不替 backend 做 command fallback、prosody 模擬或支援判斷。
 - 舊的 `NormalizedSpeech` 主路徑
 - `SpeechOutput` 僅接受扁平化文字模型的假設
 - `taskManager` 中的 NVDA 通知轉送
+- 將 speech command 還原責任錯放到 router 的作法
 
 ### 可以先保留但要限制影響範圍的相依
 
@@ -284,7 +298,7 @@ client 不替 backend 做 command fallback、prosody 模擬或支援判斷。
 ## 建議實作順序
 
 1. 建立 client 端 `speech command` 相容層
-2. 改 router / output path，讓完整 sequence 可傳給 backend
+2. 改 serializer / output path，讓完整 sequence 在反序列化後可直接傳給 backend
 3. 拷貝並改 `taskManager`
 4. 擴充 `pyttsx3` backend 讓它能接受完整 sequence
 5. 先打通 `BreakCommand` 的真實停頓路徑
@@ -298,7 +312,7 @@ client 不替 backend 做 command fallback、prosody 模擬或支援判斷。
 
 ### 架構驗收
 
-- `nvda-remote-client` 能還原遠端 speech payload 為 NVDA-style speech sequence object list
+- `nvda-remote-client` 能在反序列化階段還原遠端 speech payload 為 NVDA-style speech sequence object list
 - active backend 可直接接收完整 sequence，而不是被迫只吃 `NormalizedSpeech`
 - client 不負責執行 prosody command 語意
 
@@ -328,7 +342,7 @@ client 不替 backend 做 command fallback、prosody 模擬或支援判斷。
 
 ### 單元測試
 
-- speech payload 到 command object sequence 的還原
+- serializer hook 將 speech payload 還原為 command object sequence
 - `taskManager` 的 speak / break / cancel / completion 行為
 - `pyttsx3` backend 對主要 command 的處理
 - `BreakCommand` 是否透過 task scheduling 產生真實停頓
@@ -349,7 +363,7 @@ client 不替 backend 做 command fallback、prosody 模擬或支援判斷。
 
 ## 風險與注意事項
 
-- 若在 client 層先把 speech sequence 扁平化，`taskManager` 與 command 邊界的價值會被抵消。
+- 若在 serializer 之後又把 speech sequence 扁平化，`taskManager` 與 command 邊界的價值會被抵消。
 - 若 `BreakCommand` 不經過調度而只是字串處理，這次需求就沒有達成。
 - `pyttsx3` 的 `pitch` 支援可能受底層 driver 限制，因此應明確以 best-effort 實作。
 - 若不在這一版加入最小控制介面，backend 雖可運作，但使用者無法實際控制 voice 與參數。
@@ -357,4 +371,4 @@ client 不替 backend 做 command fallback、prosody 模擬或支援判斷。
 
 ## 最終建議
 
-本設計建議先把這次工作定義為一個小範圍、目的明確的移植：在 `nvda-remote-client` 端建立 NVDA speech command 相容層，拷貝並改寫 `WorldVoice` 的 `taskManager`，並強化現有 `pyttsx3` backend，使 client 可以還原遠端 speech sequence，並把完整 sequence 交給 backend 處理。同時補上最小 GUI 控制介面，讓語音、速度、音量與音調能被實際操作。這樣可以在不啟動完整 core 抽離、也不引入 `VE` 的前提下，先把最有價值且最容易落地的語音能力移進 `nvda-remote-client`。
+本設計建議先把這次工作定義為一個小範圍、目的明確的移植：在 `nvda-remote-client` 端建立比照 NVDA `_remoteClient.serializer` 的 speech command 相容層與反序列化還原機制，拷貝並改寫 `WorldVoice` 的 `taskManager`，並強化現有 `pyttsx3` backend，使 client 可以在 deserialize 階段還原遠端 speech sequence，並把完整 sequence 交給 backend 處理。同時補上最小 GUI 控制介面，讓語音、速度、音量與音調能被實際操作。這樣可以在不啟動完整 core 抽離、也不引入 `VE` 的前提下，先把最有價值且最容易落地的語音能力移進 `nvda-remote-client`。
