@@ -12,6 +12,9 @@ class KeyEventDecision(StrEnum):
 
 
 class InputCapture(Protocol):
+    @property
+    def running(self) -> bool: ...
+
     def set_listener(
         self,
         listener: Callable[[KeyEvent], KeyEventDecision],
@@ -23,6 +26,9 @@ class InputCapture(Protocol):
 
 
 class HotkeyCapture(Protocol):
+    @property
+    def running(self) -> bool: ...
+
     def set_handler(self, handler: Callable[[], None]) -> None: ...
 
     def start(self) -> None: ...
