@@ -116,9 +116,10 @@ def test_build_runtime_composes_local_keyboard_and_speech(monkeypatch) -> None:
     assert speech_output.spoken == [SpeechSequence(items=("VK 66",))]
 
 
-def test_main_runs_until_interrupted_and_stops_capture(monkeypatch) -> None:
+def test_main_pumps_windows_messages_and_stops_capture(monkeypatch) -> None:
     capture = FakeCapture()
     speech_output = FakeSpeechOutput()
+    pumped: list[str] = []
 
     monkeypatch.setattr(main_module, "WindowsKeyboardCapture", lambda: capture)
     monkeypatch.setattr(
@@ -127,13 +128,15 @@ def test_main_runs_until_interrupted_and_stops_capture(monkeypatch) -> None:
         classmethod(lambda cls: speech_output),
     )
 
-    def interrupt() -> None:
+    def pump_messages() -> None:
+        pumped.append("called")
         raise KeyboardInterrupt
 
-    monkeypatch.setattr(main_module, "_run_until_interrupted", interrupt)
+    monkeypatch.setattr(main_module, "_pump_windows_messages", pump_messages)
 
     result = main_module.main()
 
     assert result == 0
+    assert pumped == ["called"]
     assert capture.start_calls == 1
     assert capture.stop_calls == 1
