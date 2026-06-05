@@ -1,7 +1,9 @@
+from collections.abc import Callable
 from typing import Any
 
 from adapters.inputs.base import HotkeyCapture, InputCapture, KeyEventDecision
 from application.keyboard import KeyEventHandler
+from application.speech_service import SpeechService
 from application.services import ClipboardService
 from application.state import ConnectionState, ControlState, RuntimeState
 from remote_core.connection_info import ConnectionInfo
@@ -22,8 +24,8 @@ class NvdaRemoteAppService(KeyEventHandler):
         input_capture: InputCapture,
         hotkey_capture: HotkeyCapture,
         clipboard: ClipboardService,
-        speech,
-        main_thread_dispatch=None,
+        speech: SpeechService,
+        main_thread_dispatch: Callable[[Callable[[], None]], None] | None = None,
     ) -> None:
         self.transport = transport
         self.input_capture = input_capture
@@ -31,7 +33,7 @@ class NvdaRemoteAppService(KeyEventHandler):
         self.clipboard = clipboard
         self.speech = speech
         self.state = RuntimeState()
-        self._status_listener = None
+        self._status_listener: Callable[[dict[str, Any]], None] | None = None
         self._main_thread_dispatch = main_thread_dispatch or (lambda callback: callback())
         self._suppressed_keyups: set[int] = set()
         self.session = RemoteSession(
@@ -45,28 +47,24 @@ class NvdaRemoteAppService(KeyEventHandler):
             on_clipboard=self.clipboard.set_text,
             on_status=self._on_status,
         )
+        
+    def bind(self) -> None:
         self.input_capture.set_listener(self.handle_key_event)
         self.hotkey_capture.set_handler(self._handle_hotkey_toggle)
-        set_message_handler = getattr(self.transport, "set_message_handler", None)
-        if set_message_handler is not None:
-            set_message_handler(self._handle_transport_message)
+        self.transport.set_message_handler(self._handle_transport_message)
 
     def connect(self, host: str, port: int, key: str, insecure: bool = False) -> None:
         self.session.connect(
             ConnectionInfo(hostname=host, port=port, key=key, insecure=insecure)
         )
-        start_reader = getattr(self.transport, "start_reader", None)
-        if start_reader is not None:
-            start_reader()
+        self.transport.start_reader()
 
     def disconnect(self) -> None:
         if self.state.control_state == ControlState.CONTROLLING:
             self.stop_control()
         elif self.state.connection_state != ConnectionState.IDLE:
             self._stop_capture()
-        stop_reader = getattr(self.transport, "stop_reader", None)
-        if stop_reader is not None:
-            stop_reader()
+        self.transport.stop_reader()
         self.session.disconnect()
 
     def start_control(self) -> None:
@@ -92,7 +90,9 @@ class NvdaRemoteAppService(KeyEventHandler):
             text=self.clipboard.get_text(),
         )
 
-    def set_status_listener(self, listener) -> None:
+    def set_status_listener(
+        self, listener: Callable[[dict[str, Any]], None] | None
+    ) -> None:
         self._status_listener = listener
 
     def handle_key_event(self, event: KeyEvent) -> KeyEventDecision:
@@ -101,10 +101,13 @@ class NvdaRemoteAppService(KeyEventHandler):
             return KeyEventDecision.LOCAL_ONLY_SUPPRESS
         if self.state.connection_state == ConnectionState.IDLE:
             return KeyEventDecision.PASS_THROUGH
-        if event.vk == self._LOCAL_STOP_VK:
+        if (
+            event.vk == self._LOCAL_STOP_VK
+            and self.state.control_state == ControlState.CONTROLLING
+        ):
             if event.pressed:
-                self._suppressed_keyups.add(event.vk)
                 self.stop_control()
+                self._suppressed_keyups.add(event.vk)
             return KeyEventDecision.LOCAL_ONLY_SUPPRESS
         if self.state.control_state != ControlState.CONTROLLING:
             return KeyEventDecision.PASS_THROUGH
@@ -139,20 +142,20 @@ class NvdaRemoteAppService(KeyEventHandler):
             self._status_listener(status)
 
     def _ensure_capture_started(self) -> None:
-        if not getattr(self.input_capture, "running", False):
+        if not self.input_capture.running:
             self.input_capture.start()
 
     def _stop_capture(self) -> None:
-        if getattr(self.input_capture, "running", False):
+        if self.input_capture.running:
             self.input_capture.stop()
         self._suppressed_keyups.clear()
 
     def _ensure_hotkey_started(self) -> None:
-        if not getattr(self.hotkey_capture, "running", False):
+        if not self.hotkey_capture.running:
             self.hotkey_capture.start()
 
     def _stop_hotkey(self) -> None:
-        if getattr(self.hotkey_capture, "running", False):
+        if self.hotkey_capture.running:
             self.hotkey_capture.stop()
 
     def _handle_hotkey_toggle(self) -> None:
