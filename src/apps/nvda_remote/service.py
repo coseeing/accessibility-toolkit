@@ -25,6 +25,7 @@ class NvdaRemoteAppService(KeyEventHandler):
         hotkey_capture: HotkeyCapture,
         clipboard: ClipboardService,
         speech: SpeechService,
+        on_speech_backend_changed: Callable[[str], None] | None = None,
         main_thread_dispatch: Callable[[Callable[[], None]], None] | None = None,
     ) -> None:
         self.transport = transport
@@ -32,6 +33,7 @@ class NvdaRemoteAppService(KeyEventHandler):
         self.hotkey_capture = hotkey_capture
         self.clipboard = clipboard
         self.speech = speech
+        self._on_speech_backend_changed = on_speech_backend_changed
         self.state = RuntimeState()
         self._status_listener: Callable[[dict[str, Any]], None] | None = None
         self._main_thread_dispatch = main_thread_dispatch or (lambda callback: callback())
@@ -94,6 +96,47 @@ class NvdaRemoteAppService(KeyEventHandler):
         self, listener: Callable[[dict[str, Any]], None] | None
     ) -> None:
         self._status_listener = listener
+
+    def get_speech_backend_options(self) -> tuple[tuple[str, str], ...]:
+        return self.speech.get_backend_options()
+
+    def get_selected_speech_backend(self) -> str:
+        return self.speech.get_selected_backend()
+
+    def set_speech_backend(self, backend_id: str) -> None:
+        self.speech.set_backend(backend_id)
+        if self._on_speech_backend_changed is not None:
+            self._on_speech_backend_changed(backend_id)
+        self._notify_status_listener(
+            {"kind": "speech_backend", "backend_id": backend_id}
+        )
+
+    def get_available_voices(self) -> tuple[tuple[str, str], ...]:
+        return self.speech.list_voices()
+
+    def get_selected_voice(self) -> str | None:
+        return self.speech.get_voice()
+
+    def set_selected_voice(self, voice_id: str) -> None:
+        self.speech.set_voice(voice_id)
+
+    def get_rate(self) -> int | None:
+        return self.speech.get_rate()
+
+    def set_rate(self, value: int) -> None:
+        self.speech.set_rate(value)
+
+    def get_pitch(self) -> int | None:
+        return self.speech.get_pitch()
+
+    def set_pitch(self, value: int) -> None:
+        self.speech.set_pitch(value)
+
+    def get_volume(self) -> int | None:
+        return self.speech.get_volume()
+
+    def set_volume(self, value: int) -> None:
+        self.speech.set_volume(value)
 
     def handle_key_event(self, event: KeyEvent) -> KeyEventDecision:
         if not event.pressed and event.vk in self._suppressed_keyups:
