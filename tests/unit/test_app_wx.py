@@ -6,7 +6,7 @@ import types
 import pytest
 
 
-UI_MODULES = ("ui.app", "ui.main_frame")
+UI_MODULES = ("ui.app", "ui.main", "ui.main_frame", "apps.nvda_remote.main")
 
 
 def clear_ui_modules():
@@ -567,3 +567,141 @@ def test_nvda_remote_app_creates_and_shows_main_frame(monkeypatch):
     assert app.OnInit() is True
     assert app.top_window.GetTitle() == "NVDA Remote Client"
     assert app.top_window.shown is True
+
+
+def test_ui_main_delegates_to_apps_nvda_remote_main(monkeypatch):
+    install_fake_wx(monkeypatch)
+    fake_main_module = types.ModuleType("apps.nvda_remote.main")
+    fake_main_module.calls = []
+
+    def fake_main():
+        fake_main_module.calls.append("main")
+        return 321
+
+    fake_main_module.main = fake_main
+    monkeypatch.setitem(sys.modules, "apps.nvda_remote.main", fake_main_module)
+
+    ui_main = importlib.import_module("ui.main")
+
+    assert ui_main.main() == 321
+    assert fake_main_module.calls == ["main"]
+
+
+def test_nvda_remote_main_build_runtime_composes_app_service_and_gui(monkeypatch):
+    install_fake_wx(monkeypatch)
+    nvda_remote_main = importlib.import_module("apps.nvda_remote.main")
+
+    class FakeConfigStore:
+        def __init__(self, path):
+            self.path = path
+            self.saved = []
+
+        def load_backend_id(self, *, default_backend_id):
+            self.default_backend_id = default_backend_id
+            return "pyttsx3"
+
+        def save_backend_id(self, backend_id):
+            self.saved.append(backend_id)
+
+    class FakeSpeechService:
+        def __init__(self, *, backend_options, selected_backend_id):
+            self.backend_options = backend_options
+            self.selected_backend_id = selected_backend_id
+
+    class FakeTransport:
+        def __init__(self, serializer):
+            self.serializer = serializer
+
+    class FakeKeyboardCapture:
+        pass
+
+    class FakeHotkeyCapture:
+        pass
+
+    class FakeClipboard:
+        pass
+
+    class FakeKeyboardInputService:
+        def __init__(self, capture, handler):
+            self.capture = capture
+            self.handler = handler
+            self.bind_calls = 0
+
+        def bind(self):
+            self.bind_calls += 1
+
+    class FakeAppService:
+        def __init__(
+            self,
+            *,
+            transport,
+            input_capture,
+            hotkey_capture,
+            clipboard,
+            speech,
+            on_speech_backend_changed,
+            main_thread_dispatch,
+        ):
+            self.transport = transport
+            self.input_capture = input_capture
+            self.hotkey_capture = hotkey_capture
+            self.clipboard = clipboard
+            self.speech = speech
+            self.on_speech_backend_changed = on_speech_backend_changed
+            self.main_thread_dispatch = main_thread_dispatch
+            self.bind_calls = 0
+
+        def bind(self):
+            self.bind_calls += 1
+
+    class FakeApp:
+        dispatch = staticmethod(lambda callback: callback())
+
+        def __init__(self, controller):
+            self.controller = controller
+
+        def MainLoop(self):
+            return 77
+
+    monkeypatch.setattr(nvda_remote_main, "SpeechBackendConfigStore", FakeConfigStore)
+    monkeypatch.setattr(nvda_remote_main, "SpeechService", FakeSpeechService)
+    monkeypatch.setattr(nvda_remote_main, "RelayTransport", FakeTransport)
+    monkeypatch.setattr(nvda_remote_main, "WindowsKeyboardCapture", FakeKeyboardCapture)
+    monkeypatch.setattr(nvda_remote_main, "WindowsHotkeyCapture", FakeHotkeyCapture)
+    monkeypatch.setattr(nvda_remote_main, "WindowsClipboardService", FakeClipboard)
+    monkeypatch.setattr(nvda_remote_main, "KeyboardInputService", FakeKeyboardInputService)
+    monkeypatch.setattr(nvda_remote_main, "NvdaRemoteAppService", FakeAppService)
+    monkeypatch.setattr(nvda_remote_main, "NvdaRemoteApp", FakeApp)
+    monkeypatch.setattr(nvda_remote_main, "default_config_path", lambda: "config.json")
+
+    runtime = nvda_remote_main.build_runtime()
+
+    assert isinstance(runtime.transport, FakeTransport)
+    assert runtime.transport.serializer.__class__.__name__ == "JSONSerializer"
+    assert isinstance(runtime.input_capture, FakeKeyboardCapture)
+    assert isinstance(runtime.hotkey_capture, FakeHotkeyCapture)
+    assert isinstance(runtime.clipboard, FakeClipboard)
+    assert isinstance(runtime.speech_service, FakeSpeechService)
+    assert runtime.speech_service.selected_backend_id == "pyttsx3"
+    assert runtime.app_service.speech is runtime.speech_service
+    assert runtime.app_service.on_speech_backend_changed == runtime.config_store.save_backend_id
+    assert runtime.app_service.main_thread_dispatch is FakeApp.dispatch
+    assert runtime.app_service.bind_calls == 1
+    assert runtime.input_service.capture is runtime.input_capture
+    assert runtime.input_service.handler is runtime.app_service
+    assert runtime.input_service.bind_calls == 1
+    assert runtime.app.controller is runtime.app_service
+
+
+def test_nvda_remote_main_main_runs_gui_app(monkeypatch):
+    install_fake_wx(monkeypatch)
+    nvda_remote_main = importlib.import_module("apps.nvda_remote.main")
+
+    class FakeApp:
+        def MainLoop(self):
+            return 55
+
+    runtime = types.SimpleNamespace(app=FakeApp())
+    monkeypatch.setattr(nvda_remote_main, "build_runtime", lambda: runtime)
+
+    assert nvda_remote_main.main() == 55
