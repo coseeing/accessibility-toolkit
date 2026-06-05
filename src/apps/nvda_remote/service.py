@@ -182,7 +182,7 @@ class NvdaRemoteAppService(KeyEventHandler):
 
     def _notify_status_listener(self, status: dict[str, Any]) -> None:
         if self._status_listener is not None:
-            self._status_listener(status)
+            self._main_thread_dispatch(lambda: self._status_listener(status))
 
     def _ensure_capture_started(self) -> None:
         if not self.input_capture.running:

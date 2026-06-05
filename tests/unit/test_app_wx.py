@@ -693,6 +693,101 @@ def test_nvda_remote_main_build_runtime_composes_app_service_and_gui(monkeypatch
     assert runtime.app.controller is runtime.app_service
 
 
+def test_nvda_remote_main_build_runtime_falls_back_for_unknown_backend(monkeypatch):
+    install_fake_wx(monkeypatch)
+    nvda_remote_main = importlib.import_module("apps.nvda_remote.main")
+
+    class FakeConfigStore:
+        def __init__(self, path):
+            self.path = path
+            self.saved = []
+
+        def load_backend_id(self, *, default_backend_id):
+            self.default_backend_id = default_backend_id
+            return "missing"
+
+        def save_backend_id(self, backend_id):
+            self.saved.append(backend_id)
+
+    class FakeSpeechService:
+        init_calls = []
+
+        def __init__(self, *, backend_options, selected_backend_id):
+            self.backend_options = backend_options
+            self.selected_backend_id = selected_backend_id
+            type(self).init_calls.append(selected_backend_id)
+            if selected_backend_id == "missing":
+                raise ValueError("Unknown speech backend: missing")
+
+    class FakeTransport:
+        def __init__(self, serializer):
+            self.serializer = serializer
+
+    class FakeKeyboardCapture:
+        pass
+
+    class FakeHotkeyCapture:
+        pass
+
+    class FakeClipboard:
+        pass
+
+    class FakeKeyboardInputService:
+        def __init__(self, capture, handler):
+            self.capture = capture
+            self.handler = handler
+
+        def bind(self):
+            return None
+
+    class FakeAppService:
+        def __init__(self, **kwargs):
+            self.__dict__.update(kwargs)
+
+        def bind(self):
+            return None
+
+    class FakeApp:
+        dispatch = staticmethod(lambda callback: callback())
+
+        def __init__(self, controller):
+            self.controller = controller
+
+        def MainLoop(self):
+            return 0
+
+    monkeypatch.setattr(nvda_remote_main, "SpeechBackendConfigStore", FakeConfigStore)
+    monkeypatch.setattr(nvda_remote_main, "SpeechService", FakeSpeechService)
+    monkeypatch.setattr(nvda_remote_main, "RelayTransport", FakeTransport)
+    monkeypatch.setattr(nvda_remote_main, "WindowsKeyboardCapture", FakeKeyboardCapture)
+    monkeypatch.setattr(nvda_remote_main, "WindowsHotkeyCapture", FakeHotkeyCapture)
+    monkeypatch.setattr(nvda_remote_main, "WindowsClipboardService", FakeClipboard)
+    monkeypatch.setattr(nvda_remote_main, "KeyboardInputService", FakeKeyboardInputService)
+    monkeypatch.setattr(nvda_remote_main, "NvdaRemoteAppService", FakeAppService)
+    monkeypatch.setattr(nvda_remote_main, "NvdaRemoteApp", FakeApp)
+    monkeypatch.setattr(nvda_remote_main, "default_config_path", lambda: "config.json")
+
+    runtime = nvda_remote_main.build_runtime()
+
+    assert FakeSpeechService.init_calls == ["missing", "nvda_controller"]
+    assert runtime.config_store.saved == ["nvda_controller"]
+    assert runtime.speech_service.selected_backend_id == "nvda_controller"
+
+
+def test_nvda_remote_main_continues_startup_when_logging_setup_fails(monkeypatch):
+    install_fake_wx(monkeypatch)
+    nvda_remote_main = importlib.import_module("apps.nvda_remote.main")
+    runtime = types.SimpleNamespace(app=types.SimpleNamespace(MainLoop=lambda: 91))
+
+    def fail_logging():
+        raise OSError("disk full")
+
+    monkeypatch.setattr(nvda_remote_main, "configure_logging", fail_logging)
+    monkeypatch.setattr(nvda_remote_main, "build_runtime", lambda: runtime)
+
+    assert nvda_remote_main.main() == 91
+
+
 def test_nvda_remote_main_main_runs_gui_app(monkeypatch):
     install_fake_wx(monkeypatch)
     nvda_remote_main = importlib.import_module("apps.nvda_remote.main")
