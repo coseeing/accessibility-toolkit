@@ -1,3 +1,5 @@
+import pytest
+
 from application.output_capabilities import OutputCapabilities
 from application.speech_backends import SpeechBackendOption
 from application.speech_service import SpeechService
@@ -118,3 +120,19 @@ def test_output_capabilities_exposes_shared_outputs() -> None:
     assert capabilities.speech.get_selected_backend() == "default"
     assert capabilities.tone is None
     assert capabilities.braille is None
+
+
+def test_speech_service_rejects_unknown_backend_id() -> None:
+    service = SpeechService(
+        backend_options=(
+            SpeechBackendOption(
+                backend_id="nvda_controller",
+                label="NVDA Controller",
+                factory=lambda: FakeSpeechOutput("nvda"),
+            ),
+        ),
+        selected_backend_id="nvda_controller",
+    )
+
+    with pytest.raises(ValueError, match="Unknown speech backend"):
+        service.set_backend("missing")
