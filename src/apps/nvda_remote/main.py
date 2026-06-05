@@ -49,21 +49,28 @@ def default_config_path() -> Path:
 
 def configure_logging() -> Path:
     log_path = default_log_path()
+    log_format = "%(asctime)s %(levelname)s %(name)s: %(message)s"
+    root_logger = logging.getLogger()
     try:
-        logging.basicConfig(
-            level=logging.DEBUG,
-            format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-            filename=log_path,
-            filemode="a",
-            force=True,
-        )
+        if not root_logger.handlers:
+            logging.basicConfig(
+                level=logging.DEBUG,
+                format=log_format,
+                filename=log_path,
+                filemode="a",
+            )
+        else:
+            file_handler = logging.FileHandler(log_path, mode="a", encoding="utf-8")
+            file_handler.setLevel(logging.DEBUG)
+            file_handler.setFormatter(logging.Formatter(log_format))
+            root_logger.addHandler(file_handler)
         logging.getLogger(__name__).info("Logging initialized at %s", log_path)
     except OSError as error:
-        logging.basicConfig(
-            level=logging.DEBUG,
-            format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-            force=True,
-        )
+        if not root_logger.handlers:
+            logging.basicConfig(
+                level=logging.DEBUG,
+                format=log_format,
+            )
         logging.getLogger(__name__).warning(
             "File logging unavailable at %s: %s",
             log_path,
@@ -142,11 +149,11 @@ def main() -> int:
     try:
         configure_logging()
     except OSError:
-        logging.basicConfig(
-            level=logging.DEBUG,
-            format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-            force=True,
-        )
+        if not logging.getLogger().handlers:
+            logging.basicConfig(
+                level=logging.DEBUG,
+                format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+            )
         logging.getLogger(__name__).warning(
             "Logging initialization failed; continuing without file logging",
             exc_info=True,

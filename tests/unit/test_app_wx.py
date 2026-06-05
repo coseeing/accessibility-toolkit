@@ -788,6 +788,57 @@ def test_nvda_remote_main_continues_startup_when_logging_setup_fails(monkeypatch
     assert nvda_remote_main.main() == 91
 
 
+def test_nvda_remote_configure_logging_preserves_existing_handlers(monkeypatch):
+    install_fake_wx(monkeypatch)
+    nvda_remote_main = importlib.import_module("apps.nvda_remote.main")
+    root_logger = nvda_remote_main.logging.getLogger()
+    original_handlers = list(root_logger.handlers)
+    sentinel_handler = nvda_remote_main.logging.NullHandler()
+    root_logger.addHandler(sentinel_handler)
+    added_handlers = []
+
+    class FakeFileHandler:
+        def __init__(self, path, mode="a", encoding=None):
+            self.path = path
+            self.mode = mode
+            self.encoding = encoding
+            self.formatter = None
+            self.level = None
+
+        def setFormatter(self, formatter):
+            self.formatter = formatter
+
+        def setLevel(self, level):
+            self.level = level
+
+    monkeypatch.setattr(nvda_remote_main, "default_log_path", lambda: "nvda.log")
+    monkeypatch.setattr(nvda_remote_main.logging, "FileHandler", FakeFileHandler)
+    monkeypatch.setattr(
+        root_logger,
+        "addHandler",
+        lambda handler: added_handlers.append(handler),
+    )
+
+    basic_config_calls = []
+
+    def fake_basic_config(**kwargs):
+        basic_config_calls.append(kwargs)
+
+    monkeypatch.setattr(nvda_remote_main.logging, "basicConfig", fake_basic_config)
+
+    try:
+        log_path = nvda_remote_main.configure_logging()
+    finally:
+        root_logger.handlers[:] = original_handlers
+
+    assert log_path == "nvda.log"
+    assert basic_config_calls == []
+    assert len(added_handlers) == 1
+    handler = added_handlers[0]
+    assert handler.path == "nvda.log"
+    assert handler.mode == "a"
+
+
 def test_nvda_remote_main_main_runs_gui_app(monkeypatch):
     install_fake_wx(monkeypatch)
     nvda_remote_main = importlib.import_module("apps.nvda_remote.main")
