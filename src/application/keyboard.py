@@ -1,7 +1,7 @@
 from typing import Protocol
 
 from adapters.inputs.base import InputCapture, KeyEventDecision
-from remote_core.models.keys import KeyEvent
+from interop.key.key_event import KeyEvent
 
 
 class KeyEventHandler(Protocol):
@@ -19,6 +19,10 @@ class KeyboardInputService:
     def set_handler(self, handler: KeyEventHandler) -> None:
         self._handler = handler
         self.bind()
+
+    @property
+    def running(self) -> bool:
+        return self._capture.running
 
     def start(self) -> None:
         self.bind()

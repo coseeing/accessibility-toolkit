@@ -3,7 +3,7 @@ import logging
 from enum import Enum
 from typing import Any
 
-from remote_core.models.speech_sequence import restore_sequence_items
+from interop.speech.speech_sequence import restore_sequence_items
 
 
 logger = logging.getLogger(__name__)

@@ -1,6 +1,6 @@
 from adapters.inputs.base import KeyEventDecision
 from application.keyboard import KeyboardInputService
-from remote_core.models.keys import KeyEvent
+from interop.key.key_event import KeyEvent
 
 
 class FakeCapture:

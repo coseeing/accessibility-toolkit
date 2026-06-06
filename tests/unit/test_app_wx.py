@@ -6,7 +6,18 @@ import types
 import pytest
 
 
-UI_MODULES = ("ui.app", "ui.main", "ui.main_frame", "apps.nvda_remote.main")
+UI_MODULES = (
+    "ui.app",
+    "ui.main",
+    "ui.main_frame",
+    "ui.nvda_remote.app",
+    "ui.nvda_remote.main_frame",
+    "ui.echo.app",
+    "ui.echo.main_frame",
+    "ui.shared.speech_controls",
+    "apps.nvda_remote.main",
+    "apps.key_echo.main",
+)
 
 
 def clear_ui_modules():
@@ -29,6 +40,7 @@ def install_fake_wx(monkeypatch):
     fake_wx.EVT_BUTTON = object()
     fake_wx.EVT_CHOICE = object()
     fake_wx.EVT_TEXT = object()
+    fake_wx.EVT_CLOSE = object()
     fake_wx.OK = 16
     fake_wx.ICON_ERROR = 32
     fake_wx.message_box_calls = []
@@ -53,6 +65,17 @@ def install_fake_wx(monkeypatch):
 
         def SetSizer(self, sizer):
             self.sizer = sizer
+
+    class StaticText:
+        def __init__(self, parent, label=""):
+            self.parent = parent
+            self._label = label
+
+        def GetLabel(self):
+            return self._label
+
+        def SetLabel(self, label):
+            self._label = label
 
     class BoxSizer:
         def __init__(self, orient):
@@ -165,6 +188,7 @@ def install_fake_wx(monkeypatch):
 
     fake_wx.Frame = Frame
     fake_wx.Panel = Panel
+    fake_wx.StaticText = StaticText
     fake_wx.BoxSizer = BoxSizer
     fake_wx.TextCtrl = TextCtrl
     fake_wx.Button = Button
@@ -287,9 +311,95 @@ class FakeController:
         self.volume = value
 
 
+class FakeEchoController:
+    def __init__(self):
+        self.status_listener = None
+        self.running = False
+        self.started = 0
+        self.stopped = 0
+        self.speech_backend_id = "default"
+        self.speech_backend_calls = []
+        self.backend_switch_error = None
+        self.available_voices = ()
+        self.selected_voice = None
+        self.rate = None
+        self.pitch = None
+        self.volume = None
+        self.voice_calls = []
+        self.rate_calls = []
+        self.pitch_calls = []
+        self.volume_calls = []
+
+    def set_status_listener(self, listener):
+        self.status_listener = listener
+
+    def start_echo(self):
+        self.started += 1
+        self.running = True
+        if self.status_listener is not None:
+            self.status_listener({"kind": "echo", "state": "running"})
+
+    def stop_echo(self):
+        self.stopped += 1
+        self.running = False
+        if self.status_listener is not None:
+            self.status_listener({"kind": "echo", "state": "stopped"})
+
+    def is_echo_running(self):
+        return self.running
+
+    def get_speech_backend_options(self):
+        return (
+            ("default", "Default"),
+            ("pyttsx3", "pyttsx3"),
+        )
+
+    def get_selected_speech_backend(self):
+        return self.speech_backend_id
+
+    def set_speech_backend(self, backend_id):
+        self.speech_backend_calls.append(backend_id)
+        if self.backend_switch_error is not None:
+            raise self.backend_switch_error
+        self.speech_backend_id = backend_id
+        if self.status_listener is not None:
+            self.status_listener({"kind": "speech_backend", "backend_id": backend_id})
+
+    def get_available_voices(self):
+        return self.available_voices
+
+    def get_selected_voice(self):
+        return self.selected_voice
+
+    def set_selected_voice(self, voice_id):
+        self.voice_calls.append(voice_id)
+        self.selected_voice = voice_id
+
+    def get_rate(self):
+        return self.rate
+
+    def set_rate(self, value):
+        self.rate_calls.append(value)
+        self.rate = value
+
+    def get_pitch(self):
+        return self.pitch
+
+    def set_pitch(self, value):
+        self.pitch_calls.append(value)
+        self.pitch = value
+
+    def get_volume(self):
+        return self.volume
+
+    def set_volume(self, value):
+        self.volume_calls.append(value)
+        self.volume = value
+
+
 def test_main_frame_exposes_connect_controls(monkeypatch):
     install_fake_wx(monkeypatch)
-    MainFrame = importlib.import_module("ui.main_frame").MainFrame
+    MainFrame = importlib.import_module("ui.nvda_remote.main_frame").MainFrame
 
     frame = MainFrame(controller=None)
 
@@ -317,7 +427,7 @@ def test_fake_wx_imports_do_not_leave_app_wx_modules_cached():
 
 def test_main_frame_dispatches_button_actions(monkeypatch):
     install_fake_wx(monkeypatch)
-    MainFrame = importlib.import_module("ui.main_frame").MainFrame
+    MainFrame = importlib.import_module("ui.nvda_remote.main_frame").MainFrame
     controller = FakeController()
     frame = MainFrame(controller=controller)
     frame.host_ctrl.SetValue("relay.example")
@@ -342,7 +452,7 @@ def test_main_frame_dispatches_button_actions(monkeypatch):
 
 def test_main_frame_toggles_disconnect_when_already_connected(monkeypatch):
     install_fake_wx(monkeypatch)
-    MainFrame = importlib.import_module("ui.main_frame").MainFrame
+    MainFrame = importlib.import_module("ui.nvda_remote.main_frame").MainFrame
     controller = FakeController()
     frame = MainFrame(controller=controller)
 
@@ -362,7 +472,7 @@ def test_main_frame_toggles_disconnect_when_already_connected(monkeypatch):
 
 def test_main_frame_control_button_is_disabled_until_connected(monkeypatch):
     install_fake_wx(monkeypatch)
-    MainFrame = importlib.import_module("ui.main_frame").MainFrame
+    MainFrame = importlib.import_module("ui.nvda_remote.main_frame").MainFrame
     controller = FakeController()
     frame = MainFrame(controller=controller)
 
@@ -377,7 +487,7 @@ def test_main_frame_control_button_is_disabled_until_connected(monkeypatch):
 
 def test_main_frame_locks_connection_fields_while_connected(monkeypatch):
     install_fake_wx(monkeypatch)
-    MainFrame = importlib.import_module("ui.main_frame").MainFrame
+    MainFrame = importlib.import_module("ui.nvda_remote.main_frame").MainFrame
     controller = FakeController()
     frame = MainFrame(controller=controller)
 
@@ -396,7 +506,7 @@ def test_main_frame_locks_connection_fields_while_connected(monkeypatch):
 
 def test_main_frame_control_button_toggles_start_and_stop(monkeypatch):
     install_fake_wx(monkeypatch)
-    MainFrame = importlib.import_module("ui.main_frame").MainFrame
+    MainFrame = importlib.import_module("ui.nvda_remote.main_frame").MainFrame
     controller = FakeController()
     frame = MainFrame(controller=controller)
 
@@ -412,7 +522,7 @@ def test_main_frame_control_button_toggles_start_and_stop(monkeypatch):
 
 def test_main_frame_disconnect_stops_control_first(monkeypatch):
     install_fake_wx(monkeypatch)
-    MainFrame = importlib.import_module("ui.main_frame").MainFrame
+    MainFrame = importlib.import_module("ui.nvda_remote.main_frame").MainFrame
     controller = FakeController()
     frame = MainFrame(controller=controller)
 
@@ -428,7 +538,7 @@ def test_main_frame_disconnect_stops_control_first(monkeypatch):
 
 def test_main_frame_syncs_buttons_after_control_stops_outside_ui(monkeypatch):
     install_fake_wx(monkeypatch)
-    MainFrame = importlib.import_module("ui.main_frame").MainFrame
+    MainFrame = importlib.import_module("ui.nvda_remote.main_frame").MainFrame
     controller = FakeController()
     frame = MainFrame(controller=controller)
 
@@ -443,7 +553,7 @@ def test_main_frame_syncs_buttons_after_control_stops_outside_ui(monkeypatch):
 
 def test_main_frame_retries_self_signed_certificate_in_insecure_mode(monkeypatch):
     fake_wx = install_fake_wx(monkeypatch)
-    MainFrame = importlib.import_module("ui.main_frame").MainFrame
+    MainFrame = importlib.import_module("ui.nvda_remote.main_frame").MainFrame
 
     class SelfSignedController(FakeController):
         def connect(self, host, port, key, insecure=False):
@@ -470,7 +580,7 @@ def test_main_frame_retries_self_signed_certificate_in_insecure_mode(monkeypatch
 
 def test_main_frame_shows_connection_error_for_invalid_port(monkeypatch):
     fake_wx = install_fake_wx(monkeypatch)
-    MainFrame = importlib.import_module("ui.main_frame").MainFrame
+    MainFrame = importlib.import_module("ui.nvda_remote.main_frame").MainFrame
     controller = FakeController()
     frame = MainFrame(controller=controller)
     frame.host_ctrl.SetValue("relay.example")
@@ -487,7 +597,7 @@ def test_main_frame_shows_connection_error_for_invalid_port(monkeypatch):
 
 def test_main_frame_switches_speech_backend_from_dropdown(monkeypatch):
     install_fake_wx(monkeypatch)
-    MainFrame = importlib.import_module("ui.main_frame").MainFrame
+    MainFrame = importlib.import_module("ui.nvda_remote.main_frame").MainFrame
     controller = FakeController()
     frame = MainFrame(controller=controller)
     frame.speech_backend_choice.SetSelection(1)
@@ -500,7 +610,7 @@ def test_main_frame_switches_speech_backend_from_dropdown(monkeypatch):
 
 def test_main_frame_reverts_dropdown_when_backend_switch_fails(monkeypatch):
     fake_wx = install_fake_wx(monkeypatch)
-    MainFrame = importlib.import_module("ui.main_frame").MainFrame
+    MainFrame = importlib.import_module("ui.nvda_remote.main_frame").MainFrame
     controller = FakeController()
     controller.backend_switch_error = RuntimeError("pyttsx3 init failed")
     frame = MainFrame(controller=controller)
@@ -518,7 +628,7 @@ def test_main_frame_reverts_dropdown_when_backend_switch_fails(monkeypatch):
 
 def test_main_frame_exposes_voice_and_prosody_controls(monkeypatch):
     install_fake_wx(monkeypatch)
-    MainFrame = importlib.import_module("ui.main_frame").MainFrame
+    MainFrame = importlib.import_module("ui.nvda_remote.main_frame").MainFrame
     controller = FakeController()
     controller.speech_backend_id = "pyttsx3"
     controller.available_voices = (("voice-1", "Voice 1"), ("voice-2", "Voice 2"))
@@ -538,7 +648,7 @@ def test_main_frame_exposes_voice_and_prosody_controls(monkeypatch):
 
 def test_main_frame_routes_voice_and_prosody_changes_to_controller(monkeypatch):
     install_fake_wx(monkeypatch)
-    MainFrame = importlib.import_module("ui.main_frame").MainFrame
+    MainFrame = importlib.import_module("ui.nvda_remote.main_frame").MainFrame
     controller = FakeController()
     controller.available_voices = (("voice-1", "Voice 1"), ("voice-2", "Voice 2"))
     frame = MainFrame(controller=controller)
@@ -560,12 +670,84 @@ def test_main_frame_routes_voice_and_prosody_changes_to_controller(monkeypatch):
 
 def test_nvda_remote_app_creates_and_shows_main_frame(monkeypatch):
     install_fake_wx(monkeypatch)
-    NvdaRemoteApp = importlib.import_module("ui.app").NvdaRemoteApp
+    NvdaRemoteApp = importlib.import_module("ui.nvda_remote.app").NvdaRemoteApp
     controller = FakeController()
     app = NvdaRemoteApp(controller=controller)
 
     assert app.OnInit() is True
     assert app.top_window.GetTitle() == "NVDA Remote Client"
+    assert app.top_window.shown is True
+
+
+def test_echo_main_frame_exposes_start_stop_and_speech_controls(monkeypatch):
+    install_fake_wx(monkeypatch)
+    EchoMainFrame = importlib.import_module("ui.echo.main_frame").EchoMainFrame
+    controller = FakeEchoController()
+    controller.available_voices = (("voice-1", "Voice 1"), ("voice-2", "Voice 2"))
+    controller.selected_voice = "voice-2"
+    controller.rate = 120
+    controller.pitch = 3
+    controller.volume = 80
+    frame = EchoMainFrame(controller=controller)
+
+    assert frame.GetTitle() == "Key Echo Demo"
+    assert frame.control_button.GetLabel() == "Start"
+    assert frame.status_label.GetLabel() == "Stopped"
+    assert frame.speech_backend_choice.GetCount() == 2
+    assert frame.voice_choice.GetSelection() == 1
+    assert frame.rate_ctrl.GetValue() == "120"
+    assert frame.pitch_ctrl.GetValue() == "3"
+    assert frame.volume_ctrl.GetValue() == "80"
+
+
+def test_echo_main_frame_toggles_start_and_stop(monkeypatch):
+    install_fake_wx(monkeypatch)
+    EchoMainFrame = importlib.import_module("ui.echo.main_frame").EchoMainFrame
+    controller = FakeEchoController()
+    frame = EchoMainFrame(controller=controller)
+
+    frame._on_toggle_echo(None)
+    frame._on_toggle_echo(None)
+
+    assert controller.started == 1
+    assert controller.stopped == 1
+    assert frame.control_button.GetLabel() == "Start"
+    assert frame.status_label.GetLabel() == "Stopped"
+
+
+def test_echo_main_frame_routes_speech_control_changes(monkeypatch):
+    install_fake_wx(monkeypatch)
+    EchoMainFrame = importlib.import_module("ui.echo.main_frame").EchoMainFrame
+    controller = FakeEchoController()
+    controller.available_voices = (("voice-1", "Voice 1"), ("voice-2", "Voice 2"))
+    frame = EchoMainFrame(controller=controller)
+
+    frame.speech_backend_choice.SetSelection(1)
+    frame._on_speech_backend_change(None)
+    frame.voice_choice.SetSelection(1)
+    frame._on_voice_change(None)
+    frame.rate_ctrl.SetValue("120")
+    frame._on_rate_change(None)
+    frame.pitch_ctrl.SetValue("3")
+    frame._on_pitch_change(None)
+    frame.volume_ctrl.SetValue("80")
+    frame._on_volume_change(None)
+
+    assert controller.speech_backend_calls == ["pyttsx3"]
+    assert controller.voice_calls == ["voice-2"]
+    assert controller.rate_calls == [120]
+    assert controller.pitch_calls == [3]
+    assert controller.volume_calls == [80]
+
+
+def test_echo_app_creates_and_shows_main_frame(monkeypatch):
+    install_fake_wx(monkeypatch)
+    EchoApp = importlib.import_module("ui.echo.app").EchoApp
+    controller = FakeEchoController()
+    app = EchoApp(controller=controller)
+
+    assert app.OnInit() is True
+    assert app.top_window.GetTitle() == "Key Echo Demo"
     assert app.top_window.shown is True
 
 
@@ -607,6 +789,14 @@ def test_nvda_remote_main_build_runtime_composes_app_service_and_gui(monkeypatch
         def __init__(self, *, backend_options, selected_backend_id):
             self.backend_options = backend_options
             self.selected_backend_id = selected_backend_id
+
+    class FakeOutputScheduler:
+        pass
+
+    class FakeQueuedOutputService:
+        def __init__(self, *, speech, scheduler):
+            self.speech = speech
+            self.scheduler = scheduler
 
     class FakeTransport:
         def __init__(self, serializer):
@@ -664,7 +854,9 @@ def test_nvda_remote_main_build_runtime_composes_app_service_and_gui(monkeypatch
             return 77
 
     monkeypatch.setattr(nvda_remote_main, "SpeechBackendConfigStore", FakeConfigStore)
+    monkeypatch.setattr(nvda_remote_main, "OutputScheduler", FakeOutputScheduler)
     monkeypatch.setattr(nvda_remote_main, "SpeechService", FakeSpeechService)
+    monkeypatch.setattr(nvda_remote_main, "QueuedOutputService", FakeQueuedOutputService)
     monkeypatch.setattr(nvda_remote_main, "RelayTransport", FakeTransport)
     monkeypatch.setattr(nvda_remote_main, "WindowsKeyboardCapture", FakeKeyboardCapture)
     monkeypatch.setattr(nvda_remote_main, "WindowsHotkeyCapture", FakeHotkeyCapture)
@@ -681,9 +873,13 @@ def test_nvda_remote_main_build_runtime_composes_app_service_and_gui(monkeypatch
     assert isinstance(runtime.input_capture, FakeKeyboardCapture)
     assert isinstance(runtime.hotkey_capture, FakeHotkeyCapture)
     assert isinstance(runtime.clipboard, FakeClipboard)
+    assert isinstance(runtime.output_scheduler, FakeOutputScheduler)
     assert isinstance(runtime.speech_service, FakeSpeechService)
+    assert isinstance(runtime.output_service, FakeQueuedOutputService)
     assert runtime.speech_service.selected_backend_id == "pyttsx3"
-    assert runtime.app_service.speech is runtime.speech_service
+    assert runtime.output_service.speech is runtime.speech_service
+    assert runtime.output_service.scheduler is runtime.output_scheduler
+    assert runtime.app_service.speech is runtime.output_service
     assert runtime.app_service.on_speech_backend_changed == runtime.config_store.save_backend_id
     assert runtime.app_service.main_thread_dispatch is FakeApp.dispatch
     assert runtime.app_service.bind_calls == 1
@@ -718,6 +914,14 @@ def test_nvda_remote_main_build_runtime_falls_back_for_unknown_backend(monkeypat
             type(self).init_calls.append(selected_backend_id)
             if selected_backend_id == "missing":
                 raise ValueError("Unknown speech backend: missing")
+
+    class FakeOutputScheduler:
+        pass
+
+    class FakeQueuedOutputService:
+        def __init__(self, *, speech, scheduler):
+            self.speech = speech
+            self.scheduler = scheduler
 
     class FakeTransport:
         def __init__(self, serializer):
@@ -757,7 +961,9 @@ def test_nvda_remote_main_build_runtime_falls_back_for_unknown_backend(monkeypat
             return 0
 
     monkeypatch.setattr(nvda_remote_main, "SpeechBackendConfigStore", FakeConfigStore)
+    monkeypatch.setattr(nvda_remote_main, "OutputScheduler", FakeOutputScheduler)
     monkeypatch.setattr(nvda_remote_main, "SpeechService", FakeSpeechService)
+    monkeypatch.setattr(nvda_remote_main, "QueuedOutputService", FakeQueuedOutputService)
     monkeypatch.setattr(nvda_remote_main, "RelayTransport", FakeTransport)
     monkeypatch.setattr(nvda_remote_main, "WindowsKeyboardCapture", FakeKeyboardCapture)
     monkeypatch.setattr(nvda_remote_main, "WindowsHotkeyCapture", FakeHotkeyCapture)
@@ -771,7 +977,10 @@ def test_nvda_remote_main_build_runtime_falls_back_for_unknown_backend(monkeypat
 
     assert FakeSpeechService.init_calls == ["missing", "nvda_controller"]
     assert runtime.config_store.saved == ["nvda_controller"]
+    assert isinstance(runtime.output_scheduler, FakeOutputScheduler)
     assert runtime.speech_service.selected_backend_id == "nvda_controller"
+    assert runtime.output_service.speech is runtime.speech_service
+    assert runtime.output_service.scheduler is runtime.output_scheduler
 
 
 def test_nvda_remote_main_continues_startup_when_logging_setup_fails(monkeypatch):

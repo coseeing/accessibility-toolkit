@@ -11,7 +11,7 @@ from adapters.windows.nvda_controller import (
     VENDORED_X64_DLL,
     NvdaControllerSpeechOutput,
 )
-from remote_core.models.keys import KeyEvent
+from interop.key.key_event import KeyEvent
 
 
 WM_KEYDOWN = 0x0100

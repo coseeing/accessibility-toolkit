@@ -1,4 +1,4 @@
-from remote_core.models.speech_commands import (
+from interop.speech.speech_commands import (
     BreakCommand,
     IndexCommand,
     PitchCommand,
@@ -7,7 +7,7 @@ from remote_core.models.speech_commands import (
     VolumeCommand,
     restore_speech_command,
 )
-from remote_core.models.speech_sequence import SpeechSequence
+from interop.speech.speech_sequence import SpeechSequence
 
 
 def test_speech_sequence_restores_text_and_supported_commands():

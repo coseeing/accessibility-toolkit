@@ -1,9 +1,9 @@
-from remote_core.connection_info import ConnectionInfo
-from remote_core.models.speech_commands import BreakCommand
-from remote_core.models.speech_sequence import SpeechSequence
-from remote_core.protocol import RemoteMessageType
-from remote_core.routing.message_router import MessageRouter
-from remote_core.session.remote_session import RemoteSession
+from interop.protocol.connection_info import ConnectionInfo
+from interop.speech.speech_commands import BreakCommand
+from interop.speech.speech_sequence import SpeechSequence
+from interop.protocol.messages import RemoteMessageType
+from interop.protocol.routing.message_router import MessageRouter
+from interop.protocol.session.remote_session import RemoteSession
 from application.services import OutputManager
 
 

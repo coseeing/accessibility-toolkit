@@ -1,6 +1,6 @@
 from adapters.inputs.base import KeyEventDecision
-from remote_core.models.keys import KeyEvent
-from remote_core.protocol import RemoteMessageType
+from interop.key.key_event import KeyEvent
+from interop.protocol.messages import RemoteMessageType
 
 from apps.nvda_remote.service import NvdaRemoteAppService
 
@@ -162,7 +162,7 @@ def test_nvda_remote_service_forwards_keys_when_controlling():
 
     decision = service.handle_key_event(event)
 
-    assert decision == KeyEventDecision.FORWARD_AND_SUPPRESS
+    assert decision == KeyEventDecision.SUPPRESS
     assert transport.sent == [(RemoteMessageType.KEY, event.to_remote_payload())]
     assert capture.started == 1
     assert capture.running is True
@@ -194,8 +194,8 @@ def test_nvda_remote_service_uses_f11_as_local_stop():
         KeyEvent(vk=0x7A, scan=87, extended=False, pressed=False)
     )
 
-    assert keydown_decision == KeyEventDecision.LOCAL_ONLY_SUPPRESS
-    assert keyup_decision == KeyEventDecision.LOCAL_ONLY_SUPPRESS
+    assert keydown_decision == KeyEventDecision.SUPPRESS
+    assert keyup_decision == KeyEventDecision.SUPPRESS
     assert service.state.control_state == service.state.control_state.SUSPENDED
     assert transport.sent == []
     assert capture.stopped == 1

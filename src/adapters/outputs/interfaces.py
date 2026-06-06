@@ -1,6 +1,6 @@
 from typing import Protocol
 
-from remote_core.models.speech_sequence import SpeechSequence
+from interop.speech.speech_sequence import SpeechSequence
 
 
 class SpeechOutput(Protocol):

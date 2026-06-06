@@ -1,6 +1,6 @@
 from adapters.outputs.interfaces import SpeechOutput
 from application.speech_backends import SpeechBackendManager, SpeechBackendOption
-from remote_core.models.speech_sequence import SpeechSequence
+from interop.speech.speech_sequence import SpeechSequence
 
 
 class SpeechService:
