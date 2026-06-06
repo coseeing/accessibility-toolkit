@@ -1,4 +1,4 @@
-from remote_core.models.speech_sequence import SpeechSequence
+from interop.speech.speech_sequence import SpeechSequence
 from adapters.outputs.interfaces import SpeechOutput
 
 

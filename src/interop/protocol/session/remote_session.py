@@ -2,9 +2,9 @@ from collections.abc import Callable
 from enum import Enum
 from typing import Any
 
-from remote_core.connection_info import ConnectionInfo
-from remote_core.protocol import RemoteMessageType
-from remote_core.transport.base import Transport
+from interop.protocol.connection_info import ConnectionInfo
+from interop.protocol.messages import RemoteMessageType
+from interop.protocol.transport.base import Transport
 
 
 class RemoteSession:

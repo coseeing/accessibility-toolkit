@@ -5,7 +5,7 @@ from ctypes import wintypes
 from typing import Any
 
 from adapters.inputs.base import KeyEventDecision
-from remote_core.models.keys import KeyEvent
+from interop.key.key_event import KeyEvent
 
 
 WH_KEYBOARD_LL = 13
@@ -124,10 +124,7 @@ class WindowsKeyboardCapture:
                 extended=bool(data.flags & LLKHF_EXTENDED),
                 pressed=w_param in (WM_KEYDOWN, WM_SYSKEYDOWN),
             )
-            if decision in (
-                KeyEventDecision.FORWARD_AND_SUPPRESS,
-                KeyEventDecision.LOCAL_ONLY_SUPPRESS,
-            ):
+            if decision == KeyEventDecision.SUPPRESS:
                 return 1
         if self._user32 is None:
             return 0

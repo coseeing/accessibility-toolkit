@@ -9,16 +9,16 @@ from application.config import SpeechBackendConfigStore
 from application.speech_backends import SpeechBackendManager, SpeechBackendOption
 from application.services import OutputManager
 from adapters.windows.nvda_controller import NvdaControllerSpeechOutput
-from remote_core.models.speech_commands import (
+from interop.speech.speech_commands import (
     BreakCommand,
     PitchCommand,
     RateCommand,
     SpeechCommand,
     VolumeCommand,
 )
-from remote_core.models.speech_sequence import SpeechSequence
-from remote_core.routing.message_router import MessageRouter
-from remote_core.serializer import JSONSerializer
+from interop.speech.speech_sequence import SpeechSequence
+from interop.protocol.routing.message_router import MessageRouter
+from interop.protocol.serializer import JSONSerializer
 
 
 class FakeSpeechOutput:
@@ -512,14 +512,28 @@ def test_pyttsx3_backend_gracefully_handles_voice_enumeration_failure():
     assert output.list_voices() == ()
 
 
-def test_pyttsx3_backend_falls_back_to_raw_sapi_tokens_for_voices():
+def test_pyttsx3_backend_warns_without_traceback_when_voice_enumeration_fails(caplog):
+    engine = BrokenVoicesEngine()
+    output = Pyttsx3SpeechOutput(engine=engine, task_manager=FakeTaskManager())
+
+    with caplog.at_level("WARNING"):
+        assert output.list_voices() == ()
+
+    assert "no fallback voices were available" in caplog.text
+    assert "Traceback" not in caplog.text
+
+
+def test_pyttsx3_backend_falls_back_to_raw_sapi_tokens_for_voices(caplog):
     engine = BrokenVoicesEngineWithSapiFallback()
     output = Pyttsx3SpeechOutput(engine=engine, task_manager=FakeTaskManager())
 
-    assert output.list_voices() == (
-        ("HKEY_FAKE_1", "Voice One"),
-        ("HKEY_FAKE_2", "Voice Two"),
-    )
+    with caplog.at_level("WARNING"):
+        assert output.list_voices() == (
+            ("HKEY_FAKE_1", "Voice One"),
+            ("HKEY_FAKE_2", "Voice Two"),
+        )
+
+    assert caplog.text == ""
 
 
 def test_pyttsx3_speech_output_ignores_empty_sequence():

@@ -10,12 +10,14 @@ from adapters.windows.keyboard_hook import WindowsKeyboardCapture
 from adapters.windows.nvda_controller import NvdaControllerSpeechOutput
 from application.config import SpeechBackendConfigStore
 from application.keyboard import KeyboardInputService
+from application.output_scheduler import OutputScheduler
+from application.output_service import QueuedOutputService
 from application.speech_backends import SpeechBackendOption
 from application.speech_service import SpeechService
 from apps.nvda_remote.service import NvdaRemoteAppService
-from remote_core.serializer import JSONSerializer
-from remote_core.transport.relay import RelayTransport
-from ui.app import NvdaRemoteApp
+from interop.protocol.serializer import JSONSerializer
+from interop.protocol.transport.relay import RelayTransport
+from ui.nvda_remote.app import NvdaRemoteApp
 
 
 @dataclass(frozen=True)
@@ -25,7 +27,9 @@ class NvdaRemoteRuntime:
     input_capture: WindowsKeyboardCapture
     hotkey_capture: WindowsHotkeyCapture
     clipboard: WindowsClipboardService
+    output_scheduler: OutputScheduler
     speech_service: SpeechService
+    output_service: QueuedOutputService
     input_service: KeyboardInputService
     app_service: NvdaRemoteAppService
     app: NvdaRemoteApp
@@ -78,24 +82,29 @@ def configure_logging() -> Path:
         )
     return log_path
 
-def _default_backend_options() -> tuple[SpeechBackendOption, ...]:
+def _default_backend_options(
+    output_scheduler: OutputScheduler,
+) -> tuple[SpeechBackendOption, ...]:
     return (
         SpeechBackendOption(
             backend_id="nvda_controller",
             label="NVDA Controller",
-            factory=NvdaControllerSpeechOutput.load_default,
+            factory=lambda: NvdaControllerSpeechOutput.load_default(
+                scheduler=output_scheduler
+            ),
         ),
         SpeechBackendOption(
             backend_id="pyttsx3",
             label="pyttsx3",
-            factory=Pyttsx3SpeechOutput.load_default,
+            factory=lambda: Pyttsx3SpeechOutput.load_default(scheduler=output_scheduler),
         ),
     )
 
 
 def build_runtime() -> NvdaRemoteRuntime:
     config_store = SpeechBackendConfigStore(default_config_path())
-    backend_options = _default_backend_options()
+    output_scheduler = OutputScheduler()
+    backend_options = _default_backend_options(output_scheduler)
     selected_backend_id = config_store.load_backend_id(
         default_backend_id="nvda_controller"
     )
@@ -124,7 +133,7 @@ def build_runtime() -> NvdaRemoteRuntime:
         input_capture=input_capture,
         hotkey_capture=hotkey_capture,
         clipboard=clipboard,
-        speech=speech_service,
+        speech=QueuedOutputService(speech=speech_service, scheduler=output_scheduler),
         on_speech_backend_changed=config_store.save_backend_id,
         main_thread_dispatch=getattr(NvdaRemoteApp, "dispatch", None),
     )
@@ -138,7 +147,9 @@ def build_runtime() -> NvdaRemoteRuntime:
         input_capture=input_capture,
         hotkey_capture=hotkey_capture,
         clipboard=clipboard,
+        output_scheduler=output_scheduler,
         speech_service=speech_service,
+        output_service=app_service.speech,
         input_service=input_service,
         app_service=app_service,
         app=app,

@@ -1,8 +1,8 @@
 from collections.abc import Callable
 from typing import Any
 
-from remote_core.models.speech_sequence import SpeechSequence
-from remote_core.protocol import RemoteMessageType
+from interop.speech.speech_sequence import SpeechSequence
+from interop.protocol.messages import RemoteMessageType
 
 
 class MessageRouter:

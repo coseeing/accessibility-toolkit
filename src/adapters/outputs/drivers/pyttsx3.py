@@ -2,14 +2,14 @@ import logging
 import threading
 from typing import Any
 
-from adapters.task.task_manager import TaskManager
-from remote_core.models.speech_commands import (
+from application.output_scheduler import OutputScheduler
+from interop.speech.speech_commands import (
     BreakCommand,
     PitchCommand,
     RateCommand,
     VolumeCommand,
 )
-from remote_core.models.speech_sequence import SpeechSequence
+from interop.speech.speech_sequence import SpeechSequence
 
 
 logger = logging.getLogger(__name__)
@@ -22,12 +22,13 @@ class Pyttsx3SpeechOutput:
         *,
         engine_factory: Any | None = None,
         recreate_engine_per_utterance: bool = False,
-        task_manager: TaskManager | None = None,
+        scheduler: OutputScheduler | None = None,
+        task_manager: OutputScheduler | None = None,
     ) -> None:
         self._engine = engine
         self._engine_factory = engine_factory
         self._recreate_engine_per_utterance = recreate_engine_per_utterance
-        self._task_manager = task_manager or TaskManager()
+        self._scheduler = scheduler or task_manager or OutputScheduler()
         self._active_engine: Any | None = None
         self._lock = threading.Lock()
         self._voice_id: str | None = None
@@ -40,6 +41,7 @@ class Pyttsx3SpeechOutput:
         cls,
         *,
         engine_factory: Any | None = None,
+        scheduler: OutputScheduler | None = None,
     ) -> "Pyttsx3SpeechOutput":
         if engine_factory is None:
             from pyttsx3.engine import Engine
@@ -50,19 +52,20 @@ class Pyttsx3SpeechOutput:
             engine=None,
             engine_factory=engine_factory,
             recreate_engine_per_utterance=True,
+            scheduler=scheduler,
         )
 
     def speak(self, sequence: SpeechSequence) -> None:
         logger.debug("pyttsx3 speak requested: items=%d", len(sequence.items))
         for item in sequence.items:
             if isinstance(item, str) and item:
-                self._task_manager.add_speak_task(
+                self._scheduler.add_speak_task(
                     self,
                     lambda text=item: self._speak_text(text),
                 )
                 continue
             if isinstance(item, BreakCommand):
-                self._task_manager.add_break_task(self, item.time / 1000.0)
+                self._scheduler.add_break_task(self, item.time / 1000.0)
                 continue
             if isinstance(item, PitchCommand):
                 self._pitch = item.offset
@@ -74,7 +77,7 @@ class Pyttsx3SpeechOutput:
                 self._volume = int(item.multiplier * 100)
 
     def cancel(self) -> None:
-        self._task_manager.cancel()
+        self._scheduler.cancel_all()
         logger.debug("pyttsx3 stop requested")
 
     def stop(self) -> None:
@@ -93,9 +96,19 @@ class Pyttsx3SpeechOutput:
         engine = self._acquire_engine()
         try:
             voices = getattr(engine, "getProperty", lambda _name: [])("voices")
-        except Exception:
-            logger.exception("pyttsx3 failed to enumerate voices")
-            return self._list_voices_from_engine_fallback(engine)
+        except Exception as error:
+            fallback_voices = self._list_voices_from_engine_fallback(engine)
+            if fallback_voices:
+                logger.debug(
+                    "pyttsx3 voice enumeration fell back to raw SAPI tokens: %s",
+                    error,
+                )
+                return fallback_voices
+            logger.warning(
+                "pyttsx3 voice enumeration failed and no fallback voices were available: %s",
+                error,
+            )
+            return ()
         available: list[tuple[str, str]] = []
         for voice in voices:
             voice_id = getattr(voice, "id", None)
@@ -186,5 +199,5 @@ class Pyttsx3SpeechOutput:
                 available.append((voice_id, voice_name))
             return tuple(available)
         except Exception:
-            logger.exception("pyttsx3 fallback voice enumeration failed")
+            logger.debug("pyttsx3 fallback voice enumeration failed", exc_info=True)
             return ()

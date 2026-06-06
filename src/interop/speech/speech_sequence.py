@@ -1,7 +1,7 @@
 import logging
 from dataclasses import dataclass
 
-from remote_core.models.speech_commands import (
+from interop.speech.speech_commands import (
     SpeechCommand,
     restore_speech_command,
 )

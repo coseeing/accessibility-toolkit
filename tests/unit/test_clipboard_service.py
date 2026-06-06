@@ -1,7 +1,7 @@
 from adapters.windows.clipboard import WindowsClipboardService
 from adapters.windows.nvda_controller import NvdaControllerSpeechOutput
-from remote_core.models.speech_commands import BreakCommand
-from remote_core.models.speech_sequence import SpeechSequence
+from interop.speech.speech_commands import BreakCommand
+from interop.speech.speech_sequence import SpeechSequence
 
 
 def test_windows_clipboard_service_round_trip(monkeypatch):

@@ -4,13 +4,14 @@ import logging
 import sys
 from typing import Any
 
-from remote_core.models.speech_commands import (
+from application.output_scheduler import OutputScheduler
+from interop.speech.speech_commands import (
     BreakCommand,
     PitchCommand,
     RateCommand,
     VolumeCommand,
 )
-from remote_core.models.speech_sequence import SpeechSequence
+from interop.speech.speech_sequence import SpeechSequence
 from runtime_paths import resource_path
 
 
@@ -21,10 +22,17 @@ CANCEL_SPEECH_FUNCTION = "nvdaController_cancelSpeech"
 
 
 class NvdaControllerSpeechOutput:
-    def __init__(self, controller: Any | None, *, loaded_from: str | None = None) -> None:
+    def __init__(
+        self,
+        controller: Any | None,
+        *,
+        loaded_from: str | None = None,
+        scheduler: OutputScheduler | None = None,
+    ) -> None:
         self.controller = controller if self._supports_ssml(controller) else None
         self.available = self.controller is not None
         self.loaded_from = loaded_from
+        self._scheduler = scheduler
         self._rate = 100
         self._pitch = 100
         self._volume = 100
@@ -35,11 +43,12 @@ class NvdaControllerSpeechOutput:
         *,
         loader: Any | None = None,
         is_windows: bool | None = None,
+        scheduler: OutputScheduler | None = None,
     ) -> "NvdaControllerSpeechOutput":
         running_windows = sys.platform == "win32" if is_windows is None else is_windows
         if not running_windows:
             logger.debug("NVDA controller unavailable: not running on Windows")
-            return cls(controller=None)
+            return cls(controller=None, scheduler=scheduler)
         if loader is None:
             loader = ctypes.WinDLL
         candidate = str(resource_path(VENDORED_X64_DLL))
@@ -51,13 +60,13 @@ class NvdaControllerSpeechOutput:
                     candidate,
                     SPEAK_SSML_FUNCTION,
                 )
-                return cls(controller=None)
+                return cls(controller=None, scheduler=scheduler)
             logger.debug("Loaded NVDA controller DLL from %s", candidate)
-            return cls(controller=controller, loaded_from=candidate)
+            return cls(controller=controller, loaded_from=candidate, scheduler=scheduler)
         except OSError as error:
             logger.debug("Failed to load NVDA controller DLL from %s: %s", candidate, error)
         logger.warning("NVDA controller DLL could not be loaded from vendored path")
-        return cls(controller=None)
+        return cls(controller=None, scheduler=scheduler)
 
     @staticmethod
     def _supports_ssml(controller: Any | None) -> bool:
@@ -78,6 +87,12 @@ class NvdaControllerSpeechOutput:
         if not ssml:
             logger.debug("NVDA controller speech SSML is empty; speak skipped")
             return
+        if self._scheduler is None:
+            self._speak_ssml(ssml)
+            return
+        self._scheduler.schedule(self, lambda: self._speak_ssml(ssml))
+
+    def _speak_ssml(self, ssml: str) -> None:
         try:
             result = getattr(self.controller, SPEAK_SSML_FUNCTION)(ssml, 0, 0, True)
             logger.debug("NVDA controller speakSsml returned %r", result)
@@ -85,6 +100,11 @@ class NvdaControllerSpeechOutput:
             logger.exception("NVDA controller speech call raised an exception")
 
     def cancel(self) -> None:
+        if self._scheduler is not None:
+            self._scheduler.cancel_all()
+        self.stop()
+
+    def stop(self) -> None:
         if self.available:
             try:
                 result = getattr(self.controller, CANCEL_SPEECH_FUNCTION)()

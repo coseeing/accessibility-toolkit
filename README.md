@@ -84,17 +84,23 @@ The NVDA Remote app is wired to:
 
 The key echo demo is wired to:
 
-- create a single-backend `SpeechService`
+- create a `SpeechService` with `pyttsx3` and `NVDA Controller` backend options
 - create a `KeyEchoAppService`
 - use `WindowsKeyboardCapture`
-- keep the process alive with a Windows message pump so the low-level hook can receive events
+- open a dedicated `wxPython` window with `Start` / `Stop` control and speech settings
 
 ## Package
 
-Build a Windows executable with `PyInstaller`:
+Build the NVDA Remote GUI as a Windows executable with `PyInstaller`:
 
 ```bash
 pyinstaller --name nvda-remote-client --windowed --onefile --paths src --add-binary "src/adapters/windows/vendor/nvda/x64/nvdaControllerClient.dll;adapters/windows/vendor/nvda/x64" --collect-submodules pyttsx3 src/apps/nvda_remote/main.py
+```
+
+Build the key echo demo as a Windows executable with:
+
+```bash
+pyinstaller --name key-echo-demo --windowed --onefile --paths src --add-binary "src/adapters/windows/vendor/nvda/x64/nvdaControllerClient.dll;adapters/windows/vendor/nvda/x64" --collect-submodules pyttsx3 src/apps/key_echo/main.py
 ```
 
 The packaged output will be written under:

@@ -2,13 +2,12 @@ from collections.abc import Callable
 from enum import StrEnum
 from typing import Protocol
 
-from remote_core.models.keys import KeyEvent
+from interop.key.key_event import KeyEvent
 
 
 class KeyEventDecision(StrEnum):
     PASS_THROUGH = "pass_through"
-    FORWARD_AND_SUPPRESS = "forward_and_suppress"
-    LOCAL_ONLY_SUPPRESS = "local_only_suppress"
+    SUPPRESS = "suppress"
 
 
 class InputCapture(Protocol):

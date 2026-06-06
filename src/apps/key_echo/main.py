@@ -1,12 +1,14 @@
 from dataclasses import dataclass
-import ctypes
-import sys
-from ctypes import wintypes
+from typing import Any
 
 from adapters.outputs.drivers.pyttsx3 import Pyttsx3SpeechOutput
 from adapters.windows.keyboard_hook import WindowsKeyboardCapture
+from adapters.windows.nvda_controller import NvdaControllerSpeechOutput
 from application.keyboard import KeyboardInputService
 from application.output_capabilities import OutputCapabilities
+from application.output_scheduler import OutputScheduler
+from application.output_service import QueuedOutputService
+from application.speech_backends import SpeechBackendOption
 from application.speech_service import SpeechService
 from apps.key_echo.service import KeyEchoAppService
 
@@ -14,64 +16,64 @@ from apps.key_echo.service import KeyEchoAppService
 @dataclass(frozen=True)
 class KeyEchoRuntime:
     capture: WindowsKeyboardCapture
+    output_scheduler: OutputScheduler
     speech_service: SpeechService
+    output_service: QueuedOutputService
     input_service: KeyboardInputService
     app_service: KeyEchoAppService
-
-
-class MSG(ctypes.Structure):
-    _fields_ = [
-        ("hwnd", wintypes.HWND),
-        ("message", wintypes.UINT),
-        ("wParam", wintypes.WPARAM),
-        ("lParam", wintypes.LPARAM),
-        ("time", wintypes.DWORD),
-        ("pt_x", ctypes.c_long),
-        ("pt_y", ctypes.c_long),
-        ("lPrivate", wintypes.DWORD),
-    ]
-
-
-def _pump_windows_messages() -> None:
-    if sys.platform != "win32":
-        raise RuntimeError("Key echo message pump requires Windows")
-
-    user32 = ctypes.windll.user32
-    message = MSG()
-    get_message = user32.GetMessageW
-    translate_message = user32.TranslateMessage
-    dispatch_message = user32.DispatchMessageW
-
-    while True:
-        result = int(get_message(ctypes.byref(message), None, 0, 0))
-        if result == -1:
-            raise RuntimeError("Windows message pump failed")
-        if result == 0:
-            return
-        translate_message(ctypes.byref(message))
-        dispatch_message(ctypes.byref(message))
+    app: Any
 
 
 def build_runtime() -> KeyEchoRuntime:
+    from ui.echo.app import EchoApp
+
     capture = WindowsKeyboardCapture()
-    speech_service = SpeechService.single_backend(Pyttsx3SpeechOutput.load_default())
-    app_service = KeyEchoAppService(outputs=OutputCapabilities(speech=speech_service))
+    output_scheduler = OutputScheduler()
+    speech_service = SpeechService(
+        backend_options=(
+            SpeechBackendOption(
+                backend_id="pyttsx3",
+                label="pyttsx3",
+                factory=lambda: Pyttsx3SpeechOutput.load_default(
+                    scheduler=output_scheduler
+                ),
+            ),
+            SpeechBackendOption(
+                backend_id="nvda_controller",
+                label="NVDA Controller",
+                factory=lambda: NvdaControllerSpeechOutput.load_default(
+                    scheduler=output_scheduler
+                ),
+            ),
+        ),
+        selected_backend_id="pyttsx3",
+    )
+    output_service = QueuedOutputService(
+        speech=speech_service,
+        scheduler=output_scheduler,
+    )
+    app_service = KeyEchoAppService(
+        outputs=OutputCapabilities(speech=output_service),
+    )
     input_service = KeyboardInputService(capture, app_service)
+    input_service.bind()
+    app_service.attach_input_service(input_service)
+    app = EchoApp(controller=app_service)
     return KeyEchoRuntime(
         capture=capture,
+        output_scheduler=output_scheduler,
         speech_service=speech_service,
+        output_service=output_service,
         input_service=input_service,
         app_service=app_service,
+        app=app,
     )
 
 
 def main() -> int:
     runtime = build_runtime()
-    runtime.input_service.start()
-    try:
-        _pump_windows_messages()
-    except KeyboardInterrupt:
-        pass
-    finally:
-        runtime.input_service.stop()
-    return 0
+    return runtime.app.MainLoop()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

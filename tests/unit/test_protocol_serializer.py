@@ -1,17 +1,17 @@
 import pytest
 
-from remote_core.connection_info import ConnectionInfo, ConnectionMode
-from remote_core.models.keys import KeyEvent
-from remote_core.models.speech_commands import (
+from interop.protocol.connection_info import ConnectionInfo, ConnectionMode
+from interop.key.key_event import KeyEvent
+from interop.speech.speech_commands import (
     BreakCommand,
     PitchCommand,
     RateCommand,
     SpeechCommand,
     VolumeCommand,
 )
-from remote_core.models.speech_sequence import SpeechSequence
-from remote_core.protocol import RemoteMessageType, address_to_host_port
-from remote_core.serializer import JSONSerializer
+from interop.speech.speech_sequence import SpeechSequence
+from interop.protocol.messages import RemoteMessageType, address_to_host_port
+from interop.protocol.serializer import JSONSerializer
 
 
 def test_serializer_imports_are_available():

@@ -3,15 +3,15 @@ from typing import Any
 
 from adapters.inputs.base import HotkeyCapture, InputCapture, KeyEventDecision
 from application.keyboard import KeyEventHandler
-from application.speech_service import SpeechService
+from application.output_service import SpeechOutputService
 from application.services import ClipboardService
 from application.state import ConnectionState, ControlState, RuntimeState
-from remote_core.connection_info import ConnectionInfo
-from remote_core.models.keys import KeyEvent
-from remote_core.protocol import RemoteMessageType
-from remote_core.routing.message_router import MessageRouter
-from remote_core.session.remote_session import RemoteSession
-from remote_core.transport.base import Transport
+from interop.protocol.connection_info import ConnectionInfo
+from interop.key.key_event import KeyEvent
+from interop.protocol.messages import RemoteMessageType
+from interop.protocol.routing.message_router import MessageRouter
+from interop.protocol.session.remote_session import RemoteSession
+from interop.protocol.transport.base import Transport
 
 
 class NvdaRemoteAppService(KeyEventHandler):
@@ -24,7 +24,7 @@ class NvdaRemoteAppService(KeyEventHandler):
         input_capture: InputCapture,
         hotkey_capture: HotkeyCapture,
         clipboard: ClipboardService,
-        speech: SpeechService,
+        speech: SpeechOutputService,
         on_speech_backend_changed: Callable[[str], None] | None = None,
         main_thread_dispatch: Callable[[Callable[[], None]], None] | None = None,
     ) -> None:
@@ -138,10 +138,14 @@ class NvdaRemoteAppService(KeyEventHandler):
     def set_volume(self, value: int) -> None:
         self.speech.set_volume(value)
 
+    def shutdown(self) -> None:
+        self.disconnect()
+        self.speech.shutdown()
+
     def handle_key_event(self, event: KeyEvent) -> KeyEventDecision:
         if not event.pressed and event.vk in self._suppressed_keyups:
             self._suppressed_keyups.discard(event.vk)
-            return KeyEventDecision.LOCAL_ONLY_SUPPRESS
+            return KeyEventDecision.SUPPRESS
         if self.state.connection_state == ConnectionState.IDLE:
             return KeyEventDecision.PASS_THROUGH
         if (
@@ -151,11 +155,11 @@ class NvdaRemoteAppService(KeyEventHandler):
             if event.pressed:
                 self.stop_control()
                 self._suppressed_keyups.add(event.vk)
-            return KeyEventDecision.LOCAL_ONLY_SUPPRESS
+            return KeyEventDecision.SUPPRESS
         if self.state.control_state != ControlState.CONTROLLING:
             return KeyEventDecision.PASS_THROUGH
         self.transport.send(RemoteMessageType.KEY, **event.to_remote_payload())
-        return KeyEventDecision.FORWARD_AND_SUPPRESS
+        return KeyEventDecision.SUPPRESS
 
     def _handle_transport_message(self, payload: dict[str, Any]) -> None:
         if self.session.handle_message(payload):

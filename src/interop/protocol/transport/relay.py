@@ -6,7 +6,7 @@ from collections.abc import Callable
 from enum import Enum
 from typing import Any
 
-from remote_core.serializer import JSONSerializer
+from interop.protocol.serializer import JSONSerializer
 
 
 logger = logging.getLogger(__name__)
