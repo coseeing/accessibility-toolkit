@@ -422,3 +422,24 @@ def test_macos_hotkey_capture_stop_preserves_active_keyboard_capture():
     assert backend.stop_calls == 0
     assert decision == KeyEventDecision.SUPPRESS
     assert seen == [KeyEvent(vk=0x41, scan=0, extended=False, pressed=True)]
+
+
+def test_event_tap_manager_reenables_tap_after_disable_signal():
+    backend = FakeQuartzBackend()
+    manager = MacOSEventTapManager(
+        permissions=FakePermissions(),
+        backend=backend,
+        start_thread=False,
+    )
+    manager.start()
+
+    manager.handle_tap_disabled()
+
+    assert backend.enabled == [(backend.tap, True), (backend.tap, True)]
+
+
+def test_accessibility_permissions_prompt_key_error_is_clear():
+    permissions = AccessibilityPermissions(checker=lambda options: True)
+
+    with pytest.raises(RuntimeError, match="Prompt key is required when prompt=True"):
+        permissions.is_trusted(prompt=True)
