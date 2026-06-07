@@ -125,6 +125,8 @@ class MainFrame(wx.Frame, SpeechControlsMixin):
         self.clipboard_button.Enable(self._is_connected() and clipboard_available)
 
     def _on_controller_status(self, _status) -> None:
+        if _status.get("kind") == "error" and _status.get("message"):
+            self._show_error(_status["message"], "Input Error")
         self._sync_connect_button_label()
         self._sync_control_button()
         self._sync_connection_fields()
