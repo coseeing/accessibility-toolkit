@@ -54,7 +54,7 @@ KEYCODE_TO_VK: dict[int, int] = {
     50: 0xC0,  # Grave
     51: 0x08,  # Backspace
     53: 0x1B,  # Escape
-    54: 0x11,  # RightCommand
+    54: 0x5C,  # RightCommand
     55: 0x5B,  # LeftCommand
     56: 0x10,  # LeftShift
     57: 0x14,  # CapsLock
