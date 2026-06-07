@@ -15,15 +15,15 @@ The repository currently includes:
   - low-level keyboard hook setup
   - clipboard access
   - vendored NVDA controller client DLL loading path
-- macOS adapter implementations for:
-  - Quartz event-tap based keyboard capture via `PyObjC`
-  - `F11` hotkey capture for control toggling
+- macOS adapter scaffolding for:
+  - Quartz event-tap keyboard capture integration via `PyObjC` seams
+  - `F11` hotkey capture/control toggling adapters
 - A `wxPython` GUI shell
 - Unit and integration tests for the core contracts and adapter behavior
 
 What has been implemented in code has been manually validated on a real Windows machine. Real end-to-end relay compatibility, Windows UI behavior, keyboard hook behavior, clipboard updates, and NVDA speech output have been verified in that environment.
 
-The current macOS scope is narrower. The macOS path is limited to global keyboard capture plus `F11` control toggling, and it requires Quartz event taps exposed through `PyObjC`. Clipboard integration and NVDA controller integration remain Windows-specific.
+The current macOS scope is narrower. The macOS path is limited to global keyboard capture plus `F11` control toggling, and it is being built around Quartz event taps exposed through `PyObjC`. The adapter layer and runtime requirements are in place, but the full Quartz backend wiring is not complete yet. Clipboard integration and NVDA controller integration remain Windows-specific.
 
 ## Project Layout
 
@@ -152,7 +152,7 @@ At the time of writing, the suite includes both unit and integration coverage fo
 
 - The relay transport now includes TCP/TLS socket framing logic and buffered newline-delimited message parsing.
 - Session state moves to `connected` only after `channel_joined` is received.
-- The Windows keyboard hook, macOS Quartz event tap capture, clipboard backend, and NVDA controller DLL path are implemented behind adapters so `remote_core` stays free of `wx`, Win32, Quartz, and DLL-specific imports.
+- The Windows keyboard hook, macOS adapter/event-tap seam, clipboard backend, and NVDA controller DLL path are implemented behind adapters so `remote_core` stays free of `wx`, Win32, Quartz, and DLL-specific imports.
 - The vendored controller client DLL was taken from NVDA official controller client release zip and stored at `src/adapters/windows/vendor/nvda/x64/nvdaControllerClient.dll`.
 - Remote `speak` payloads are deserialized into local speech command objects before routing, then carried through as full speech sequences to the active speech backend.
 - The `pyttsx3` backend now schedules real breaks from remote `BreakCommand` items and applies rate, pitch, volume, and voice selection on a best-effort basis.
