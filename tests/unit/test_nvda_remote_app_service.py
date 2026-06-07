@@ -211,18 +211,21 @@ def test_nvda_remote_service_uses_f11_as_local_stop():
 
 
 def test_nvda_remote_service_start_control_reports_capture_start_errors():
-    service, _transport, capture, _hotkey, _dispatch_calls = build_service()
+    service, _transport, capture, hotkey, _dispatch_calls = build_service()
     service.bind()
     delivered = []
     service.set_status_listener(delivered.append)
     service.state.connection_state = service.state.connection_state.CONNECTED
     service.state.control_state = service.state.control_state.CONNECTED
+    hotkey.running = True
     capture.start_error = RuntimeError("capture unavailable")
 
     service.start_control()
 
     assert service.state.control_state == service.state.control_state.CONNECTED
     assert delivered[-1] == {"kind": "error", "message": "capture unavailable"}
+    assert hotkey.started == 1
+    assert hotkey.running is True
 
 
 def test_nvda_remote_service_routes_remote_speech_commands_into_speech_facade():

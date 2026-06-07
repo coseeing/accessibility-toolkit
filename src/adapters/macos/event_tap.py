@@ -76,8 +76,10 @@ class MacOSEventTapManager:
         if self._running:
             return
         if not self._permissions.is_trusted(prompt=False):
+            self._permissions.is_trusted(prompt=True)
             raise RuntimeError("macOS accessibility permission is required")
         if not self._permissions.has_listen_event_access(prompt=False):
+            self._permissions.has_listen_event_access(prompt=True)
             raise RuntimeError("macOS input monitoring permission is required")
         try:
             self._tap = self._backend.create_event_tap(self.handle_raw_event)

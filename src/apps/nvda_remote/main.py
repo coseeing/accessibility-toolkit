@@ -121,6 +121,10 @@ class _UnavailableMacOSPermissions:
         del prompt
         raise RuntimeError("macOS accessibility permission wiring is unavailable")
 
+    def has_listen_event_access(self, *, prompt: bool = False) -> bool:
+        del prompt
+        raise RuntimeError("macOS input monitoring permission wiring is unavailable")
+
 
 class _UnsupportedClipboardService:
     """Safe clipboard fallback for platforms without an implemented adapter."""

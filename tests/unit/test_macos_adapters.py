@@ -37,6 +37,19 @@ def test_accessibility_permissions_passes_prompt_option():
     assert called == [{"prompt-key": True}]
 
 
+def test_accessibility_permissions_requests_listen_event_access_when_prompted():
+    listen_calls = []
+
+    permissions = AccessibilityPermissions(
+        checker=lambda _options: True,
+        listen_checker=lambda: False,
+        listen_requester=lambda: listen_calls.append("requested") or True,
+    )
+
+    assert permissions.has_listen_event_access(prompt=True) is True
+    assert listen_calls == ["requested"]
+
+
 def test_key_event_from_macos_maps_letter_keydown():
     event = key_event_from_macos(key_code=0, pressed=True, is_repeat=False)
 
@@ -104,18 +117,30 @@ def test_keycode_table_contains_f11_mapping():
 
 
 class FakePermissions:
-    def __init__(self, trusted=True, listen_trusted=True):
+    def __init__(
+        self,
+        trusted=True,
+        listen_trusted=True,
+        prompt_result=True,
+        listen_prompt_result=True,
+    ):
         self.trusted = trusted
         self.listen_trusted = listen_trusted
+        self.prompt_result = prompt_result
+        self.listen_prompt_result = listen_prompt_result
         self.calls = []
         self.listen_calls = []
 
     def is_trusted(self, *, prompt=False):
         self.calls.append(prompt)
+        if prompt:
+            return self.prompt_result
         return self.trusted
 
     def has_listen_event_access(self, *, prompt=False):
         self.listen_calls.append(prompt)
+        if prompt:
+            return self.listen_prompt_result
         return self.listen_trusted
 
 
@@ -198,25 +223,29 @@ class FakeThread:
 
 
 def test_event_tap_manager_requires_accessibility_permission():
+    permissions = FakePermissions(trusted=False, prompt_result=False)
     manager = MacOSEventTapManager(
-        permissions=FakePermissions(trusted=False),
+        permissions=permissions,
         backend=FakeQuartzBackend(),
         start_thread=False,
     )
 
     with pytest.raises(RuntimeError, match="macOS accessibility permission is required"):
         manager.start()
+    assert permissions.calls == [False, True]
 
 
 def test_event_tap_manager_requires_input_monitoring_permission():
+    permissions = FakePermissions(listen_trusted=False, listen_prompt_result=False)
     manager = MacOSEventTapManager(
-        permissions=FakePermissions(listen_trusted=False),
+        permissions=permissions,
         backend=FakeQuartzBackend(),
         start_thread=False,
     )
 
     with pytest.raises(RuntimeError, match="macOS input monitoring permission is required"):
         manager.start()
+    assert permissions.listen_calls == [False, True]
 
 
 def test_event_tap_manager_starts_backend_once():
