@@ -261,3 +261,51 @@ def test_event_tap_manager_stop_releases_resources():
 
     assert backend.stop_calls == 1
     assert backend.released == [backend.source, backend.tap]
+
+
+class FakeManager:
+    def __init__(self):
+        self.listener = None
+        self.running = False
+        self.started = 0
+        self.stopped = 0
+
+    def set_keyboard_listener(self, listener):
+        self.listener = listener
+
+    def start(self):
+        self.started += 1
+        self.running = True
+
+    def stop(self):
+        self.stopped += 1
+        self.running = False
+
+
+def test_macos_keyboard_capture_binds_listener_and_translates_event():
+    from adapters.macos.keyboard_hook import MacOSKeyboardCapture
+
+    manager = FakeManager()
+    capture = MacOSKeyboardCapture(manager=manager)
+    seen = []
+    capture.set_listener(lambda event: seen.append(event) or KeyEventDecision.SUPPRESS)
+
+    capture.start()
+    decision = manager.listener(RawMacKeyEvent(key_code=0, pressed=True, is_repeat=False))
+
+    assert decision == KeyEventDecision.SUPPRESS
+    assert seen == [KeyEvent(vk=0x41, scan=0, extended=False, pressed=True)]
+
+
+def test_macos_keyboard_capture_proxies_lifecycle():
+    from adapters.macos.keyboard_hook import MacOSKeyboardCapture
+
+    manager = FakeManager()
+    capture = MacOSKeyboardCapture(manager=manager)
+
+    capture.start()
+    capture.stop()
+
+    assert manager.started == 1
+    assert manager.stopped == 1
+    assert capture.running is False
