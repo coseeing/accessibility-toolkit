@@ -122,6 +122,16 @@ class _UnavailableMacOSPermissions:
         raise RuntimeError("macOS accessibility permission wiring is unavailable")
 
 
+class _UnsupportedClipboardService:
+    """Safe clipboard fallback for platforms without an implemented adapter."""
+
+    def set_text(self, text: str) -> None:
+        del text
+
+    def get_text(self) -> str:
+        return ""
+
+
 def _build_macos_event_tap_manager() -> Any:
     if (
         MacOSEventTapManager is None
@@ -159,6 +169,12 @@ def _build_input_adapters() -> tuple[InputCapture, HotkeyCapture]:
     return WindowsKeyboardCapture(), WindowsHotkeyCapture()
 
 
+def _build_clipboard_service() -> ClipboardService:
+    if sys.platform == "win32":
+        return WindowsClipboardService()
+    return _UnsupportedClipboardService()
+
+
 def build_runtime() -> NvdaRemoteRuntime:
     config_store = SpeechBackendConfigStore(default_config_path())
     output_scheduler = OutputScheduler()
@@ -184,7 +200,7 @@ def build_runtime() -> NvdaRemoteRuntime:
 
     transport = RelayTransport(JSONSerializer())
     input_capture, hotkey_capture = _build_input_adapters()
-    clipboard = WindowsClipboardService()
+    clipboard = _build_clipboard_service()
     app_service = NvdaRemoteAppService(
         transport=transport,
         input_capture=input_capture,

@@ -49,9 +49,20 @@ def test_key_event_from_macos_maps_f11_keyup():
     assert event == KeyEvent(vk=0x7A, scan=103, extended=False, pressed=False)
 
 
-def test_key_event_from_macos_rejects_unknown_key_code():
-    with pytest.raises(KeyError, match="Unsupported macOS key code 999"):
-        key_event_from_macos(key_code=999, pressed=True, is_repeat=False)
+def test_key_event_from_macos_maps_common_digit_key():
+    event = key_event_from_macos(key_code=18, pressed=True, is_repeat=False)
+
+    assert event == KeyEvent(vk=0x31, scan=18, extended=False, pressed=True)
+
+
+def test_key_event_from_macos_maps_common_modifier_key():
+    event = key_event_from_macos(key_code=56, pressed=True, is_repeat=False)
+
+    assert event == KeyEvent(vk=0x10, scan=56, extended=False, pressed=True)
+
+
+def test_key_event_from_macos_returns_none_for_unknown_key_code():
+    assert key_event_from_macos(key_code=999, pressed=True, is_repeat=False) is None
 
 
 def test_keycode_table_contains_f11_mapping():
@@ -104,6 +115,28 @@ class FakeQuartzBackend:
     def release(self, value):
         self.actions.append(("release", value))
         self.released.append(value)
+
+
+class FailingQuartzBackend(FakeQuartzBackend):
+    def __init__(self, *, fail_step):
+        super().__init__()
+        self.fail_step = fail_step
+
+    def create_run_loop_source(self, tap):
+        source = super().create_run_loop_source(tap)
+        if self.fail_step == "create_run_loop_source":
+            raise RuntimeError("run loop source failed")
+        return source
+
+    def add_source(self, source):
+        super().add_source(source)
+        if self.fail_step == "add_source":
+            raise RuntimeError("add source failed")
+
+    def enable_tap(self, tap, enabled):
+        super().enable_tap(tap, enabled)
+        if self.fail_step == "enable_tap":
+            raise RuntimeError("enable tap failed")
 
 
 class FakeThread:
@@ -263,6 +296,21 @@ def test_event_tap_manager_stop_releases_resources():
     assert backend.released == [backend.source, backend.tap]
 
 
+def test_event_tap_manager_start_releases_created_resources_on_partial_failure():
+    backend = FailingQuartzBackend(fail_step="enable_tap")
+    manager = MacOSEventTapManager(
+        permissions=FakePermissions(),
+        backend=backend,
+        start_thread=False,
+    )
+
+    with pytest.raises(RuntimeError, match="enable tap failed"):
+        manager.start()
+
+    assert backend.released == [backend.source, backend.tap]
+    assert manager.running is False
+
+
 class FakeManager:
     def __init__(self):
         self.listener = None
@@ -302,6 +350,40 @@ def test_macos_keyboard_capture_binds_listener_and_translates_event():
 
     assert decision == KeyEventDecision.SUPPRESS
     assert seen == [KeyEvent(vk=0x41, scan=0, extended=False, pressed=True)]
+
+
+def test_macos_keyboard_capture_translates_common_digit_key():
+    from adapters.macos.keyboard_hook import MacOSKeyboardCapture
+
+    manager = FakeManager()
+    capture = MacOSKeyboardCapture(manager=manager)
+    seen = []
+    capture.set_listener(lambda event: seen.append(event) or KeyEventDecision.SUPPRESS)
+
+    capture.start()
+    decision = manager.listener(
+        RawMacKeyEvent(key_code=18, pressed=True, is_repeat=False)
+    )
+
+    assert decision == KeyEventDecision.SUPPRESS
+    assert seen == [KeyEvent(vk=0x31, scan=18, extended=False, pressed=True)]
+
+
+def test_macos_keyboard_capture_ignores_unsupported_key_code():
+    from adapters.macos.keyboard_hook import MacOSKeyboardCapture
+
+    manager = FakeManager()
+    capture = MacOSKeyboardCapture(manager=manager)
+    seen = []
+    capture.set_listener(lambda event: seen.append(event) or KeyEventDecision.SUPPRESS)
+
+    capture.start()
+    decision = manager.listener(
+        RawMacKeyEvent(key_code=999, pressed=True, is_repeat=False)
+    )
+
+    assert decision == KeyEventDecision.PASS_THROUGH
+    assert seen == []
 
 
 def test_macos_keyboard_capture_proxies_lifecycle():
