@@ -77,10 +77,14 @@ class MacOSEventTapManager:
             return
         if not self._permissions.is_trusted(prompt=False):
             raise RuntimeError("macOS accessibility permission is required")
-        self._tap = self._backend.create_event_tap(self.handle_raw_event)
-        self._source = self._backend.create_run_loop_source(self._tap)
-        self._backend.add_source(self._source)
-        self._backend.enable_tap(self._tap, True)
+        try:
+            self._tap = self._backend.create_event_tap(self.handle_raw_event)
+            self._source = self._backend.create_run_loop_source(self._tap)
+            self._backend.add_source(self._source)
+            self._backend.enable_tap(self._tap, True)
+        except Exception:
+            self._release_startup_resources()
+            raise
         self._running = True
         if self._start_thread:
             self._thread = threading.Thread(
@@ -105,6 +109,16 @@ class MacOSEventTapManager:
         self._suppressed_keyups.clear()
         self._source = None
         self._tap = None
+        self._thread = None
+        self._running = False
+
+    def _release_startup_resources(self) -> None:
+        if self._source is not None:
+            self._backend.release(self._source)
+            self._source = None
+        if self._tap is not None:
+            self._backend.release(self._tap)
+            self._tap = None
         self._thread = None
         self._running = False
 
