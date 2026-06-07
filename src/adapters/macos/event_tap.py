@@ -100,7 +100,7 @@ class MacOSEventTapManager:
         if self._has_active_registrations():
             return
         self._backend.run_loop_stop()
-        if self._thread is not None:
+        if self._thread is not None and self._thread is not threading.current_thread():
             self._thread.join()
         if self._source is not None:
             self._backend.release(self._source)

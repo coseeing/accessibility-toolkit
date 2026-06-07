@@ -63,7 +63,24 @@ KEYCODE_TO_VK: dict[int, int] = {
     60: 0x10,  # RightShift
     61: 0x12,  # RightOption
     62: 0x11,  # RightControl
+    65: 0x6E,  # KeypadDecimal
+    67: 0x6A,  # KeypadMultiply
+    69: 0x6B,  # KeypadPlus
+    71: 0x0C,  # KeypadClear
+    75: 0x6F,  # KeypadDivide
     76: 0x0D,  # NumpadEnter
+    78: 0x6D,  # KeypadMinus
+    81: 0xBB,  # KeypadEquals
+    82: 0x60,  # Keypad0
+    83: 0x61,  # Keypad1
+    84: 0x62,  # Keypad2
+    85: 0x63,  # Keypad3
+    86: 0x64,  # Keypad4
+    87: 0x65,  # Keypad5
+    88: 0x66,  # Keypad6
+    89: 0x67,  # Keypad7
+    91: 0x68,  # Keypad8
+    92: 0x69,  # Keypad9
     96: 0x74,  # F5
     97: 0x75,  # F6
     98: 0x76,  # F7

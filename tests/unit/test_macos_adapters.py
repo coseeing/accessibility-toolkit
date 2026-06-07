@@ -79,6 +79,18 @@ def test_key_event_from_macos_maps_navigation_key_with_extended_flag():
     assert event == KeyEvent(vk=0x22, scan=121, extended=True, pressed=False)
 
 
+def test_key_event_from_macos_maps_keypad_digit_key():
+    event = key_event_from_macos(key_code=82, pressed=True, is_repeat=False)
+
+    assert event == KeyEvent(vk=0x60, scan=82, extended=False, pressed=True)
+
+
+def test_key_event_from_macos_maps_keypad_operator_key():
+    event = key_event_from_macos(key_code=75, pressed=False, is_repeat=False)
+
+    assert event == KeyEvent(vk=0x6F, scan=75, extended=False, pressed=False)
+
+
 def test_key_event_from_macos_returns_none_for_unmapped_function_block_key():
     assert key_event_from_macos(key_code=105, pressed=True, is_repeat=False) is None
 
@@ -258,6 +270,42 @@ def test_event_tap_manager_threaded_stop_joins_before_releasing_resources(monkey
     assert backend.actions == [
         "stop",
         ("join", None),
+        ("release", backend.source),
+        ("release", backend.tap),
+    ]
+
+
+def test_event_tap_manager_threaded_stop_skips_join_on_current_thread(monkeypatch):
+    backend = FakeQuartzBackend()
+    created_threads = []
+
+    def fake_thread(*, target, name, daemon):
+        thread = FakeThread(
+            target=target,
+            name=name,
+            daemon=daemon,
+            actions=backend.actions,
+        )
+        created_threads.append(thread)
+        return thread
+
+    monkeypatch.setattr("adapters.macos.event_tap.threading.Thread", fake_thread)
+    manager = MacOSEventTapManager(
+        permissions=FakePermissions(),
+        backend=backend,
+    )
+
+    manager.start()
+    monkeypatch.setattr(
+        "adapters.macos.event_tap.threading.current_thread",
+        lambda: created_threads[0],
+    )
+    manager.stop()
+
+    assert len(created_threads) == 1
+    assert created_threads[0].join_calls == []
+    assert backend.actions == [
+        "stop",
         ("release", backend.source),
         ("release", backend.tap),
     ]
