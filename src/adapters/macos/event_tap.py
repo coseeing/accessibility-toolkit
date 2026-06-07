@@ -68,7 +68,7 @@ class MacOSEventTapManager:
             return
         self._backend.run_loop_stop()
         if self._thread is not None:
-            self._thread.join(timeout=0)
+            self._thread.join()
         if self._source is not None:
             self._backend.release(self._source)
         if self._tap is not None:
