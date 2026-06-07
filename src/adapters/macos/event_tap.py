@@ -1,5 +1,6 @@
 from collections.abc import Callable
 from dataclasses import dataclass
+import threading
 from typing import Any
 
 from adapters.inputs.base import KeyEventDecision
@@ -32,6 +33,7 @@ class MacOSEventTapManager:
         self._running = False
         self._tap: Any | None = None
         self._source: Any | None = None
+        self._thread: threading.Thread | None = None
 
     @property
     def running(self) -> bool:
@@ -54,18 +56,26 @@ class MacOSEventTapManager:
         self._backend.enable_tap(self._tap, True)
         self._running = True
         if self._start_thread:
-            self._backend.run_loop_run()
+            self._thread = threading.Thread(
+                target=self._backend.run_loop_run,
+                name="macos-event-tap",
+                daemon=True,
+            )
+            self._thread.start()
 
     def stop(self) -> None:
         if not self._running:
             return
         self._backend.run_loop_stop()
+        if self._thread is not None:
+            self._thread.join(timeout=0)
         if self._source is not None:
             self._backend.release(self._source)
         if self._tap is not None:
             self._backend.release(self._tap)
         self._source = None
         self._tap = None
+        self._thread = None
         self._running = False
 
     def handle_raw_event(self, event: RawMacKeyEvent) -> KeyEventDecision:
