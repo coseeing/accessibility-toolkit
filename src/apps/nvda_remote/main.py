@@ -2,7 +2,10 @@ from dataclasses import dataclass
 import logging
 from pathlib import Path
 import sys
+from typing import Any
 
+from adapters.inputs.base import HotkeyCapture, InputCapture
+from adapters.macos.permissions import AccessibilityPermissions
 from adapters.outputs.drivers.pyttsx3 import Pyttsx3SpeechOutput
 from adapters.windows.clipboard import WindowsClipboardService
 from adapters.windows.hotkey import WindowsHotkeyCapture
@@ -12,6 +15,7 @@ from application.config import SpeechBackendConfigStore
 from application.keyboard import KeyboardInputService
 from application.output_scheduler import OutputScheduler
 from application.output_service import QueuedOutputService
+from application.services import ClipboardService
 from application.speech_backends import SpeechBackendOption
 from application.speech_service import SpeechService
 from apps.nvda_remote.service import NvdaRemoteAppService
@@ -19,14 +23,23 @@ from interop.protocol.serializer import JSONSerializer
 from interop.protocol.transport.relay import RelayTransport
 from ui.nvda_remote.app import NvdaRemoteApp
 
+try:
+    from adapters.macos.event_tap import MacOSEventTapManager
+    from adapters.macos.hotkey import MacOSHotkeyCapture
+    from adapters.macos.keyboard_hook import MacOSKeyboardCapture
+except ImportError:  # pragma: no cover - non-macOS dependency path
+    MacOSEventTapManager = None
+    MacOSHotkeyCapture = None
+    MacOSKeyboardCapture = None
+
 
 @dataclass(frozen=True)
 class NvdaRemoteRuntime:
     config_store: SpeechBackendConfigStore
     transport: RelayTransport
-    input_capture: WindowsKeyboardCapture
-    hotkey_capture: WindowsHotkeyCapture
-    clipboard: WindowsClipboardService
+    input_capture: InputCapture
+    hotkey_capture: HotkeyCapture
+    clipboard: ClipboardService
     output_scheduler: OutputScheduler
     speech_service: SpeechService
     output_service: QueuedOutputService
@@ -101,6 +114,73 @@ def _default_backend_options(
     )
 
 
+class _UnavailableMacOSPermissions:
+    def is_trusted(self, *, prompt: bool = False) -> bool:
+        del prompt
+        raise RuntimeError("macOS accessibility permission wiring is unavailable")
+
+
+class _UnavailableMacOSBackend:
+    def _raise(self) -> None:
+        raise RuntimeError("macOS Quartz event tap backend wiring is unavailable")
+
+    def create_event_tap(self, callback: Any) -> Any:
+        del callback
+        self._raise()
+
+    def create_run_loop_source(self, tap: Any) -> Any:
+        del tap
+        self._raise()
+
+    def add_source(self, source: Any) -> None:
+        del source
+        self._raise()
+
+    def enable_tap(self, tap: Any, enabled: bool) -> None:
+        del tap, enabled
+        self._raise()
+
+    def run_loop_run(self) -> None:
+        self._raise()
+
+    def run_loop_stop(self) -> None:
+        self._raise()
+
+    def release(self, value: Any) -> None:
+        del value
+        self._raise()
+
+
+def _build_macos_event_tap_manager() -> Any:
+    if (
+        MacOSEventTapManager is None
+        or MacOSKeyboardCapture is None
+        or MacOSHotkeyCapture is None
+    ):
+        raise RuntimeError("macOS input capture dependencies are unavailable")
+    return MacOSEventTapManager(
+        permissions=_load_macos_permissions(),
+        backend=_UnavailableMacOSBackend(),
+    )
+
+
+def _load_macos_permissions() -> Any:
+    load_default = getattr(AccessibilityPermissions, "load_default", None)
+    if callable(load_default):
+        return load_default()
+    return _UnavailableMacOSPermissions()
+
+
+def _build_input_adapters() -> tuple[InputCapture, HotkeyCapture]:
+    if sys.platform == "darwin":
+        manager = _build_macos_event_tap_manager()
+        return (
+            MacOSKeyboardCapture(manager=manager),
+            MacOSHotkeyCapture(manager=manager),
+        )
+    return WindowsKeyboardCapture(), WindowsHotkeyCapture()
+
+
 def build_runtime() -> NvdaRemoteRuntime:
     config_store = SpeechBackendConfigStore(default_config_path())
     output_scheduler = OutputScheduler()
@@ -125,8 +205,7 @@ def build_runtime() -> NvdaRemoteRuntime:
         config_store.save_backend_id("nvda_controller")
 
     transport = RelayTransport(JSONSerializer())
-    input_capture = WindowsKeyboardCapture()
-    hotkey_capture = WindowsHotkeyCapture()
+    input_capture, hotkey_capture = _build_input_adapters()
     clipboard = WindowsClipboardService()
     app_service = NvdaRemoteAppService(
         transport=transport,
