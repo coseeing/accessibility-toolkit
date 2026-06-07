@@ -10,6 +10,8 @@ dependencies = [
   "wxPython",
   "pyinstaller",
   "pyttsx3",
+  "pyobjc-framework-ApplicationServices; sys_platform == 'darwin'",
+  "pyobjc-framework-Quartz; sys_platform == 'darwin'",
 ]
 
 [tool.setuptools]
