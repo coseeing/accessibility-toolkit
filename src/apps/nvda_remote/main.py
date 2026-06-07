@@ -1,16 +1,12 @@
 from dataclasses import dataclass
+import importlib
 import logging
 from pathlib import Path
 import sys
 from typing import Any
 
 from adapters.inputs.base import HotkeyCapture, InputCapture
-from adapters.macos.permissions import AccessibilityPermissions
 from adapters.outputs.drivers.pyttsx3 import Pyttsx3SpeechOutput
-from adapters.windows.clipboard import WindowsClipboardService
-from adapters.windows.hotkey import WindowsHotkeyCapture
-from adapters.windows.keyboard_hook import WindowsKeyboardCapture
-from adapters.windows.nvda_controller import NvdaControllerSpeechOutput
 from application.config import SpeechBackendConfigStore
 from application.keyboard import KeyboardInputService
 from application.output_scheduler import OutputScheduler
@@ -23,16 +19,15 @@ from interop.protocol.serializer import JSONSerializer
 from interop.protocol.transport.relay import RelayTransport
 from ui.nvda_remote.app import NvdaRemoteApp
 
-try:
-    from adapters.macos.event_tap import MacOSEventTapManager
-    from adapters.macos.event_tap import QuartzEventTapBackend as MacOSEventTapBackend
-    from adapters.macos.hotkey import MacOSHotkeyCapture
-    from adapters.macos.keyboard_hook import MacOSKeyboardCapture
-except ImportError:  # pragma: no cover - non-macOS dependency path
-    MacOSEventTapManager = None
-    MacOSEventTapBackend = None
-    MacOSHotkeyCapture = None
-    MacOSKeyboardCapture = None
+AccessibilityPermissions = None
+WindowsClipboardService = None
+WindowsHotkeyCapture = None
+WindowsKeyboardCapture = None
+NvdaControllerSpeechOutput = None
+MacOSEventTapManager = None
+MacOSEventTapBackend = None
+MacOSHotkeyCapture = None
+MacOSKeyboardCapture = None
 
 
 @dataclass(frozen=True)
@@ -100,20 +95,25 @@ def configure_logging() -> Path:
 def _default_backend_options(
     output_scheduler: OutputScheduler,
 ) -> tuple[SpeechBackendOption, ...]:
-    return (
-        SpeechBackendOption(
-            backend_id="nvda_controller",
-            label="NVDA Controller",
-            factory=lambda: NvdaControllerSpeechOutput.load_default(
-                scheduler=output_scheduler
-            ),
-        ),
+    options = [
         SpeechBackendOption(
             backend_id="pyttsx3",
             label="pyttsx3",
             factory=lambda: Pyttsx3SpeechOutput.load_default(scheduler=output_scheduler),
         ),
-    )
+    ]
+    if sys.platform == "win32":
+        options.insert(
+            0,
+            SpeechBackendOption(
+                backend_id="nvda_controller",
+                label="NVDA Controller",
+                factory=lambda: _get_nvda_controller_speech_output_class().load_default(
+                    scheduler=output_scheduler
+                ),
+            ),
+        )
+    return tuple(options)
 
 
 class _UnavailableMacOSPermissions:
@@ -139,13 +139,7 @@ class _UnsupportedClipboardService:
 
 
 def _build_macos_event_tap_manager() -> Any:
-    if (
-        MacOSEventTapManager is None
-        or MacOSEventTapBackend is None
-        or MacOSKeyboardCapture is None
-        or MacOSHotkeyCapture is None
-    ):
-        raise RuntimeError("macOS input capture dependencies are unavailable")
+    _load_macos_input_components()
     return MacOSEventTapManager(
         permissions=_load_macos_permissions(),
         backend=_load_macos_event_tap_backend(),
@@ -153,15 +147,15 @@ def _build_macos_event_tap_manager() -> Any:
 
 
 def _load_macos_permissions() -> Any:
-    load_default = getattr(AccessibilityPermissions, "load_default", None)
+    permissions_type = _get_macos_permissions_type()
+    load_default = getattr(permissions_type, "load_default", None)
     if callable(load_default):
         return load_default()
     return _UnavailableMacOSPermissions()
 
 
 def _load_macos_event_tap_backend() -> Any:
-    if MacOSEventTapBackend is None:
-        raise RuntimeError("macOS Quartz event tap backend is unavailable")
+    _load_macos_input_components()
     return MacOSEventTapBackend()
 
 
@@ -172,21 +166,86 @@ def _build_input_adapters() -> tuple[InputCapture, HotkeyCapture]:
             MacOSKeyboardCapture(manager=manager),
             MacOSHotkeyCapture(manager=manager),
         )
-    return WindowsKeyboardCapture(), WindowsHotkeyCapture()
+    return _get_windows_keyboard_capture_class()(), _get_windows_hotkey_capture_class()()
 
 
 def _build_clipboard_service() -> ClipboardService:
     if sys.platform == "win32":
-        return WindowsClipboardService()
+        return _get_windows_clipboard_service_class()()
     return _UnsupportedClipboardService()
+
+
+def _get_windows_keyboard_capture_class() -> Any:
+    global WindowsKeyboardCapture
+    if WindowsKeyboardCapture is None:
+        module = importlib.import_module("adapters.windows.keyboard_hook")
+        WindowsKeyboardCapture = module.WindowsKeyboardCapture
+    return WindowsKeyboardCapture
+
+
+def _get_windows_hotkey_capture_class() -> Any:
+    global WindowsHotkeyCapture
+    if WindowsHotkeyCapture is None:
+        module = importlib.import_module("adapters.windows.hotkey")
+        WindowsHotkeyCapture = module.WindowsHotkeyCapture
+    return WindowsHotkeyCapture
+
+
+def _get_windows_clipboard_service_class() -> Any:
+    global WindowsClipboardService
+    if WindowsClipboardService is None:
+        module = importlib.import_module("adapters.windows.clipboard")
+        WindowsClipboardService = module.WindowsClipboardService
+    return WindowsClipboardService
+
+
+def _get_nvda_controller_speech_output_class() -> Any:
+    global NvdaControllerSpeechOutput
+    if NvdaControllerSpeechOutput is None:
+        module = importlib.import_module("adapters.windows.nvda_controller")
+        NvdaControllerSpeechOutput = module.NvdaControllerSpeechOutput
+    return NvdaControllerSpeechOutput
+
+
+def _get_macos_permissions_type() -> Any:
+    global AccessibilityPermissions
+    if AccessibilityPermissions is None:
+        module = importlib.import_module("adapters.macos.permissions")
+        AccessibilityPermissions = module.AccessibilityPermissions
+    return AccessibilityPermissions
+
+
+def _load_macos_input_components() -> None:
+    global MacOSEventTapManager
+    global MacOSEventTapBackend
+    global MacOSKeyboardCapture
+    global MacOSHotkeyCapture
+    if (
+        MacOSEventTapManager is not None
+        and MacOSEventTapBackend is not None
+        and MacOSKeyboardCapture is not None
+        and MacOSHotkeyCapture is not None
+    ):
+        return
+    try:
+        event_tap = importlib.import_module("adapters.macos.event_tap")
+        hotkey = importlib.import_module("adapters.macos.hotkey")
+        keyboard_hook = importlib.import_module("adapters.macos.keyboard_hook")
+    except ImportError as error:  # pragma: no cover - depends on local platform deps
+        raise RuntimeError("macOS input capture dependencies are unavailable") from error
+    MacOSEventTapManager = event_tap.MacOSEventTapManager
+    MacOSEventTapBackend = event_tap.QuartzEventTapBackend
+    MacOSKeyboardCapture = keyboard_hook.MacOSKeyboardCapture
+    MacOSHotkeyCapture = hotkey.MacOSHotkeyCapture
 
 
 def build_runtime() -> NvdaRemoteRuntime:
     config_store = SpeechBackendConfigStore(default_config_path())
     output_scheduler = OutputScheduler()
     backend_options = _default_backend_options(output_scheduler)
+    default_backend_id = "nvda_controller" if sys.platform == "win32" else "pyttsx3"
     selected_backend_id = config_store.load_backend_id(
-        default_backend_id="nvda_controller"
+        default_backend_id=default_backend_id
     )
     try:
         speech_service = SpeechService(
@@ -200,9 +259,9 @@ def build_runtime() -> NvdaRemoteRuntime:
         )
         speech_service = SpeechService(
             backend_options=backend_options,
-            selected_backend_id="nvda_controller",
+            selected_backend_id=default_backend_id,
         )
-        config_store.save_backend_id("nvda_controller")
+        config_store.save_backend_id(default_backend_id)
 
     transport = RelayTransport(JSONSerializer())
     input_capture, hotkey_capture = _build_input_adapters()

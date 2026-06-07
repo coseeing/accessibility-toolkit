@@ -1,3 +1,5 @@
+import pytest
+
 from adapters.inputs.base import KeyEventDecision
 from application.keyboard import KeyboardInputService
 from application.output_capabilities import OutputCapabilities
@@ -235,15 +237,16 @@ def test_build_runtime_composes_local_keyboard_and_speech(monkeypatch) -> None:
             app_calls.append(controller)
 
     monkeypatch.setattr(main_module, "WindowsKeyboardCapture", lambda: capture)
+    monkeypatch.setattr(main_module.sys, "platform", "win32")
     monkeypatch.setattr(
         main_module.Pyttsx3SpeechOutput,
         "load_default",
         classmethod(lambda cls, scheduler=None: speech_output),
     )
-    monkeypatch.setattr(
-        main_module.NvdaControllerSpeechOutput,
-        "load_default",
-        classmethod(lambda cls, scheduler=None: speech_output),
+    main_module.NvdaControllerSpeechOutput = type(
+        "FakeNvdaControllerSpeechOutput",
+        (),
+        {"load_default": classmethod(lambda cls, scheduler=None: speech_output)},
     )
     monkeypatch.setattr(main_module, "QueuedOutputService", FakeQueuedOutputService)
     monkeypatch.setattr(main_module, "OutputScheduler", FakeOutputScheduler)
@@ -270,6 +273,13 @@ def test_build_runtime_composes_local_keyboard_and_speech(monkeypatch) -> None:
     assert decision == KeyEventDecision.SUPPRESS
     assert speech_output.cancel_calls == 1
     assert speech_output.spoken == [SpeechSequence(items=("VK 66",))]
+
+
+def test_build_runtime_rejects_non_windows_platform(monkeypatch) -> None:
+    monkeypatch.setattr(main_module.sys, "platform", "darwin")
+
+    with pytest.raises(RuntimeError, match="key_echo is currently supported only on Windows"):
+        main_module.build_runtime()
 
 
 def test_main_runs_echo_app_main_loop(monkeypatch) -> None:
