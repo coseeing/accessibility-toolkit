@@ -65,20 +65,23 @@ KEYCODE_TO_VK: dict[int, int] = {
     62: 0x11,  # RightControl
     76: 0x0D,  # NumpadEnter
     96: 0x74,  # F5
-    97: 0x2E,  # Delete
-    98: 0x73,  # F4
-    99: 0x24,  # Home
-    100: 0x23,  # End
-    101: 0x22,  # PageDown
+    97: 0x75,  # F6
+    98: 0x76,  # F7
+    99: 0x72,  # F3
+    100: 0x77,  # F8
+    101: 0x78,  # F9
     103: 0x7A,  # F11
-    105: 0x25,  # Left
-    106: 0x27,  # Right
-    107: 0x28,  # Down
-    108: 0x26,  # Up
-    109: 0x70,  # F1
+    109: 0x79,  # F10
     111: 0x7B,  # F12
+    114: 0x2D,  # Help/Insert
+    115: 0x24,  # Home
     116: 0x21,  # PageUp
     117: 0x2E,  # ForwardDelete
+    118: 0x73,  # F4
+    119: 0x23,  # End
+    120: 0x71,  # F2
+    121: 0x22,  # PageDown
+    122: 0x70,  # F1
     123: 0x25,  # LeftArrow
     124: 0x27,  # RightArrow
     125: 0x28,  # DownArrow
@@ -86,17 +89,16 @@ KEYCODE_TO_VK: dict[int, int] = {
 }
 
 EXTENDED_KEY_CODES: set[int] = {
-    96,
-    97,
-    99,
-    100,
-    101,
-    105,
-    106,
-    107,
-    108,
-    109,
-    111,
+    114,
+    115,
+    116,
+    117,
+    119,
+    121,
+    123,
+    124,
+    125,
+    126,
 }
 
 
