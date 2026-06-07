@@ -4,7 +4,7 @@
 
 **Goal:** Build a standalone Windows NVDA Remote controlling client with `wxPython` UI, modular core/adapters, keyboard forwarding, normalized speech handling, and bidirectional clipboard sync.
 
-**Architecture:** The implementation is split into `remote_core`, `application`, `adapters`, and `app_wx`. `remote_core` owns protocol, serializer, transport, session, and normalized models; `application` wires runtime behavior and UI-facing state; `adapters` isolate Windows and output backends; `app_wx` remains a thin shell over application services.
+**Architecture:** The implementation is split into `interop`, `application`, `adapters`, and `app_wx`. `interop` owns protocol, serializer, transport, session, and normalized models; `application` wires runtime behavior and UI-facing state; `adapters` isolate Windows and output backends; `app_wx` remains a thin shell over application services.
 
 **Tech Stack:** Python 3, `wxPython`, `pytest`, `pytest-mock`, `dataclasses`, `socket`/`ssl`, `ctypes`
 
@@ -15,15 +15,15 @@
 ### Create
 
 - `pyproject.toml`
-- `src/remote_core/protocol.py`
-- `src/remote_core/serializer.py`
-- `src/remote_core/connection_info.py`
-- `src/remote_core/models/keys.py`
-- `src/remote_core/models/speech.py`
-- `src/remote_core/routing/message_router.py`
-- `src/remote_core/session/remote_session.py`
-- `src/remote_core/transport/base.py`
-- `src/remote_core/transport/relay.py`
+- `src/interop/protocol.py`
+- `src/interop/serializer.py`
+- `src/interop/connection_info.py`
+- `src/interop/models/keys.py`
+- `src/interop/models/speech.py`
+- `src/interop/routing/message_router.py`
+- `src/interop/session/remote_session.py`
+- `src/interop/transport/base.py`
+- `src/interop/transport/relay.py`
 - `src/application/state.py`
 - `src/application/events.py`
 - `src/application/services.py`
@@ -48,14 +48,14 @@
 
 ### Responsibilities
 
-- `src/remote_core/protocol.py`: protocol constants, message types, address helpers.
-- `src/remote_core/serializer.py`: JSON serializer, newline framing, normalized speech payload conversion.
-- `src/remote_core/connection_info.py`: immutable connection settings and validation.
-- `src/remote_core/models/keys.py`: `KeyEvent`.
-- `src/remote_core/models/speech.py`: `NormalizedSpeech`, `SpeechSegment`.
-- `src/remote_core/routing/message_router.py`: message dispatch from decoded payloads to runtime callbacks.
-- `src/remote_core/session/remote_session.py`: channel join, session state, ping/disconnect handling.
-- `src/remote_core/transport/*`: transport interfaces and relay implementation.
+- `src/interop/protocol.py`: protocol constants, message types, address helpers.
+- `src/interop/serializer.py`: JSON serializer, newline framing, normalized speech payload conversion.
+- `src/interop/connection_info.py`: immutable connection settings and validation.
+- `src/interop/models/keys.py`: `KeyEvent`.
+- `src/interop/models/speech.py`: `NormalizedSpeech`, `SpeechSegment`.
+- `src/interop/routing/message_router.py`: message dispatch from decoded payloads to runtime callbacks.
+- `src/interop/session/remote_session.py`: channel join, session state, ping/disconnect handling.
+- `src/interop/transport/*`: transport interfaces and relay implementation.
 - `src/application/state.py`: UI-facing state enums/dataclasses.
 - `src/application/events.py`: app event types for UI/status delivery.
 - `src/application/services.py`: output manager, clipboard push, connect/disconnect orchestration.
@@ -69,9 +69,9 @@
 
 ### Implementation Notes
 
-- Keep imports one-directional: `app_wx` -> `application` -> `remote_core`/`adapters`.
-- Do not import `wx` from `remote_core`.
-- Do not import Win32 or `ctypes` DLL code from `remote_core`.
+- Keep imports one-directional: `app_wx` -> `application` -> `interop`/`adapters`.
+- Do not import `wx` from `interop`.
+- Do not import Win32 or `ctypes` DLL code from `interop`.
 - Keep `leader` behavior internal; do not add follower-mode UI in v1.
 
 ## Task 1: Project Skeleton and Tooling
@@ -84,8 +84,8 @@
 - [ ] **Step 1: Write the failing test for package import paths**
 
 ```python
-from remote_core.protocol import RemoteMessageType
-from remote_core.serializer import JSONSerializer
+from interop.protocol import RemoteMessageType
+from interop.serializer import JSONSerializer
 
 
 def test_serializer_imports_are_available():
@@ -97,7 +97,7 @@ def test_serializer_imports_are_available():
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `pytest tests/unit/test_protocol_serializer.py::test_serializer_imports_are_available -v`
-Expected: FAIL with `ModuleNotFoundError: No module named 'remote_core'`
+Expected: FAIL with `ModuleNotFoundError: No module named 'interop'`
 
 - [ ] **Step 3: Write minimal packaging and entrypoint scaffolding**
 
@@ -142,7 +142,7 @@ if __name__ == "__main__":
 - [ ] **Step 4: Add empty package initializers**
 
 ```python
-# src/remote_core/__init__.py
+# src/interop/__init__.py
 ```
 
 ```python
@@ -165,28 +165,28 @@ Expected: FAIL with `ImportError` pointing to missing `protocol` or `serializer`
 - [ ] **Step 6: Commit**
 
 ```bash
-git add pyproject.toml src/app_wx/main.py src/app_wx/__init__.py src/remote_core/__init__.py src/application/__init__.py src/adapters/__init__.py tests/unit/test_protocol_serializer.py
+git add pyproject.toml src/app_wx/main.py src/app_wx/__init__.py src/interop/__init__.py src/application/__init__.py src/adapters/__init__.py tests/unit/test_protocol_serializer.py
 git commit -m "chore: scaffold project structure"
 ```
 
 ## Task 2: Protocol, Models, and Serializer
 
 **Files:**
-- Create: `src/remote_core/protocol.py`
-- Create: `src/remote_core/serializer.py`
-- Create: `src/remote_core/connection_info.py`
-- Create: `src/remote_core/models/keys.py`
-- Create: `src/remote_core/models/speech.py`
+- Create: `src/interop/protocol.py`
+- Create: `src/interop/serializer.py`
+- Create: `src/interop/connection_info.py`
+- Create: `src/interop/models/keys.py`
+- Create: `src/interop/models/speech.py`
 - Modify: `tests/unit/test_protocol_serializer.py`
 - Create: `tests/unit/test_speech_normalization.py`
 
 - [ ] **Step 1: Write failing tests for protocol helpers and speech normalization**
 
 ```python
-from remote_core.models.keys import KeyEvent
-from remote_core.models.speech import NormalizedSpeech, SpeechSegment
-from remote_core.protocol import RemoteMessageType, address_to_host_port
-from remote_core.serializer import JSONSerializer
+from interop.models.keys import KeyEvent
+from interop.models.speech import NormalizedSpeech, SpeechSegment
+from interop.protocol import RemoteMessageType, address_to_host_port
+from interop.serializer import JSONSerializer
 
 
 def test_protocol_helpers_and_serializer_round_trip():
@@ -230,7 +230,7 @@ def test_key_event_to_message_payload():
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `pytest tests/unit/test_protocol_serializer.py tests/unit/test_speech_normalization.py -v`
-Expected: FAIL with missing modules and classes such as `remote_core.models.keys.KeyEvent`
+Expected: FAIL with missing modules and classes such as `interop.models.keys.KeyEvent`
 
 - [ ] **Step 3: Implement protocol, models, and serializer**
 
@@ -351,27 +351,27 @@ Expected: PASS
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/remote_core/protocol.py src/remote_core/serializer.py src/remote_core/connection_info.py src/remote_core/models/keys.py src/remote_core/models/speech.py tests/unit/test_protocol_serializer.py tests/unit/test_speech_normalization.py
+git add src/interop/protocol.py src/interop/serializer.py src/interop/connection_info.py src/interop/models/keys.py src/interop/models/speech.py tests/unit/test_protocol_serializer.py tests/unit/test_speech_normalization.py
 git commit -m "feat: add protocol models and serializer"
 ```
 
 ## Task 3: Router, Session, and Transport Contracts
 
 **Files:**
-- Create: `src/remote_core/transport/base.py`
-- Create: `src/remote_core/transport/relay.py`
-- Create: `src/remote_core/routing/message_router.py`
-- Create: `src/remote_core/session/remote_session.py`
+- Create: `src/interop/transport/base.py`
+- Create: `src/interop/transport/relay.py`
+- Create: `src/interop/routing/message_router.py`
+- Create: `src/interop/session/remote_session.py`
 - Create: `tests/unit/test_message_router.py`
 - Create: `tests/integration/test_relay_session.py`
 
 - [ ] **Step 1: Write failing tests for message dispatch and session join**
 
 ```python
-from remote_core.connection_info import ConnectionInfo
-from remote_core.protocol import RemoteMessageType
-from remote_core.routing.message_router import MessageRouter
-from remote_core.session.remote_session import RemoteSession
+from interop.connection_info import ConnectionInfo
+from interop.protocol import RemoteMessageType
+from interop.routing.message_router import MessageRouter
+from interop.session.remote_session import RemoteSession
 
 
 class DummyTransport:
@@ -424,8 +424,8 @@ class Transport(Protocol):
 ```
 
 ```python
-from remote_core.models.speech import NormalizedSpeech
-from remote_core.protocol import RemoteMessageType
+from interop.models.speech import NormalizedSpeech
+from interop.protocol import RemoteMessageType
 
 
 class MessageRouter:
@@ -445,7 +445,7 @@ class MessageRouter:
 ```
 
 ```python
-from remote_core.protocol import RemoteMessageType
+from interop.protocol import RemoteMessageType
 
 
 class RemoteSession:
@@ -473,7 +473,7 @@ class RemoteSession:
 - [ ] **Step 4: Stub relay transport for integration development**
 
 ```python
-from remote_core.serializer import JSONSerializer
+from interop.serializer import JSONSerializer
 
 
 class RelayTransport:
@@ -501,7 +501,7 @@ Expected: PASS
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/remote_core/transport/base.py src/remote_core/transport/relay.py src/remote_core/routing/message_router.py src/remote_core/session/remote_session.py tests/unit/test_message_router.py tests/integration/test_relay_session.py
+git add src/interop/transport/base.py src/interop/transport/relay.py src/interop/routing/message_router.py src/interop/session/remote_session.py tests/unit/test_message_router.py tests/integration/test_relay_session.py
 git commit -m "feat: add session routing and transport contracts"
 ```
 
@@ -522,7 +522,7 @@ git commit -m "feat: add session routing and transport contracts"
 - [ ] **Step 1: Write failing tests for runtime state, keyboard forwarding, and clipboard push**
 
 ```python
-from remote_core.models.keys import KeyEvent
+from interop.models.keys import KeyEvent
 from application.controller import ClientController
 
 
@@ -589,7 +589,7 @@ Expected: FAIL with missing `ClientController`
 
 ```python
 from typing import Protocol
-from remote_core.models.keys import KeyEvent
+from interop.models.keys import KeyEvent
 
 
 class InputCapture(Protocol):
@@ -637,7 +637,7 @@ class LoggingWaveOutput:
 ```
 
 ```python
-from remote_core.protocol import RemoteMessageType
+from interop.protocol import RemoteMessageType
 
 
 class OutputManager:
@@ -658,11 +658,11 @@ class OutputManager:
 ```python
 from application.services import OutputManager
 from application.state import RuntimeState
-from remote_core.models.keys import KeyEvent
-from remote_core.protocol import RemoteMessageType
-from remote_core.routing.message_router import MessageRouter
-from remote_core.session.remote_session import RemoteSession
-from remote_core.connection_info import ConnectionInfo
+from interop.models.keys import KeyEvent
+from interop.protocol import RemoteMessageType
+from interop.routing.message_router import MessageRouter
+from interop.session.remote_session import RemoteSession
+from interop.connection_info import ConnectionInfo
 
 
 class ClientController:
@@ -735,7 +735,7 @@ git commit -m "feat: add application controller and output manager"
 ```python
 from adapters.windows.clipboard import WindowsClipboardService
 from adapters.windows.nvda_controller import NvdaControllerSpeechOutput
-from remote_core.models.speech import NormalizedSpeech, SpeechSegment
+from interop.models.speech import NormalizedSpeech, SpeechSegment
 
 
 def test_windows_clipboard_service_round_trip(monkeypatch):
@@ -818,7 +818,7 @@ git commit -m "feat: add windows clipboard and speech adapters"
 
 ```python
 from adapters.windows.keyboard_hook import WindowsKeyboardCapture
-from remote_core.models.keys import KeyEvent
+from interop.models.keys import KeyEvent
 
 
 def test_windows_keyboard_capture_emits_normalized_events():
@@ -837,7 +837,7 @@ Expected: FAIL with missing `WindowsKeyboardCapture`
 - [ ] **Step 3: Implement a testable keyboard capture adapter**
 
 ```python
-from remote_core.models.keys import KeyEvent
+from interop.models.keys import KeyEvent
 
 
 class WindowsKeyboardCapture:
@@ -972,8 +972,8 @@ from application.controller import ClientController
 from adapters.windows.clipboard import WindowsClipboardService
 from adapters.windows.keyboard_hook import WindowsKeyboardCapture
 from adapters.windows.nvda_controller import NvdaControllerSpeechOutput
-from remote_core.serializer import JSONSerializer
-from remote_core.transport.relay import RelayTransport
+from interop.serializer import JSONSerializer
+from interop.transport.relay import RelayTransport
 
 
 def main() -> int:
@@ -1009,10 +1009,10 @@ git commit -m "feat: add wxpython client shell"
 - [ ] **Step 1: Write the integration test around a fake relay**
 
 ```python
-from remote_core.connection_info import ConnectionInfo
-from remote_core.serializer import JSONSerializer
-from remote_core.session.remote_session import RemoteSession
-from remote_core.transport.relay import RelayTransport
+from interop.connection_info import ConnectionInfo
+from interop.serializer import JSONSerializer
+from interop.session.remote_session import RemoteSession
+from interop.transport.relay import RelayTransport
 
 
 def test_relay_transport_connects_and_session_joins():

@@ -51,7 +51,7 @@ NVDA Remote Client 是一個以 Python 實作的遠端控制端，第一階段�
 - 專案已完成可行的分層架構，現在正是把它產品化、驗證化，並保留跨平台擴展能力的時間點。
 
 ### 架構方向
-- `remote_core`：protocol、serializer、transport、session、routing、模型。
+- `interop`：protocol、serializer、transport、session、routing、模型。
 - `application`：狀態、服務編排、控制器。
 - `adapters`：Windows 鍵盤、剪貼簿、NVDA controller DLL、pyttsx3 等後端。
 - `ui`：wxPython GUI 外殼。
@@ -144,7 +144,7 @@ NVDA Remote Client 是一個以 Python 實作的遠端控制端，第一階段�
 ### 緩解方式
 - 以單元與整合測試維持 core contract。
 - 在 Windows 真機上做最小可行的端到端 smoke test。
-- 讓 `remote_core` 持續保持純邏輯層，避免平台耦合擴散。
+- 讓 `interop` 持續保持純邏輯層，避免平台耦合擴散。
 
 ## 10. Open Questions
 - 目標 relay/server 的實際版本相容範圍是多少？
