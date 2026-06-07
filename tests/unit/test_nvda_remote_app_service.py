@@ -66,6 +66,7 @@ class FakeHotkey:
 class FakeClipboard:
     def __init__(self):
         self.text = ""
+        self.supported = True
 
     def set_text(self, text):
         self.text = text
@@ -232,6 +233,14 @@ def test_nvda_remote_service_registers_transport_message_handler():
 
     assert service.state.connection_state == service.state.connection_state.CONNECTED
     assert hotkey.started == 1
+
+
+def test_nvda_remote_service_reports_clipboard_availability():
+    service, _transport, _capture, _hotkey, _dispatch_calls = build_service()
+
+    assert service.is_clipboard_available() is True
+    service.clipboard.supported = False
+    assert service.is_clipboard_available() is False
 
 
 def test_nvda_remote_service_does_not_swallow_f11_when_not_controlling():

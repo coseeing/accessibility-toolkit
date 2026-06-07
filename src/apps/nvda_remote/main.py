@@ -125,6 +125,8 @@ class _UnavailableMacOSPermissions:
 class _UnsupportedClipboardService:
     """Safe clipboard fallback for platforms without an implemented adapter."""
 
+    supported = False
+
     def set_text(self, text: str) -> None:
         del text
 

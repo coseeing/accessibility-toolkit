@@ -92,6 +92,9 @@ class NvdaRemoteAppService(KeyEventHandler):
             text=self.clipboard.get_text(),
         )
 
+    def is_clipboard_available(self) -> bool:
+        return bool(getattr(self.clipboard, "supported", True))
+
     def set_status_listener(
         self, listener: Callable[[dict[str, Any]], None] | None
     ) -> None:

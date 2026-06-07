@@ -226,6 +226,7 @@ class FakeController:
         self.rate_calls = []
         self.pitch_calls = []
         self.volume_calls = []
+        self.clipboard_available = True
 
     def connect(self, host, port, key, insecure=False):
         self.connect_calls.append((host, port, key, insecure))
@@ -258,6 +259,9 @@ class FakeController:
 
     def push_clipboard(self):
         self.pushed_clipboard += 1
+
+    def is_clipboard_available(self):
+        return self.clipboard_available
 
     def set_status_listener(self, listener):
         self.status_listener = listener
@@ -483,6 +487,19 @@ def test_main_frame_control_button_is_disabled_until_connected(monkeypatch):
     assert frame.control_button.enabled is True
     assert frame.control_button.GetLabel() == "Start Control"
     assert frame.clipboard_button.enabled is True
+
+
+def test_main_frame_disables_clipboard_button_when_clipboard_unavailable(monkeypatch):
+    install_fake_wx(monkeypatch)
+    MainFrame = importlib.import_module("ui.nvda_remote.main_frame").MainFrame
+    controller = FakeController()
+    controller.clipboard_available = False
+    frame = MainFrame(controller=controller)
+
+    frame._on_connect(None)
+
+    assert frame.control_button.enabled is True
+    assert frame.clipboard_button.enabled is False
 
 
 def test_main_frame_locks_connection_fields_while_connected(monkeypatch):

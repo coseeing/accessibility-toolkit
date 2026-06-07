@@ -104,13 +104,19 @@ def test_keycode_table_contains_f11_mapping():
 
 
 class FakePermissions:
-    def __init__(self, trusted=True):
+    def __init__(self, trusted=True, listen_trusted=True):
         self.trusted = trusted
+        self.listen_trusted = listen_trusted
         self.calls = []
+        self.listen_calls = []
 
     def is_trusted(self, *, prompt=False):
         self.calls.append(prompt)
         return self.trusted
+
+    def has_listen_event_access(self, *, prompt=False):
+        self.listen_calls.append(prompt)
+        return self.listen_trusted
 
 
 class FakeQuartzBackend:
@@ -199,6 +205,17 @@ def test_event_tap_manager_requires_accessibility_permission():
     )
 
     with pytest.raises(RuntimeError, match="macOS accessibility permission is required"):
+        manager.start()
+
+
+def test_event_tap_manager_requires_input_monitoring_permission():
+    manager = MacOSEventTapManager(
+        permissions=FakePermissions(listen_trusted=False),
+        backend=FakeQuartzBackend(),
+        start_thread=False,
+    )
+
+    with pytest.raises(RuntimeError, match="macOS input monitoring permission is required"):
         manager.start()
 
 
@@ -595,3 +612,12 @@ def test_accessibility_permissions_prompt_key_error_is_clear():
 
     with pytest.raises(RuntimeError, match="Prompt key is required when prompt=True"):
         permissions.is_trusted(prompt=True)
+
+
+def test_accessibility_permissions_reports_listen_event_access():
+    permissions = AccessibilityPermissions(
+        checker=lambda options: True,
+        listen_checker=lambda: True,
+    )
+
+    assert permissions.has_listen_event_access(prompt=False) is True

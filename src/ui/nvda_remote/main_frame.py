@@ -117,7 +117,12 @@ class MainFrame(wx.Frame, SpeechControlsMixin):
         self.key_ctrl.Enable(enabled)
 
     def _sync_clipboard_button(self) -> None:
-        self.clipboard_button.Enable(self._is_connected())
+        clipboard_available = True
+        if self.controller is not None and hasattr(
+            self.controller, "is_clipboard_available"
+        ):
+            clipboard_available = bool(self.controller.is_clipboard_available())
+        self.clipboard_button.Enable(self._is_connected() and clipboard_available)
 
     def _on_controller_status(self, _status) -> None:
         self._sync_connect_button_label()
