@@ -30,6 +30,7 @@ class MacOSEventTapManager:
         self._start_thread = start_thread
         self._keyboard_listener: RawListener | None = None
         self._hotkey_handler: HotkeyHandler | None = None
+        self._suppressed_keyups: set[int] = set()
         self._running = False
         self._tap: Any | None = None
         self._source: Any | None = None
@@ -73,13 +74,19 @@ class MacOSEventTapManager:
             self._backend.release(self._source)
         if self._tap is not None:
             self._backend.release(self._tap)
+        self._suppressed_keyups.clear()
         self._source = None
         self._tap = None
         self._thread = None
         self._running = False
 
     def handle_raw_event(self, event: RawMacKeyEvent) -> KeyEventDecision:
+        if not event.pressed and event.key_code in self._suppressed_keyups:
+            self._suppressed_keyups.discard(event.key_code)
+            return KeyEventDecision.SUPPRESS
         if self._hotkey_handler is not None and self._hotkey_handler(event):
+            if event.pressed:
+                self._suppressed_keyups.add(event.key_code)
             return KeyEventDecision.SUPPRESS
         if self._keyboard_listener is None:
             return KeyEventDecision.PASS_THROUGH
