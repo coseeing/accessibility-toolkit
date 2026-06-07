@@ -1,9 +1,9 @@
 from dataclasses import dataclass
+import importlib
+import sys
 from typing import Any
 
 from adapters.outputs.drivers.pyttsx3 import Pyttsx3SpeechOutput
-from adapters.windows.keyboard_hook import WindowsKeyboardCapture
-from adapters.windows.nvda_controller import NvdaControllerSpeechOutput
 from application.keyboard import KeyboardInputService
 from application.output_capabilities import OutputCapabilities
 from application.output_scheduler import OutputScheduler
@@ -12,10 +12,13 @@ from application.speech_backends import SpeechBackendOption
 from application.speech_service import SpeechService
 from apps.key_echo.service import KeyEchoAppService
 
+WindowsKeyboardCapture = None
+NvdaControllerSpeechOutput = None
+
 
 @dataclass(frozen=True)
 class KeyEchoRuntime:
-    capture: WindowsKeyboardCapture
+    capture: Any
     output_scheduler: OutputScheduler
     speech_service: SpeechService
     output_service: QueuedOutputService
@@ -25,27 +28,15 @@ class KeyEchoRuntime:
 
 
 def build_runtime() -> KeyEchoRuntime:
+    if sys.platform != "win32":
+        raise RuntimeError("key_echo is currently supported only on Windows")
+
     from ui.echo.app import EchoApp
 
-    capture = WindowsKeyboardCapture()
+    capture = _get_windows_keyboard_capture_class()()
     output_scheduler = OutputScheduler()
     speech_service = SpeechService(
-        backend_options=(
-            SpeechBackendOption(
-                backend_id="pyttsx3",
-                label="pyttsx3",
-                factory=lambda: Pyttsx3SpeechOutput.load_default(
-                    scheduler=output_scheduler
-                ),
-            ),
-            SpeechBackendOption(
-                backend_id="nvda_controller",
-                label="NVDA Controller",
-                factory=lambda: NvdaControllerSpeechOutput.load_default(
-                    scheduler=output_scheduler
-                ),
-            ),
-        ),
+        backend_options=_default_backend_options(output_scheduler),
         selected_backend_id="pyttsx3",
     )
     output_service = QueuedOutputService(
@@ -68,6 +59,43 @@ def build_runtime() -> KeyEchoRuntime:
         app_service=app_service,
         app=app,
     )
+
+
+def _default_backend_options(
+    output_scheduler: OutputScheduler,
+) -> tuple[SpeechBackendOption, ...]:
+    return (
+        SpeechBackendOption(
+            backend_id="pyttsx3",
+            label="pyttsx3",
+            factory=lambda: Pyttsx3SpeechOutput.load_default(
+                scheduler=output_scheduler
+            ),
+        ),
+        SpeechBackendOption(
+            backend_id="nvda_controller",
+            label="NVDA Controller",
+            factory=lambda: _get_nvda_controller_speech_output_class().load_default(
+                scheduler=output_scheduler
+            ),
+        ),
+    )
+
+
+def _get_windows_keyboard_capture_class() -> Any:
+    global WindowsKeyboardCapture
+    if WindowsKeyboardCapture is None:
+        module = importlib.import_module("adapters.windows.keyboard_hook")
+        WindowsKeyboardCapture = module.WindowsKeyboardCapture
+    return WindowsKeyboardCapture
+
+
+def _get_nvda_controller_speech_output_class() -> Any:
+    global NvdaControllerSpeechOutput
+    if NvdaControllerSpeechOutput is None:
+        module = importlib.import_module("adapters.windows.nvda_controller")
+        NvdaControllerSpeechOutput = module.NvdaControllerSpeechOutput
+    return NvdaControllerSpeechOutput
 
 
 def main() -> int:

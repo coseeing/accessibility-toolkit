@@ -890,6 +890,7 @@ def test_nvda_remote_main_build_runtime_composes_app_service_and_gui(monkeypatch
     monkeypatch.setattr(nvda_remote_main, "RelayTransport", FakeTransport)
     monkeypatch.setattr(nvda_remote_main, "WindowsKeyboardCapture", FakeKeyboardCapture)
     monkeypatch.setattr(nvda_remote_main, "WindowsHotkeyCapture", FakeHotkeyCapture)
+    monkeypatch.setattr(nvda_remote_main.sys, "platform", "win32")
     monkeypatch.setattr(nvda_remote_main, "_build_clipboard_service", lambda: FakeClipboard())
     monkeypatch.setattr(nvda_remote_main, "KeyboardInputService", FakeKeyboardInputService)
     monkeypatch.setattr(nvda_remote_main, "NvdaRemoteAppService", FakeAppService)
@@ -1008,11 +1009,10 @@ def test_build_runtime_uses_macos_input_and_hotkey_on_darwin(monkeypatch):
     )
     monkeypatch.setattr(nvda_remote_main, "MacOSKeyboardCapture", FakeMacKeyboardCapture)
     monkeypatch.setattr(nvda_remote_main, "MacOSHotkeyCapture", FakeMacHotkeyCapture)
-    monkeypatch.setattr(
-        nvda_remote_main.AccessibilityPermissions,
-        "load_default",
-        classmethod(lambda cls: fake_permissions),
-        raising=False,
+    nvda_remote_main.AccessibilityPermissions = type(
+        "FakePermissionsType",
+        (),
+        {"load_default": classmethod(lambda cls: fake_permissions)},
     )
     monkeypatch.setattr(nvda_remote_main, "_build_clipboard_service", lambda: FakeClipboard())
     monkeypatch.setattr(nvda_remote_main, "KeyboardInputService", FakeKeyboardInputService)
@@ -1113,11 +1113,10 @@ def test_build_runtime_uses_safe_clipboard_on_darwin(monkeypatch):
     monkeypatch.setattr(nvda_remote_main, "MacOSEventTapBackend", lambda: object())
     monkeypatch.setattr(nvda_remote_main, "MacOSKeyboardCapture", FakeMacKeyboardCapture)
     monkeypatch.setattr(nvda_remote_main, "MacOSHotkeyCapture", FakeMacHotkeyCapture)
-    monkeypatch.setattr(
-        nvda_remote_main.AccessibilityPermissions,
-        "load_default",
-        classmethod(lambda cls: object()),
-        raising=False,
+    nvda_remote_main.AccessibilityPermissions = type(
+        "FakePermissionsType",
+        (),
+        {"load_default": classmethod(lambda cls: object())},
     )
     monkeypatch.setattr(
         nvda_remote_main,
@@ -1227,6 +1226,7 @@ def test_nvda_remote_main_build_runtime_falls_back_for_unknown_backend(monkeypat
     monkeypatch.setattr(nvda_remote_main, "WindowsKeyboardCapture", FakeKeyboardCapture)
     monkeypatch.setattr(nvda_remote_main, "WindowsHotkeyCapture", FakeHotkeyCapture)
     monkeypatch.setattr(nvda_remote_main, "WindowsClipboardService", FakeClipboard)
+    monkeypatch.setattr(nvda_remote_main.sys, "platform", "win32")
     monkeypatch.setattr(nvda_remote_main, "KeyboardInputService", FakeKeyboardInputService)
     monkeypatch.setattr(nvda_remote_main, "NvdaRemoteAppService", FakeAppService)
     monkeypatch.setattr(nvda_remote_main, "NvdaRemoteApp", FakeApp)
