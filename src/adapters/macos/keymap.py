@@ -105,11 +105,121 @@ KEYCODE_TO_VK: dict[int, int] = {
     126: 0x26,  # UpArrow
 }
 
+KEYCODE_TO_SCAN: dict[int, int] = {
+    0: 30,   # A
+    1: 31,   # S
+    2: 32,   # D
+    3: 33,   # F
+    4: 35,   # H
+    5: 34,   # G
+    6: 44,   # Z
+    7: 45,   # X
+    8: 46,   # C
+    9: 47,   # V
+    11: 48,  # B
+    12: 16,  # Q
+    13: 17,  # W
+    14: 18,  # E
+    15: 19,  # R
+    16: 21,  # Y
+    17: 20,  # T
+    18: 2,   # 1
+    19: 3,   # 2
+    20: 4,   # 3
+    21: 5,   # 4
+    22: 7,   # 6
+    23: 6,   # 5
+    24: 13,  # Equal
+    25: 10,  # 9
+    26: 8,   # 7
+    27: 12,  # Minus
+    28: 9,   # 8
+    29: 11,  # 0
+    30: 27,  # RightBracket
+    31: 24,  # O
+    32: 22,  # U
+    33: 26,  # LeftBracket
+    34: 23,  # I
+    35: 25,  # P
+    36: 28,  # Return
+    37: 38,  # L
+    38: 36,  # J
+    39: 40,  # Quote
+    40: 37,  # K
+    41: 39,  # Semicolon
+    42: 43,  # Backslash
+    43: 51,  # Comma
+    44: 53,  # Slash
+    45: 49,  # N
+    46: 50,  # M
+    47: 52,  # Period
+    48: 15,  # Tab
+    49: 57,  # Space
+    50: 41,  # Grave
+    51: 14,  # Backspace
+    53: 1,   # Escape
+    54: 92,  # RightCommand
+    55: 91,  # LeftCommand
+    56: 42,  # LeftShift
+    57: 58,  # CapsLock
+    58: 56,  # LeftOption
+    59: 29,  # LeftControl
+    60: 54,  # RightShift
+    61: 56,  # RightOption
+    62: 29,  # RightControl
+    65: 83,  # KeypadDecimal
+    67: 55,  # KeypadMultiply
+    69: 78,  # KeypadPlus
+    71: 69,  # KeypadClear
+    75: 53,  # KeypadDivide
+    76: 28,  # NumpadEnter
+    78: 74,  # KeypadMinus
+    81: 13,  # KeypadEquals
+    82: 82,  # Keypad0
+    83: 79,  # Keypad1
+    84: 80,  # Keypad2
+    85: 81,  # Keypad3
+    86: 75,  # Keypad4
+    87: 76,  # Keypad5
+    88: 77,  # Keypad6
+    89: 71,  # Keypad7
+    91: 72,  # Keypad8
+    92: 73,  # Keypad9
+    96: 63,  # F5
+    97: 64,  # F6
+    98: 65,  # F7
+    99: 61,  # F3
+    100: 66, # F8
+    101: 67, # F9
+    103: 87, # F11
+    109: 68, # F10
+    111: 88, # F12
+    114: 82, # Help/Insert
+    115: 71, # Home
+    116: 73, # PageUp
+    117: 83, # ForwardDelete
+    118: 62, # F4
+    119: 79, # End
+    120: 60, # F2
+    121: 81, # PageDown
+    122: 59, # F1
+    123: 75, # LeftArrow
+    124: 77, # RightArrow
+    125: 80, # DownArrow
+    126: 72, # UpArrow
+}
+
 EXTENDED_KEY_CODES: set[int] = {
+    54,
+    55,
+    61,
+    62,
     114,
     115,
     116,
     117,
+    75,
+    76,
     119,
     121,
     123,
@@ -128,7 +238,7 @@ def key_event_from_macos(
         return None
     return KeyEvent(
         vk=vk,
-        scan=key_code,
+        scan=KEYCODE_TO_SCAN.get(key_code),
         extended=key_code in EXTENDED_KEY_CODES,
         pressed=pressed,
     )
