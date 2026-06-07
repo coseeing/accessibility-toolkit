@@ -30,7 +30,7 @@ The current macOS scope is narrower. The macOS path is limited to global keyboar
 ```text
 src/
   apps/          App-specific composition roots and services
-  remote_core/   Protocol, transport, session, routing, models
+  interop/   Protocol, transport, session, routing, models
   application/   Shared keyboard/speech services and state
   adapters/      Input/output abstractions and Windows implementations
   ui/            wxPython app shell
@@ -153,7 +153,7 @@ At the time of writing, the suite includes both unit and integration coverage fo
 
 - The relay transport now includes TCP/TLS socket framing logic and buffered newline-delimited message parsing.
 - Session state moves to `connected` only after `channel_joined` is received.
-- The Windows keyboard hook, macOS adapter/event-tap seam, clipboard backend, and NVDA controller DLL path are implemented behind adapters so `remote_core` stays free of `wx`, Win32, Quartz, and DLL-specific imports.
+- The Windows keyboard hook, macOS adapter/event-tap seam, clipboard backend, and NVDA controller DLL path are implemented behind adapters so `interop` stays free of `wx`, Win32, Quartz, and DLL-specific imports.
 - The vendored controller client DLL was taken from NVDA official controller client release zip and stored at `src/adapters/windows/vendor/nvda/x64/nvdaControllerClient.dll`.
 - Remote `speak` payloads are deserialized into local speech command objects before routing, then carried through as full speech sequences to the active speech backend.
 - The `pyttsx3` backend now schedules real breaks from remote `BreakCommand` items and applies rate, pitch, volume, and voice selection on a best-effort basis.

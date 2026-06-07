@@ -24,21 +24,21 @@ ClientController 初始化時做兩件關鍵事:
 
 遠端送來語音資料後，RelayTransport.receive_once() 先從 socket 收 frame，接著交給 JSONSerializer.deserialize() 解析 JSON。
 參考:
-- src/remote_core/transport/relay.py:76
-- src/remote_core/transport/relay.py:89
-- src/remote_core/serializer.py:34
+- src/interop/transport/relay.py:76
+- src/interop/transport/relay.py:89
+- src/interop/serializer.py:34
 
 如果 payload 的 type == "speak"，JSONSerializer 會先把 sequence 裡的資料恢復成可用的 speech items；字串保留原樣，像 BreakCommand、PitchCommand、RateCommand 這類命令會被還原回對應物件。
 參考:
-- src/remote_core/serializer.py:12
-- src/remote_core/models/speech_sequence.py:13
+- src/interop/serializer.py:12
+- src/interop/models/speech_sequence.py:13
 
 接著 ClientController._handle_transport_message() 會把 payload 丟給 MessageRouter.handle_message()。如果訊息型別是 speak，router 會呼叫 SpeechSequence.from_remote_payload(payload)，再把結果交給 OutputManager.handle_speech()。
 參考:
 - src/application/controller.py:181
-- src/remote_core/routing/message_router.py:23
-- src/remote_core/routing/message_router.py:25
-- src/remote_core/models/speech_sequence.py:46
+- src/interop/routing/message_router.py:23
+- src/interop/routing/message_router.py:25
+- src/interop/models/speech_sequence.py:46
 - src/application/services.py:30
 
 OutputManager 本身不處理語音內容，它只做轉發:

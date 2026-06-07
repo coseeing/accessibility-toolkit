@@ -6,7 +6,7 @@
 
 **Architecture:** Keep the existing end-to-end `SpeechSequence` path. Extend the local speech command model first, then update serializer restore, then teach `NvdaControllerSpeechOutput` to maintain local prosody state and convert supported commands into SSML using that state as the baseline. Leave unsupported commands as safe no-ops.
 
-**Tech Stack:** Python 3.11+, `pytest`, existing `remote_core` models/serializer, `ctypes`-backed NVDA controller DLL wrapper, existing speech backend interfaces
+**Tech Stack:** Python 3.11+, `pytest`, existing `interop` models/serializer, `ctypes`-backed NVDA controller DLL wrapper, existing speech backend interfaces
 
 ---
 
@@ -14,11 +14,11 @@
 
 ### Modify
 
-- `src/remote_core/models/speech_commands.py`
+- `src/interop/models/speech_commands.py`
   Expand `PitchCommand`, `RateCommand`, and `VolumeCommand` to support both `offset` and `multiplier`, plus restore helpers for both formats.
-- `src/remote_core/models/speech_sequence.py`
+- `src/interop/models/speech_sequence.py`
   Keep payload restoration aligned with the richer prosody command model.
-- `src/remote_core/serializer.py`
+- `src/interop/serializer.py`
   Verify deserialize path keeps restoring the richer prosody payload forms.
 - `src/adapters/windows/nvda_controller.py`
   Replace the text-flattening speak path with SSML generation plus local prosody state.
@@ -41,7 +41,7 @@
 ## Task 1: Complete The Local Prosody Command Model
 
 **Files:**
-- Modify: `src/remote_core/models/speech_commands.py`
+- Modify: `src/interop/models/speech_commands.py`
 - Test: `tests/unit/test_speech_commands.py`
 
 - [ ] **Step 1: Write the failing tests**
@@ -49,7 +49,7 @@
 ```python
 import pytest
 
-from remote_core.models.speech_commands import (
+from interop.models.speech_commands import (
     PitchCommand,
     RateCommand,
     VolumeCommand,
@@ -97,7 +97,7 @@ Expected: FAIL because `PitchCommand`, `RateCommand`, and `VolumeCommand` do not
 - [ ] **Step 3: Write the minimal implementation**
 
 ```python
-# src/remote_core/models/speech_commands.py
+# src/interop/models/speech_commands.py
 from dataclasses import dataclass, field
 from typing import Callable, Literal
 
@@ -179,7 +179,7 @@ def _restore_prosody(factory, data: dict[str, object]):
 ```
 
 ```python
-# append or update SUPPORTED_COMMAND_FACTORIES in src/remote_core/models/speech_commands.py
+# append or update SUPPORTED_COMMAND_FACTORIES in src/interop/models/speech_commands.py
 SUPPORTED_COMMAND_FACTORIES: dict[str, Callable[[dict[str, object]], SpeechCommand]] = {
     "PitchCommand": lambda data: _restore_prosody(PitchCommand, data),
     "RateCommand": lambda data: _restore_prosody(RateCommand, data),
@@ -195,22 +195,22 @@ Expected: PASS
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/remote_core/models/speech_commands.py tests/unit/test_speech_commands.py
+git add src/interop/models/speech_commands.py tests/unit/test_speech_commands.py
 git commit -m "feat: complete local prosody command model"
 ```
 
 ## Task 2: Align Payload Restore And Serializer Coverage
 
 **Files:**
-- Modify: `src/remote_core/models/speech_sequence.py`
-- Modify: `src/remote_core/serializer.py`
+- Modify: `src/interop/models/speech_sequence.py`
+- Modify: `src/interop/serializer.py`
 - Modify: `tests/unit/test_protocol_serializer.py`
 
 - [ ] **Step 1: Write the failing tests**
 
 ```python
-from remote_core.models.speech_commands import PitchCommand, RateCommand, VolumeCommand
-from remote_core.serializer import JSONSerializer
+from interop.models.speech_commands import PitchCommand, RateCommand, VolumeCommand
+from interop.serializer import JSONSerializer
 
 
 def test_serializer_restores_offset_and_multiplier_prosody_payloads():
@@ -242,10 +242,10 @@ Expected: FAIL because serializer restore does not yet round-trip the richer pro
 - [ ] **Step 3: Write the minimal implementation**
 
 ```python
-# src/remote_core/models/speech_sequence.py
+# src/interop/models/speech_sequence.py
 from dataclasses import dataclass
 
-from remote_core.models.speech_commands import SpeechCommand, restore_speech_command
+from interop.models.speech_commands import SpeechCommand, restore_speech_command
 
 
 @dataclass(frozen=True, slots=True)
@@ -276,7 +276,7 @@ class SpeechSequence:
 ```
 
 ```python
-# src/remote_core/serializer.py
+# src/interop/serializer.py
 def _as_sequence(payload: dict[str, Any]) -> dict[str, Any]:
     if payload.get("type") != "speak" or "sequence" not in payload:
         return payload
@@ -311,7 +311,7 @@ Expected: PASS
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/remote_core/models/speech_sequence.py src/remote_core/serializer.py tests/unit/test_protocol_serializer.py
+git add src/interop/models/speech_sequence.py src/interop/serializer.py tests/unit/test_protocol_serializer.py
 git commit -m "test: cover richer prosody payload restore"
 ```
 
@@ -325,8 +325,8 @@ git commit -m "test: cover richer prosody payload restore"
 
 ```python
 from adapters.windows.nvda_controller import NvdaControllerSpeechOutput
-from remote_core.models.speech_commands import BreakCommand, PitchCommand, RateCommand, VolumeCommand
-from remote_core.models.speech_sequence import SpeechSequence
+from interop.models.speech_commands import BreakCommand, PitchCommand, RateCommand, VolumeCommand
+from interop.models.speech_sequence import SpeechSequence
 
 
 class FakeNvdaController:
