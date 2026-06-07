@@ -103,6 +103,21 @@ class FakeQuartzBackend:
         self.released.append(value)
 
 
+class FakeThread:
+    def __init__(self, *, target, name, daemon):
+        self.target = target
+        self.name = name
+        self.daemon = daemon
+        self.started = False
+        self.join_calls = []
+
+    def start(self):
+        self.started = True
+
+    def join(self, timeout=None):
+        self.join_calls.append(timeout)
+
+
 def test_event_tap_manager_requires_accessibility_permission():
     manager = MacOSEventTapManager(
         permissions=FakePermissions(trusted=False),
@@ -127,6 +142,31 @@ def test_event_tap_manager_starts_backend_once():
 
     assert backend.created == 1
     assert backend.enabled == [(backend.tap, True)]
+
+
+def test_event_tap_manager_threaded_start_does_not_run_loop_inline(monkeypatch):
+    backend = FakeQuartzBackend()
+    created_threads = []
+
+    def fake_thread(*, target, name, daemon):
+        thread = FakeThread(target=target, name=name, daemon=daemon)
+        created_threads.append(thread)
+        return thread
+
+    monkeypatch.setattr("adapters.macos.event_tap.threading.Thread", fake_thread)
+    manager = MacOSEventTapManager(
+        permissions=FakePermissions(),
+        backend=backend,
+    )
+
+    manager.start()
+
+    assert backend.run_calls == 0
+    assert len(created_threads) == 1
+    assert created_threads[0].target == backend.run_loop_run
+    assert created_threads[0].name == "macos-event-tap"
+    assert created_threads[0].daemon is True
+    assert created_threads[0].started is True
 
 
 def test_event_tap_manager_routes_keyboard_decision():
