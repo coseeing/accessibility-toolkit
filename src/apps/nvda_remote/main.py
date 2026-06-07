@@ -25,10 +25,12 @@ from ui.nvda_remote.app import NvdaRemoteApp
 
 try:
     from adapters.macos.event_tap import MacOSEventTapManager
+    from adapters.macos.event_tap import QuartzEventTapBackend as MacOSEventTapBackend
     from adapters.macos.hotkey import MacOSHotkeyCapture
     from adapters.macos.keyboard_hook import MacOSKeyboardCapture
 except ImportError:  # pragma: no cover - non-macOS dependency path
     MacOSEventTapManager = None
+    MacOSEventTapBackend = None
     MacOSHotkeyCapture = None
     MacOSKeyboardCapture = None
 
@@ -120,47 +122,17 @@ class _UnavailableMacOSPermissions:
         raise RuntimeError("macOS accessibility permission wiring is unavailable")
 
 
-class _UnavailableMacOSBackend:
-    def _raise(self) -> None:
-        raise RuntimeError("macOS Quartz event tap backend wiring is unavailable")
-
-    def create_event_tap(self, callback: Any) -> Any:
-        del callback
-        self._raise()
-
-    def create_run_loop_source(self, tap: Any) -> Any:
-        del tap
-        self._raise()
-
-    def add_source(self, source: Any) -> None:
-        del source
-        self._raise()
-
-    def enable_tap(self, tap: Any, enabled: bool) -> None:
-        del tap, enabled
-        self._raise()
-
-    def run_loop_run(self) -> None:
-        self._raise()
-
-    def run_loop_stop(self) -> None:
-        self._raise()
-
-    def release(self, value: Any) -> None:
-        del value
-        self._raise()
-
-
 def _build_macos_event_tap_manager() -> Any:
     if (
         MacOSEventTapManager is None
+        or MacOSEventTapBackend is None
         or MacOSKeyboardCapture is None
         or MacOSHotkeyCapture is None
     ):
         raise RuntimeError("macOS input capture dependencies are unavailable")
     return MacOSEventTapManager(
         permissions=_load_macos_permissions(),
-        backend=_UnavailableMacOSBackend(),
+        backend=_load_macos_event_tap_backend(),
     )
 
 
@@ -169,6 +141,12 @@ def _load_macos_permissions() -> Any:
     if callable(load_default):
         return load_default()
     return _UnavailableMacOSPermissions()
+
+
+def _load_macos_event_tap_backend() -> Any:
+    if MacOSEventTapBackend is None:
+        raise RuntimeError("macOS Quartz event tap backend is unavailable")
+    return MacOSEventTapBackend()
 
 
 def _build_input_adapters() -> tuple[InputCapture, HotkeyCapture]:
