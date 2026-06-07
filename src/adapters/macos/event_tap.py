@@ -17,6 +17,29 @@ RawListener = Callable[[RawMacKeyEvent], KeyEventDecision]
 HotkeyHandler = Callable[[RawMacKeyEvent], bool]
 
 
+class QuartzEventTapBackend:
+    def create_event_tap(self, callback: Callable[[RawMacKeyEvent], KeyEventDecision]) -> Any:
+        raise NotImplementedError
+
+    def create_run_loop_source(self, tap: Any) -> Any:
+        raise NotImplementedError
+
+    def add_source(self, source: Any) -> None:
+        raise NotImplementedError
+
+    def enable_tap(self, tap: Any, enabled: bool) -> None:
+        raise NotImplementedError
+
+    def run_loop_run(self) -> None:
+        raise NotImplementedError
+
+    def run_loop_stop(self) -> None:
+        raise NotImplementedError
+
+    def release(self, value: Any) -> None:
+        raise NotImplementedError
+
+
 class MacOSEventTapManager:
     def __init__(
         self,
@@ -96,3 +119,8 @@ class MacOSEventTapManager:
         if self._keyboard_listener is None:
             return KeyEventDecision.PASS_THROUGH
         return self._keyboard_listener(event)
+
+    def handle_tap_disabled(self) -> None:
+        if self._tap is None:
+            return
+        self._backend.enable_tap(self._tap, True)
