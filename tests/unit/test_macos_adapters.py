@@ -40,43 +40,43 @@ def test_accessibility_permissions_passes_prompt_option():
 def test_key_event_from_macos_maps_letter_keydown():
     event = key_event_from_macos(key_code=0, pressed=True, is_repeat=False)
 
-    assert event == KeyEvent(vk=0x41, scan=0, extended=False, pressed=True)
+    assert event == KeyEvent(vk=0x41, scan=30, extended=False, pressed=True)
 
 
 def test_key_event_from_macos_maps_f11_keyup():
     event = key_event_from_macos(key_code=103, pressed=False, is_repeat=False)
 
-    assert event == KeyEvent(vk=0x7A, scan=103, extended=False, pressed=False)
+    assert event == KeyEvent(vk=0x7A, scan=87, extended=False, pressed=False)
 
 
 def test_key_event_from_macos_maps_common_digit_key():
     event = key_event_from_macos(key_code=18, pressed=True, is_repeat=False)
 
-    assert event == KeyEvent(vk=0x31, scan=18, extended=False, pressed=True)
+    assert event == KeyEvent(vk=0x31, scan=2, extended=False, pressed=True)
 
 
 def test_key_event_from_macos_maps_common_modifier_key():
     event = key_event_from_macos(key_code=56, pressed=True, is_repeat=False)
 
-    assert event == KeyEvent(vk=0x10, scan=56, extended=False, pressed=True)
+    assert event == KeyEvent(vk=0x10, scan=42, extended=False, pressed=True)
 
 
 def test_key_event_from_macos_maps_right_command_key():
     event = key_event_from_macos(key_code=54, pressed=True, is_repeat=False)
 
-    assert event == KeyEvent(vk=0x5C, scan=54, extended=False, pressed=True)
+    assert event == KeyEvent(vk=0x5C, scan=92, extended=True, pressed=True)
 
 
 def test_key_event_from_macos_maps_function_key_without_extended_flag():
     event = key_event_from_macos(key_code=109, pressed=True, is_repeat=False)
 
-    assert event == KeyEvent(vk=0x79, scan=109, extended=False, pressed=True)
+    assert event == KeyEvent(vk=0x79, scan=68, extended=False, pressed=True)
 
 
 def test_key_event_from_macos_maps_navigation_key_with_extended_flag():
     event = key_event_from_macos(key_code=121, pressed=False, is_repeat=False)
 
-    assert event == KeyEvent(vk=0x22, scan=121, extended=True, pressed=False)
+    assert event == KeyEvent(vk=0x22, scan=81, extended=True, pressed=False)
 
 
 def test_key_event_from_macos_maps_keypad_digit_key():
@@ -88,7 +88,7 @@ def test_key_event_from_macos_maps_keypad_digit_key():
 def test_key_event_from_macos_maps_keypad_operator_key():
     event = key_event_from_macos(key_code=75, pressed=False, is_repeat=False)
 
-    assert event == KeyEvent(vk=0x6F, scan=75, extended=False, pressed=False)
+    assert event == KeyEvent(vk=0x6F, scan=53, extended=True, pressed=False)
 
 
 def test_key_event_from_macos_returns_none_for_unmapped_function_block_key():
@@ -419,7 +419,7 @@ def test_macos_keyboard_capture_binds_listener_and_translates_event():
     decision = manager.listener(RawMacKeyEvent(key_code=0, pressed=True, is_repeat=False))
 
     assert decision == KeyEventDecision.SUPPRESS
-    assert seen == [KeyEvent(vk=0x41, scan=0, extended=False, pressed=True)]
+    assert seen == [KeyEvent(vk=0x41, scan=30, extended=False, pressed=True)]
 
 
 def test_macos_keyboard_capture_translates_common_digit_key():
@@ -436,7 +436,7 @@ def test_macos_keyboard_capture_translates_common_digit_key():
     )
 
     assert decision == KeyEventDecision.SUPPRESS
-    assert seen == [KeyEvent(vk=0x31, scan=18, extended=False, pressed=True)]
+    assert seen == [KeyEvent(vk=0x31, scan=2, extended=False, pressed=True)]
 
 
 def test_macos_keyboard_capture_ignores_unsupported_key_code():
@@ -573,7 +573,7 @@ def test_macos_hotkey_capture_stop_preserves_active_keyboard_capture():
     assert manager.running is True
     assert backend.stop_calls == 0
     assert decision == KeyEventDecision.SUPPRESS
-    assert seen == [KeyEvent(vk=0x41, scan=0, extended=False, pressed=True)]
+    assert seen == [KeyEvent(vk=0x41, scan=30, extended=False, pressed=True)]
 
 
 def test_event_tap_manager_reenables_tap_after_disable_signal():
