@@ -1,5 +1,7 @@
 import pytest
 
+from adapters.inputs.base import KeyEventDecision
+from adapters.macos.event_tap import MacOSEventTapManager, RawMacKeyEvent
 from adapters.macos.keymap import KEYCODE_TO_VK, key_event_from_macos
 from adapters.macos.permissions import AccessibilityPermissions
 from interop.key.key_event import KeyEvent
@@ -54,3 +56,129 @@ def test_key_event_from_macos_rejects_unknown_key_code():
 
 def test_keycode_table_contains_f11_mapping():
     assert KEYCODE_TO_VK[103] == 0x7A
+
+
+class FakePermissions:
+    def __init__(self, trusted=True):
+        self.trusted = trusted
+        self.calls = []
+
+    def is_trusted(self, *, prompt=False):
+        self.calls.append(prompt)
+        return self.trusted
+
+
+class FakeQuartzBackend:
+    def __init__(self):
+        self.created = 0
+        self.enabled = []
+        self.released = []
+        self.run_calls = 0
+        self.stop_calls = 0
+        self.tap = object()
+        self.source = object()
+
+    def create_event_tap(self, callback):
+        self.created += 1
+        self.callback = callback
+        return self.tap
+
+    def create_run_loop_source(self, tap):
+        assert tap is self.tap
+        return self.source
+
+    def add_source(self, source):
+        assert source is self.source
+
+    def enable_tap(self, tap, enabled):
+        self.enabled.append((tap, enabled))
+
+    def run_loop_run(self):
+        self.run_calls += 1
+
+    def run_loop_stop(self):
+        self.stop_calls += 1
+
+    def release(self, value):
+        self.released.append(value)
+
+
+def test_event_tap_manager_requires_accessibility_permission():
+    manager = MacOSEventTapManager(
+        permissions=FakePermissions(trusted=False),
+        backend=FakeQuartzBackend(),
+        start_thread=False,
+    )
+
+    with pytest.raises(RuntimeError, match="macOS accessibility permission is required"):
+        manager.start()
+
+
+def test_event_tap_manager_starts_backend_once():
+    backend = FakeQuartzBackend()
+    manager = MacOSEventTapManager(
+        permissions=FakePermissions(),
+        backend=backend,
+        start_thread=False,
+    )
+
+    manager.start()
+    manager.start()
+
+    assert backend.created == 1
+    assert backend.enabled == [(backend.tap, True)]
+
+
+def test_event_tap_manager_routes_keyboard_decision():
+    backend = FakeQuartzBackend()
+    manager = MacOSEventTapManager(
+        permissions=FakePermissions(),
+        backend=backend,
+        start_thread=False,
+    )
+    seen = []
+    manager.set_keyboard_listener(lambda event: seen.append(event) or KeyEventDecision.SUPPRESS)
+
+    manager.start()
+    decision = manager.handle_raw_event(
+        RawMacKeyEvent(key_code=0, pressed=True, is_repeat=False)
+    )
+
+    assert seen == [RawMacKeyEvent(key_code=0, pressed=True, is_repeat=False)]
+    assert decision == KeyEventDecision.SUPPRESS
+
+
+def test_event_tap_manager_hotkey_handler_suppresses_matching_event():
+    backend = FakeQuartzBackend()
+    manager = MacOSEventTapManager(
+        permissions=FakePermissions(),
+        backend=backend,
+        start_thread=False,
+    )
+    seen = []
+    manager.set_hotkey_handler(
+        lambda event: seen.append(event) or event.key_code == 103
+    )
+
+    manager.start()
+    decision = manager.handle_raw_event(
+        RawMacKeyEvent(key_code=103, pressed=True, is_repeat=False)
+    )
+
+    assert seen == [RawMacKeyEvent(key_code=103, pressed=True, is_repeat=False)]
+    assert decision == KeyEventDecision.SUPPRESS
+
+
+def test_event_tap_manager_stop_releases_resources():
+    backend = FakeQuartzBackend()
+    manager = MacOSEventTapManager(
+        permissions=FakePermissions(),
+        backend=backend,
+        start_thread=False,
+    )
+
+    manager.start()
+    manager.stop()
+
+    assert backend.stop_calls == 1
+    assert backend.released == [backend.source, backend.tap]
