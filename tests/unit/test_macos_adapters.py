@@ -269,12 +269,15 @@ class FakeManager:
         self.running = False
         self.started = 0
         self.stopped = 0
+        self.start_error = None
 
     def set_keyboard_listener(self, listener):
         self.listener = listener
 
     def start(self):
         self.started += 1
+        if self.start_error is not None:
+            raise self.start_error
         self.running = True
 
     def stop(self):
@@ -309,3 +312,17 @@ def test_macos_keyboard_capture_proxies_lifecycle():
     assert manager.started == 1
     assert manager.stopped == 1
     assert capture.running is False
+
+
+def test_macos_keyboard_capture_clears_listener_when_start_fails():
+    from adapters.macos.keyboard_hook import MacOSKeyboardCapture
+
+    manager = FakeManager()
+    manager.start_error = RuntimeError("boom")
+    capture = MacOSKeyboardCapture(manager=manager)
+    capture.set_listener(lambda event: KeyEventDecision.PASS_THROUGH)
+
+    with pytest.raises(RuntimeError, match="boom"):
+        capture.start()
+
+    assert manager.listener is None
