@@ -266,6 +266,7 @@ def test_event_tap_manager_stop_releases_resources():
 class FakeManager:
     def __init__(self):
         self.listener = None
+        self.hotkey_handler = None
         self.running = False
         self.started = 0
         self.stopped = 0
@@ -273,6 +274,9 @@ class FakeManager:
 
     def set_keyboard_listener(self, listener):
         self.listener = listener
+
+    def set_hotkey_handler(self, handler):
+        self.hotkey_handler = handler
 
     def start(self):
         self.started += 1
@@ -326,3 +330,66 @@ def test_macos_keyboard_capture_clears_listener_when_start_fails():
         capture.start()
 
     assert manager.listener is None
+
+
+def test_macos_hotkey_capture_triggers_f11_once_on_keydown():
+    from adapters.macos.hotkey import MacOSHotkeyCapture
+
+    backend = FakeQuartzBackend()
+    manager = MacOSEventTapManager(
+        permissions=FakePermissions(),
+        backend=backend,
+        start_thread=False,
+    )
+    triggered = []
+    capture = MacOSHotkeyCapture(manager=manager)
+    capture.set_handler(lambda: triggered.append("f11"))
+
+    capture.start()
+    assert manager.handle_raw_event(
+        RawMacKeyEvent(key_code=103, pressed=True, is_repeat=False)
+    ) == KeyEventDecision.SUPPRESS
+    assert manager.handle_raw_event(
+        RawMacKeyEvent(key_code=103, pressed=True, is_repeat=True)
+    ) == KeyEventDecision.SUPPRESS
+    assert manager.handle_raw_event(
+        RawMacKeyEvent(key_code=103, pressed=False, is_repeat=False)
+    ) == KeyEventDecision.SUPPRESS
+
+    assert triggered == ["f11"]
+
+
+def test_macos_hotkey_capture_ignores_non_f11_keys():
+    from adapters.macos.hotkey import MacOSHotkeyCapture
+
+    backend = FakeQuartzBackend()
+    manager = MacOSEventTapManager(
+        permissions=FakePermissions(),
+        backend=backend,
+        start_thread=False,
+    )
+    triggered = []
+    capture = MacOSHotkeyCapture(manager=manager)
+    capture.set_handler(lambda: triggered.append("f11"))
+
+    capture.start()
+    decision = manager.handle_raw_event(
+        RawMacKeyEvent(key_code=0, pressed=True, is_repeat=False)
+    )
+
+    assert decision == KeyEventDecision.PASS_THROUGH
+    assert triggered == []
+
+
+def test_macos_hotkey_capture_clears_handler_when_start_fails():
+    from adapters.macos.hotkey import MacOSHotkeyCapture
+
+    manager = FakeManager()
+    manager.start_error = RuntimeError("boom")
+    capture = MacOSHotkeyCapture(manager=manager)
+    capture.set_handler(lambda: None)
+
+    with pytest.raises(RuntimeError, match="boom"):
+        capture.start()
+
+    assert manager.hotkey_handler is None
