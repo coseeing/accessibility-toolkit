@@ -74,6 +74,11 @@ class NvdaRemoteAppService(KeyEventHandler):
         try:
             self._ensure_capture_started()
         except Exception as error:
+            if self.state.connection_state != ConnectionState.IDLE:
+                try:
+                    self._ensure_hotkey_started()
+                except Exception:
+                    pass
             self._notify_error(str(error))
             return
         self.state.control_state = ControlState.CONTROLLING

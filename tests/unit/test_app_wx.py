@@ -1136,6 +1136,18 @@ def test_build_runtime_uses_safe_clipboard_on_darwin(monkeypatch):
     assert runtime.clipboard.get_text() == ""
 
 
+def test_unavailable_macos_permissions_exposes_input_monitoring_error(monkeypatch):
+    install_fake_wx(monkeypatch)
+    nvda_remote_main = importlib.import_module("apps.nvda_remote.main")
+    permissions = nvda_remote_main._UnavailableMacOSPermissions()
+
+    with pytest.raises(
+        RuntimeError,
+        match="macOS input monitoring permission wiring is unavailable",
+    ):
+        permissions.has_listen_event_access(prompt=False)
+
+
 def test_nvda_remote_main_build_runtime_falls_back_for_unknown_backend(monkeypatch):
     install_fake_wx(monkeypatch)
     nvda_remote_main = importlib.import_module("apps.nvda_remote.main")
