@@ -73,6 +73,7 @@ class FakeQuartzBackend:
         self.created = 0
         self.enabled = []
         self.released = []
+        self.actions = []
         self.run_calls = 0
         self.stop_calls = 0
         self.tap = object()
@@ -98,16 +99,19 @@ class FakeQuartzBackend:
 
     def run_loop_stop(self):
         self.stop_calls += 1
+        self.actions.append("stop")
 
     def release(self, value):
+        self.actions.append(("release", value))
         self.released.append(value)
 
 
 class FakeThread:
-    def __init__(self, *, target, name, daemon):
+    def __init__(self, *, target, name, daemon, actions=None):
         self.target = target
         self.name = name
         self.daemon = daemon
+        self.actions = actions
         self.started = False
         self.join_calls = []
 
@@ -115,6 +119,8 @@ class FakeThread:
         self.started = True
 
     def join(self, timeout=None):
+        if self.actions is not None:
+            self.actions.append(("join", timeout))
         self.join_calls.append(timeout)
 
 
@@ -167,6 +173,39 @@ def test_event_tap_manager_threaded_start_does_not_run_loop_inline(monkeypatch):
     assert created_threads[0].name == "macos-event-tap"
     assert created_threads[0].daemon is True
     assert created_threads[0].started is True
+
+
+def test_event_tap_manager_threaded_stop_joins_before_releasing_resources(monkeypatch):
+    backend = FakeQuartzBackend()
+    created_threads = []
+
+    def fake_thread(*, target, name, daemon):
+        thread = FakeThread(
+            target=target,
+            name=name,
+            daemon=daemon,
+            actions=backend.actions,
+        )
+        created_threads.append(thread)
+        return thread
+
+    monkeypatch.setattr("adapters.macos.event_tap.threading.Thread", fake_thread)
+    manager = MacOSEventTapManager(
+        permissions=FakePermissions(),
+        backend=backend,
+    )
+
+    manager.start()
+    manager.stop()
+
+    assert len(created_threads) == 1
+    assert created_threads[0].join_calls == [None]
+    assert backend.actions == [
+        "stop",
+        ("join", None),
+        ("release", backend.source),
+        ("release", backend.tap),
+    ]
 
 
 def test_event_tap_manager_routes_keyboard_decision():
