@@ -46,6 +46,9 @@ class MacOSEventTapManager:
     def set_hotkey_handler(self, handler: HotkeyHandler | None) -> None:
         self._hotkey_handler = handler
 
+    def _has_active_registrations(self) -> bool:
+        return self._keyboard_listener is not None or self._hotkey_handler is not None
+
     def start(self) -> None:
         if self._running:
             return
@@ -66,6 +69,8 @@ class MacOSEventTapManager:
 
     def stop(self) -> None:
         if not self._running:
+            return
+        if self._has_active_registrations():
             return
         self._backend.run_loop_stop()
         if self._thread is not None:
