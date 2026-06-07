@@ -921,6 +921,8 @@ def test_build_runtime_uses_macos_input_and_hotkey_on_darwin(monkeypatch):
         def __init__(self, serializer):
             self.serializer = serializer
 
+    fake_permissions = object()
+    fake_backend = object()
     fake_manager = object()
 
     class FakeMacKeyboardCapture:
@@ -930,6 +932,11 @@ def test_build_runtime_uses_macos_input_and_hotkey_on_darwin(monkeypatch):
     class FakeMacHotkeyCapture:
         def __init__(self, *, manager):
             self.manager = manager
+
+    class FakeManager:
+        def __init__(self, *, permissions, backend):
+            self.permissions = permissions
+            self.backend = backend
 
     class FakeClipboard:
         pass
@@ -963,12 +970,19 @@ def test_build_runtime_uses_macos_input_and_hotkey_on_darwin(monkeypatch):
     monkeypatch.setattr(nvda_remote_main, "SpeechService", FakeSpeechService)
     monkeypatch.setattr(nvda_remote_main, "QueuedOutputService", FakeQueuedOutputService)
     monkeypatch.setattr(nvda_remote_main, "RelayTransport", FakeTransport)
+    monkeypatch.setattr(nvda_remote_main, "MacOSEventTapManager", FakeManager)
+    monkeypatch.setattr(
+        nvda_remote_main,
+        "MacOSEventTapBackend",
+        lambda: fake_backend,
+    )
     monkeypatch.setattr(nvda_remote_main, "MacOSKeyboardCapture", FakeMacKeyboardCapture)
     monkeypatch.setattr(nvda_remote_main, "MacOSHotkeyCapture", FakeMacHotkeyCapture)
     monkeypatch.setattr(
-        nvda_remote_main,
-        "_build_macos_event_tap_manager",
-        lambda: fake_manager,
+        nvda_remote_main.AccessibilityPermissions,
+        "load_default",
+        classmethod(lambda cls: fake_permissions),
+        raising=False,
     )
     monkeypatch.setattr(nvda_remote_main, "WindowsClipboardService", FakeClipboard)
     monkeypatch.setattr(nvda_remote_main, "KeyboardInputService", FakeKeyboardInputService)
@@ -981,8 +995,10 @@ def test_build_runtime_uses_macos_input_and_hotkey_on_darwin(monkeypatch):
 
     assert isinstance(runtime.input_capture, FakeMacKeyboardCapture)
     assert isinstance(runtime.hotkey_capture, FakeMacHotkeyCapture)
-    assert runtime.input_capture.manager is fake_manager
-    assert runtime.hotkey_capture.manager is fake_manager
+    assert isinstance(runtime.input_capture.manager, FakeManager)
+    assert runtime.input_capture.manager is runtime.hotkey_capture.manager
+    assert runtime.input_capture.manager.permissions is fake_permissions
+    assert runtime.input_capture.manager.backend is fake_backend
     assert isinstance(runtime.clipboard, FakeClipboard)
 
 
