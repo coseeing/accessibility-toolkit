@@ -235,6 +235,22 @@ def test_event_tap_manager_requires_accessibility_permission():
     assert permissions.calls == [False, True]
 
 
+def test_event_tap_manager_continues_after_accessibility_prompt_grants_permission():
+    permissions = FakePermissions(trusted=False, prompt_result=True)
+    backend = FakeQuartzBackend()
+    manager = MacOSEventTapManager(
+        permissions=permissions,
+        backend=backend,
+        start_thread=False,
+    )
+
+    manager.start()
+
+    assert permissions.calls == [False, True]
+    assert manager.running is True
+    assert backend.created == 1
+
+
 def test_event_tap_manager_requires_input_monitoring_permission():
     permissions = FakePermissions(listen_trusted=False, listen_prompt_result=False)
     manager = MacOSEventTapManager(
@@ -246,6 +262,22 @@ def test_event_tap_manager_requires_input_monitoring_permission():
     with pytest.raises(RuntimeError, match="macOS input monitoring permission is required"):
         manager.start()
     assert permissions.listen_calls == [False, True]
+
+
+def test_event_tap_manager_continues_after_input_monitoring_prompt_grants_permission():
+    permissions = FakePermissions(listen_trusted=False, listen_prompt_result=True)
+    backend = FakeQuartzBackend()
+    manager = MacOSEventTapManager(
+        permissions=permissions,
+        backend=backend,
+        start_thread=False,
+    )
+
+    manager.start()
+
+    assert permissions.listen_calls == [False, True]
+    assert manager.running is True
+    assert backend.created == 1
 
 
 def test_event_tap_manager_starts_backend_once():
