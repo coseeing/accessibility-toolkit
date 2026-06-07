@@ -61,6 +61,12 @@ def test_key_event_from_macos_maps_common_modifier_key():
     assert event == KeyEvent(vk=0x10, scan=56, extended=False, pressed=True)
 
 
+def test_key_event_from_macos_maps_right_command_key():
+    event = key_event_from_macos(key_code=54, pressed=True, is_repeat=False)
+
+    assert event == KeyEvent(vk=0x5C, scan=54, extended=False, pressed=True)
+
+
 def test_key_event_from_macos_returns_none_for_unknown_key_code():
     assert key_event_from_macos(key_code=999, pressed=True, is_repeat=False) is None
 
