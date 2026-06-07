@@ -21,7 +21,11 @@ class MacOSKeyboardCapture:
 
     def start(self) -> None:
         self._manager.set_keyboard_listener(self._handle_raw_event)
-        self._manager.start()
+        try:
+            self._manager.start()
+        except Exception:
+            self._manager.set_keyboard_listener(None)
+            raise
 
     def stop(self) -> None:
         self._manager.set_keyboard_listener(None)
