@@ -393,3 +393,32 @@ def test_macos_hotkey_capture_clears_handler_when_start_fails():
         capture.start()
 
     assert manager.hotkey_handler is None
+
+
+def test_macos_hotkey_capture_stop_preserves_active_keyboard_capture():
+    from adapters.macos.hotkey import MacOSHotkeyCapture
+    from adapters.macos.keyboard_hook import MacOSKeyboardCapture
+
+    backend = FakeQuartzBackend()
+    manager = MacOSEventTapManager(
+        permissions=FakePermissions(),
+        backend=backend,
+        start_thread=False,
+    )
+    hotkey = MacOSHotkeyCapture(manager=manager)
+    keyboard = MacOSKeyboardCapture(manager=manager)
+    seen = []
+    keyboard.set_listener(lambda event: seen.append(event) or KeyEventDecision.SUPPRESS)
+    hotkey.set_handler(lambda: None)
+
+    keyboard.start()
+    hotkey.start()
+    hotkey.stop()
+    decision = manager.handle_raw_event(
+        RawMacKeyEvent(key_code=0, pressed=True, is_repeat=False)
+    )
+
+    assert manager.running is True
+    assert backend.stop_calls == 0
+    assert decision == KeyEventDecision.SUPPRESS
+    assert seen == [KeyEvent(vk=0x41, scan=0, extended=False, pressed=True)]
