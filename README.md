@@ -1,6 +1,6 @@
 # NVDA Remote Client
 
-Standalone NVDA Remote client for Windows, implemented in Python.
+Standalone NVDA Remote client for Windows, with in-progress macOS keyboard capture support, implemented in Python.
 
 This project is intended to connect to an existing NVDA Remote relay/server endpoint and control another machine that is already running NVDA Remote. The codebase is structured so protocol/session logic stays separate from Windows-specific input/output adapters, with the longer-term goal of making platform ports easier.
 
@@ -15,10 +15,15 @@ The repository currently includes:
   - low-level keyboard hook setup
   - clipboard access
   - vendored NVDA controller client DLL loading path
+- macOS adapter implementations for:
+  - Quartz event-tap based keyboard capture via `PyObjC`
+  - `F11` hotkey capture for control toggling
 - A `wxPython` GUI shell
 - Unit and integration tests for the core contracts and adapter behavior
 
 What has been implemented in code has been manually validated on a real Windows machine. Real end-to-end relay compatibility, Windows UI behavior, keyboard hook behavior, clipboard updates, and NVDA speech output have been verified in that environment.
+
+The current macOS scope is narrower. The macOS path is limited to global keyboard capture plus `F11` control toggling, and it requires Quartz event taps exposed through `PyObjC`. Clipboard integration and NVDA controller integration remain Windows-specific.
 
 ## Project Layout
 
@@ -40,9 +45,12 @@ docs/
 ## Requirements
 
 - Python 3.11+
-- Windows for real runtime validation
+- Windows for full runtime validation
+- macOS for Quartz keyboard capture runtime validation
 - `wxPython` for the GUI
 - NVDA installed and running locally if you want speech output through the vendored `x64/nvdaControllerClient.dll`
+- On macOS, `PyObjC` provides the Quartz/ApplicationServices bridge used by keyboard capture
+- On macOS, the app must be granted both `Accessibility` and `Input Monitoring` permissions for global keyboard capture and suppression to work
 
 ## Install
 
@@ -77,10 +85,23 @@ The NVDA Remote app is wired to:
 - create a `RelayTransport`
 - create a `SpeechService`
 - create a `NvdaRemoteAppService`
-- use `WindowsKeyboardCapture`
-- use `WindowsHotkeyCapture`
+- use `WindowsKeyboardCapture` and `WindowsHotkeyCapture` on Windows
+- use `MacOSKeyboardCapture` and `MacOSHotkeyCapture` on macOS
 - use `WindowsClipboardService`
 - load `src/adapters/windows/vendor/nvda/x64/nvdaControllerClient.dll`
+
+On macOS, runtime validation should confirm:
+
+- Quartz event taps can start through the `PyObjC` bridge
+- The process has `Accessibility` and `Input Monitoring` permission
+- Global keyboard capture works while the app is not focused
+- `F11` toggles control mode and suppresses the local `F11` event
+
+Current macOS limitation summary:
+
+- Only keyboard capture and `F11` hotkey control toggling are in scope
+- Clipboard behavior remains Windows-specific
+- NVDA controller DLL loading and speech integration remain Windows-specific
 
 The key echo demo is wired to:
 
@@ -131,7 +152,7 @@ At the time of writing, the suite includes both unit and integration coverage fo
 
 - The relay transport now includes TCP/TLS socket framing logic and buffered newline-delimited message parsing.
 - Session state moves to `connected` only after `channel_joined` is received.
-- The Windows keyboard hook, hotkey capture, clipboard backend, and NVDA controller DLL path are implemented behind adapters so `remote_core` stays free of `wx`, Win32, and DLL-specific imports.
+- The Windows keyboard hook, macOS Quartz event tap capture, clipboard backend, and NVDA controller DLL path are implemented behind adapters so `remote_core` stays free of `wx`, Win32, Quartz, and DLL-specific imports.
 - The vendored controller client DLL was taken from NVDA official controller client release zip and stored at `src/adapters/windows/vendor/nvda/x64/nvdaControllerClient.dll`.
 - Remote `speak` payloads are deserialized into local speech command objects before routing, then carried through as full speech sequences to the active speech backend.
 - The `pyttsx3` backend now schedules real breaks from remote `BreakCommand` items and applies rate, pitch, volume, and voice selection on a best-effort basis.
