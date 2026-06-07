@@ -67,6 +67,22 @@ def test_key_event_from_macos_maps_right_command_key():
     assert event == KeyEvent(vk=0x5C, scan=54, extended=False, pressed=True)
 
 
+def test_key_event_from_macos_maps_function_key_without_extended_flag():
+    event = key_event_from_macos(key_code=109, pressed=True, is_repeat=False)
+
+    assert event == KeyEvent(vk=0x79, scan=109, extended=False, pressed=True)
+
+
+def test_key_event_from_macos_maps_navigation_key_with_extended_flag():
+    event = key_event_from_macos(key_code=121, pressed=False, is_repeat=False)
+
+    assert event == KeyEvent(vk=0x22, scan=121, extended=True, pressed=False)
+
+
+def test_key_event_from_macos_returns_none_for_unmapped_function_block_key():
+    assert key_event_from_macos(key_code=105, pressed=True, is_repeat=False) is None
+
+
 def test_key_event_from_macos_returns_none_for_unknown_key_code():
     assert key_event_from_macos(key_code=999, pressed=True, is_repeat=False) is None
 

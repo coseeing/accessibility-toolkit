@@ -87,7 +87,8 @@ The NVDA Remote app is wired to:
 - create a `NvdaRemoteAppService`
 - use `WindowsKeyboardCapture` and `WindowsHotkeyCapture` on Windows
 - use `MacOSKeyboardCapture` and `MacOSHotkeyCapture` on macOS
-- use `WindowsClipboardService`
+- use `WindowsClipboardService` on Windows
+- use a safe unsupported clipboard fallback on non-Windows platforms until a native clipboard adapter exists
 - load `src/adapters/windows/vendor/nvda/x64/nvdaControllerClient.dll`
 
 On macOS, runtime validation should confirm:
