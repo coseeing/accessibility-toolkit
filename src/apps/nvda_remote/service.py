@@ -71,7 +71,11 @@ class NvdaRemoteAppService(KeyEventHandler):
 
     def start_control(self) -> None:
         self._stop_hotkey()
-        self._ensure_capture_started()
+        try:
+            self._ensure_capture_started()
+        except Exception as error:
+            self._notify_error(str(error))
+            return
         self.state.control_state = ControlState.CONTROLLING
         self._notify_status_listener(
             {"kind": "control", "state": ControlState.CONTROLLING.value}
@@ -179,7 +183,10 @@ class NvdaRemoteAppService(KeyEventHandler):
                 self.state.connection_state = ConnectionState.CONNECTED
                 if self.state.control_state != ControlState.CONTROLLING:
                     self.state.control_state = ControlState.CONNECTED
-                    self._ensure_hotkey_started()
+                    try:
+                        self._ensure_hotkey_started()
+                    except Exception as error:
+                        self._notify_error(str(error))
             case ConnectionState.IDLE.value:
                 self._stop_capture()
                 self._stop_hotkey()
@@ -190,6 +197,9 @@ class NvdaRemoteAppService(KeyEventHandler):
     def _notify_status_listener(self, status: dict[str, Any]) -> None:
         if self._status_listener is not None:
             self._main_thread_dispatch(lambda: self._status_listener(status))
+
+    def _notify_error(self, message: str) -> None:
+        self._notify_status_listener({"kind": "error", "message": message})
 
     def _ensure_capture_started(self) -> None:
         if not self.input_capture.running:

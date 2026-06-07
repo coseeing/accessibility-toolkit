@@ -502,6 +502,19 @@ def test_main_frame_disables_clipboard_button_when_clipboard_unavailable(monkeyp
     assert frame.clipboard_button.enabled is False
 
 
+def test_main_frame_shows_input_error_from_controller_status(monkeypatch):
+    fake_wx = install_fake_wx(monkeypatch)
+    MainFrame = importlib.import_module("ui.nvda_remote.main_frame").MainFrame
+    controller = FakeController()
+    frame = MainFrame(controller=controller)
+
+    controller.status_listener({"kind": "error", "message": "permissions missing"})
+
+    assert fake_wx.message_box_calls == [
+        ("permissions missing", "Input Error", fake_wx.OK | fake_wx.ICON_ERROR)
+    ]
+
+
 def test_main_frame_locks_connection_fields_while_connected(monkeypatch):
     install_fake_wx(monkeypatch)
     MainFrame = importlib.import_module("ui.nvda_remote.main_frame").MainFrame
