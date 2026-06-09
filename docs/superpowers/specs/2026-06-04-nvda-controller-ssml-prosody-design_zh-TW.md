@@ -94,7 +94,7 @@
 
 ## 架構與責任邊界
 
-### `interop.models.speech_commands`
+### `remote_core.models.speech_commands`
 
 負責：
 
@@ -107,7 +107,7 @@
 - 實際 backend 參數套用
 - SSML 輸出
 
-### `interop.serializer`
+### `remote_core.serializer`
 
 負責：
 

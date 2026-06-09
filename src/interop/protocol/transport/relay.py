@@ -128,6 +128,11 @@ class RelayTransport:
                 break
             if self._message_handler is not None:
                 self._message_handler(payload)
+        if not self._reader_stop.is_set():
+            self.connected = False
+            logger.warning("Relay connection lost unexpectedly")
+            if self._message_handler is not None:
+                self._message_handler({"type": "transport_disconnected"})
 
     @staticmethod
     def _create_connection(hostname: str, port: int) -> socket.socket:

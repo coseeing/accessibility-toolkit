@@ -32,7 +32,7 @@ The recommended architecture is a layered Python application with clear separati
 
 ### Layers
 
-#### `interop`
+#### `remote_core`
 
 Pure client logic with no direct dependency on `wxPython`, Win32 hooks, clipboard APIs, or NVDA controller DLLs.
 
@@ -151,7 +151,7 @@ This separation is required so users can stay connected without always surrender
 1. The user starts control from the GUI.
 2. The application activates the Windows keyboard capture adapter.
 3. Captured key events are normalized into platform-neutral `KeyEvent` objects.
-4. `interop` maps `KeyEvent` objects into NVDA Remote `KEY` messages.
+4. `remote_core` maps `KeyEvent` objects into NVDA Remote `KEY` messages.
 5. The transport sends the encoded messages to the relay.
 
 This keeps capture logic separate from protocol encoding. Future platforms should only need a new capture adapter if they can produce the same normalized `KeyEvent` model.
@@ -195,7 +195,7 @@ Responsibilities:
 - Normalize captured events
 - Avoid embedding NVDA Remote protocol details in the hook layer
 
-The keyboard hook must live outside `interop`.
+The keyboard hook must live outside `remote_core`.
 
 ## Output Design
 
@@ -258,7 +258,7 @@ V1 `SpeechSegment` types:
 - `break`
 - optional prosody hints such as pitch changes, which may be preserved structurally even if a backend ignores them
 
-This intermediate model becomes the contract between `interop` and speech backends.
+This intermediate model becomes the contract between `remote_core` and speech backends.
 
 ### Windows V1 Speech Backend
 
@@ -270,7 +270,7 @@ Behavior:
 - When local NVDA is unavailable, fail gracefully without breaking the client runtime.
 - Surface status information to the GUI when useful, but do not make local NVDA a hard dependency for connection or control.
 
-The DLL integration is an adapter concern. `interop` must not know how the speech is spoken.
+The DLL integration is an adapter concern. `remote_core` must not know how the speech is spoken.
 
 ## Clipboard Synchronization
 
@@ -380,7 +380,7 @@ nvda_remote_client/
       controller.py
       state.py
       events.py
-    interop/
+    remote_core/
       protocol.py
       serializer.py
       connection_info.py
@@ -435,7 +435,7 @@ These are execution details, not unresolved product scope.
 
 Build the client as a layered Python application with:
 
-- `interop` for protocol, session, and routing
+- `remote_core` for protocol, session, and routing
 - `application` for use-case orchestration and state
 - Windows adapters for input, clipboard, and optional NVDA speech output
 - `wxPython` as a thin GUI shell

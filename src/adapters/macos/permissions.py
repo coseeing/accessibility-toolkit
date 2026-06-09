@@ -1,18 +1,22 @@
 from dataclasses import dataclass
 from typing import Any, Callable
 
-try:  # pragma: no cover - exercised on macOS
+
+try:
     from ApplicationServices import (
         AXIsProcessTrustedWithOptions,
         kAXTrustedCheckOptionPrompt,
     )
+except ImportError:
+    AXIsProcessTrustedWithOptions = None
+    kAXTrustedCheckOptionPrompt = None
+
+try:
     from Quartz import (
         CGPreflightListenEventAccess,
         CGRequestListenEventAccess,
     )
-except ImportError:  # pragma: no cover - non-macOS test environment
-    AXIsProcessTrustedWithOptions = None
-    kAXTrustedCheckOptionPrompt = None
+except ImportError:
     CGPreflightListenEventAccess = None
     CGRequestListenEventAccess = None
 
@@ -23,21 +27,22 @@ TrustedChecker = Callable[[Any], bool]
 @dataclass(slots=True)
 class AccessibilityPermissions:
     checker: TrustedChecker
+    listen_checker: TrustedChecker | None = None
     prompt_key: Any = None
     true_value: Any = True
-    listen_checker: Callable[[], bool] | None = None
-    listen_requester: Callable[[], bool] | None = None
 
     @classmethod
     def load_default(cls) -> "AccessibilityPermissions":
         if AXIsProcessTrustedWithOptions is None:
             raise RuntimeError("PyObjC ApplicationServices is required on macOS")
+        listen = None
+        if CGPreflightListenEventAccess is not None:
+            listen = CGPreflightListenEventAccess
         return cls(
             checker=AXIsProcessTrustedWithOptions,
+            listen_checker=listen,
             prompt_key=kAXTrustedCheckOptionPrompt,
             true_value=True,
-            listen_checker=CGPreflightListenEventAccess,
-            listen_requester=CGRequestListenEventAccess,
         )
 
     def is_trusted(self, *, prompt: bool = False) -> bool:
@@ -49,9 +54,9 @@ class AccessibilityPermissions:
 
     def has_listen_event_access(self, *, prompt: bool = False) -> bool:
         if self.listen_checker is None:
-            return True
-        if self.listen_checker():
-            return True
-        if not prompt or self.listen_requester is None:
-            return False
-        return bool(self.listen_requester())
+            return self.is_trusted(prompt=prompt)
+        granted = bool(self.listen_checker())
+        if not granted and prompt and CGRequestListenEventAccess is not None:
+            CGRequestListenEventAccess()
+            granted = bool(self.listen_checker())
+        return granted

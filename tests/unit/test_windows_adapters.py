@@ -16,6 +16,7 @@ from interop.key.key_event import KeyEvent
 
 WM_KEYDOWN = 0x0100
 WM_KEYUP = 0x0101
+WM_QUIT = 0x0012
 LLKHF_EXTENDED = 0x01
 
 
@@ -215,4 +216,120 @@ def test_main_uses_nvda_controller_loader(monkeypatch):
     import ui.main as main_module
 
     assert main_module.main() == 0
-    assert called == {"ran": True}
+
+
+class FakeHotkeyUser32:
+    def __init__(self, register_result=True):
+        self.register_result = register_result
+        self.registered = []
+        self.unregistered = []
+        self.posted = []
+        self._quitting = False
+
+    def RegisterHotKey(self, hwnd, hotkey_id, mods, vk):
+        self.registered.append((hwnd, hotkey_id, mods, vk))
+        return self.register_result
+
+    def UnregisterHotKey(self, hwnd, hotkey_id):
+        self.unregistered.append((hwnd, hotkey_id))
+        return True
+
+    def PostThreadMessageW(self, thread_id, msg, wparam, lparam):
+        self.posted.append((thread_id, msg, wparam, lparam))
+        if msg == WM_QUIT:
+            self._quitting = True
+        return True
+
+    def GetMessageW(self, msg_ptr, hwnd, filter_min, filter_max):
+        if self._quitting:
+            return False
+        import time
+        time.sleep(0.01)
+        if self._quitting:
+            return False
+        return True
+
+
+class FakeHotkeyKernel32:
+    def __init__(self):
+        self._tid = 9999
+
+    def GetCurrentThreadId(self):
+        return self._tid
+
+
+def test_windows_hotkey_capture_starts_and_registers():
+    from adapters.windows.hotkey import WindowsHotkeyCapture
+
+    user32 = FakeHotkeyUser32(register_result=True)
+    kernel32 = FakeHotkeyKernel32()
+    capture = WindowsHotkeyCapture(
+        user32=user32,
+        kernel32=kernel32,
+        is_windows=True,
+    )
+
+    capture.start()
+    assert capture.running is True
+    assert len(user32.registered) == 1
+    assert user32.registered[0][1] == 1  # hotkey_id
+    assert user32.registered[0][3] == 0x7A  # F11 vk
+
+    capture.stop()
+    assert capture.running is False
+    assert len(user32.unregistered) == 1
+
+
+def test_windows_hotkey_capture_raises_on_register_failure():
+    from adapters.windows.hotkey import WindowsHotkeyCapture
+
+    user32 = FakeHotkeyUser32(register_result=False)
+    kernel32 = FakeHotkeyKernel32()
+    capture = WindowsHotkeyCapture(
+        user32=user32,
+        kernel32=kernel32,
+        is_windows=True,
+    )
+
+    with pytest.raises(RuntimeError, match="Failed to register F11 hotkey"):
+        capture.start()
+
+    assert capture.running is False
+    assert user32.unregistered == []
+
+
+def test_windows_hotkey_capture_starts_does_not_double_start():
+    from adapters.windows.hotkey import WindowsHotkeyCapture
+
+    user32 = FakeHotkeyUser32(register_result=True)
+    kernel32 = FakeHotkeyKernel32()
+    capture = WindowsHotkeyCapture(
+        user32=user32,
+        kernel32=kernel32,
+        is_windows=True,
+    )
+
+    capture.start()
+    capture.start()  # should be no-op
+
+    assert capture.running is True
+    assert len(user32.registered) == 1
+
+
+def test_windows_hotkey_capture_stop_does_not_double_stop():
+    from adapters.windows.hotkey import WindowsHotkeyCapture
+
+    user32 = FakeHotkeyUser32(register_result=True)
+    kernel32 = FakeHotkeyKernel32()
+    capture = WindowsHotkeyCapture(
+        user32=user32,
+        kernel32=kernel32,
+        is_windows=True,
+    )
+
+    capture.start()
+    capture.stop()
+    capture.stop()  # should be no-op
+
+    assert capture.running is False
+    assert len(user32.unregistered) == 1

@@ -90,7 +90,10 @@ class NvdaRemoteAppService(KeyEventHandler):
         self._stop_capture()
         self.state.control_state = ControlState.SUSPENDED
         if self.state.connection_state != ConnectionState.IDLE:
-            self._ensure_hotkey_started()
+            try:
+                self._ensure_hotkey_started()
+            except Exception as error:
+                self._notify_error(str(error))
         self._notify_status_listener(
             {"kind": "control", "state": ControlState.SUSPENDED.value}
         )
@@ -174,6 +177,9 @@ class NvdaRemoteAppService(KeyEventHandler):
         return KeyEventDecision.SUPPRESS
 
     def _handle_transport_message(self, payload: dict[str, Any]) -> None:
+        if payload.get("type") == "transport_disconnected":
+            self._on_status({"kind": "connection", "state": "idle"})
+            return
         if self.session.handle_message(payload):
             return
         self.router.handle_message(payload)

@@ -79,7 +79,12 @@ class MainFrame(wx.Frame, SpeechControlsMixin):
         if self._is_controlling():
             self.controller.stop_control()
         else:
-            self.controller.start_control()
+            try:
+                self.controller.start_control()
+            except Exception as error:
+                self._show_error(str(error), "Input Error")
+                self._sync_control_button()
+                return
         self._sync_control_button()
 
     def _on_push_clipboard(self, _event):

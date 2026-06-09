@@ -100,7 +100,7 @@ client 不替 backend 做 command fallback、prosody 模擬或支援判斷。
 
 ## 建議架構
 
-### `interop` / serializer 層
+### `remote_core` / serializer 層
 
 職責調整為：
 
@@ -108,7 +108,7 @@ client 不替 backend 做 command fallback、prosody 模擬或支援判斷。
 - 比照 NVDA `_remoteClient.serializer.asSequence` 的模式，只在 `type == "speak"` 且有 `sequence` 時進行還原
 - 不先把 speech 扁平化成簡化模型
 
-### `interop` / routing 層
+### `remote_core` / routing 層
 
 職責調整為：
 

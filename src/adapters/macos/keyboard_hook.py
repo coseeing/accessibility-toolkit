@@ -34,11 +34,11 @@ class MacOSKeyboardCapture:
     def _handle_raw_event(self, event: RawMacKeyEvent) -> KeyEventDecision:
         if self._listener is None:
             return KeyEventDecision.PASS_THROUGH
-        translated = key_event_from_macos(
+        key_event = key_event_from_macos(
             key_code=event.key_code,
             pressed=event.pressed,
             is_repeat=event.is_repeat,
         )
-        if translated is None:
+        if key_event is None:
             return KeyEventDecision.PASS_THROUGH
-        return self._listener(translated)
+        return self._listener(key_event)

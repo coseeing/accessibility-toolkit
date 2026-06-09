@@ -32,7 +32,7 @@
 
 ### 分層
 
-#### `interop`
+#### `remote_core`
 
 純 client 邏輯，不直接依賴 `wxPython`、Win32 hook、剪貼簿 API 或 NVDA controller DLL。
 
@@ -151,7 +151,7 @@ V1 應保留連線角色的概念，但不直接複製 NVDA 目前的物件模�
 1. 使用者從 GUI 啟動控制。
 2. Application 啟用 Windows 鍵盤擷取 adapter。
 3. 擷取到的按鍵事件會正規化為平台無關的 `KeyEvent` 物件。
-4. `interop` 將 `KeyEvent` 物件映射成 NVDA Remote `KEY` message。
+4. `remote_core` 將 `KeyEvent` 物件映射成 NVDA Remote `KEY` message。
 5. Transport 將編碼後的 message 送到 relay。
 
 這樣可以把擷取邏輯與 protocol 編碼邏輯分離。未來若支援其他平台，只要能產生相同的正規化 `KeyEvent` model，理論上只需要新的 capture adapter。
@@ -195,7 +195,7 @@ Listener 會接收正規化的 `KeyEvent` 物件，至少包含：
 - 正規化擷取到的事件
 - 避免在 hook 層中嵌入 NVDA Remote protocol 細節
 
-Keyboard hook 必須位於 `interop` 之外。
+Keyboard hook 必須位於 `remote_core` 之外。
 
 ## 輸出設計
 
@@ -258,7 +258,7 @@ V1 的 `SpeechSegment` 類型：
 - `break`
 - 可選的 prosody hint，例如 pitch change；即使 backend 忽略，也可先保留其結構
 
-這個中介模型會成為 `interop` 與 speech backend 之間的契約。
+這個中介模型會成為 `remote_core` 與 speech backend 之間的契約。
 
 ### Windows V1 語音 Backend
 
@@ -270,7 +270,7 @@ V1 的 `SpeechSegment` 類型：
 - 當本機無法使用 NVDA 時，必須優雅退化，不能破壞 client runtime。
 - 在有幫助的情況下，可將狀態資訊回報給 GUI，但不可讓本機 NVDA 成為連線或控制流程的硬性依賴。
 
-DLL 整合屬於 adapter 職責。`interop` 不應知道語音實際如何被唸出。
+DLL 整合屬於 adapter 職責。`remote_core` 不應知道語音實際如何被唸出。
 
 ## 剪貼簿同步
 
@@ -380,7 +380,7 @@ nvda_remote_client/
       controller.py
       state.py
       events.py
-    interop/
+    remote_core/
       protocol.py
       serializer.py
       connection_info.py
@@ -435,7 +435,7 @@ nvda_remote_client/
 
 將此 client 建構為分層式 Python 應用程式，包含：
 
-- `interop`：負責 protocol、session 與 routing
+- `remote_core`：負責 protocol、session 與 routing
 - `application`：負責 use-case 協調與 state
 - Windows adapters：負責 input、clipboard 與可選的 NVDA 語音輸出
 - `wxPython`：作為薄 GUI shell

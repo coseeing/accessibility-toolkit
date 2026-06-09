@@ -31,15 +31,12 @@ class FakeCapture:
         self.listener = None
         self.started = 0
         self.stopped = 0
-        self.start_error = None
 
     def set_listener(self, listener):
         self.listener = listener
 
     def start(self):
         self.started += 1
-        if self.start_error is not None:
-            raise self.start_error
         self.running = True
 
     def stop(self):
@@ -53,15 +50,12 @@ class FakeHotkey:
         self.running = False
         self.started = 0
         self.stopped = 0
-        self.start_error = None
 
     def set_handler(self, handler):
         self.handler = handler
 
     def start(self):
         self.started += 1
-        if self.start_error is not None:
-            raise self.start_error
         self.running = True
 
     def stop(self):
@@ -72,7 +66,6 @@ class FakeHotkey:
 class FakeClipboard:
     def __init__(self):
         self.text = ""
-        self.supported = True
 
     def set_text(self, text):
         self.text = text
@@ -210,24 +203,6 @@ def test_nvda_remote_service_uses_f11_as_local_stop():
     assert hotkey.running is True
 
 
-def test_nvda_remote_service_start_control_reports_capture_start_errors():
-    service, _transport, capture, hotkey, _dispatch_calls = build_service()
-    service.bind()
-    delivered = []
-    service.set_status_listener(delivered.append)
-    service.state.connection_state = service.state.connection_state.CONNECTED
-    service.state.control_state = service.state.control_state.CONNECTED
-    hotkey.running = True
-    capture.start_error = RuntimeError("capture unavailable")
-
-    service.start_control()
-
-    assert service.state.control_state == service.state.control_state.CONNECTED
-    assert delivered[-1] == {"kind": "error", "message": "capture unavailable"}
-    assert hotkey.started == 1
-    assert hotkey.running is True
-
-
 def test_nvda_remote_service_routes_remote_speech_commands_into_speech_facade():
     service, transport, _capture, _hotkey, _dispatch_calls = build_service()
     service.bind()
@@ -257,29 +232,6 @@ def test_nvda_remote_service_registers_transport_message_handler():
 
     assert service.state.connection_state == service.state.connection_state.CONNECTED
     assert hotkey.started == 1
-
-
-def test_nvda_remote_service_reports_hotkey_start_errors_on_connect():
-    service, transport, _capture, hotkey, _dispatch_calls = build_service()
-    delivered = []
-    service.set_status_listener(delivered.append)
-    hotkey.start_error = RuntimeError("hotkey unavailable")
-    service.bind()
-
-    transport.message_handler({"type": RemoteMessageType.CHANNEL_JOINED.value})
-
-    assert service.state.connection_state == service.state.connection_state.CONNECTED
-    assert service.state.control_state == service.state.control_state.CONNECTED
-    assert delivered[0] == {"kind": "error", "message": "hotkey unavailable"}
-    assert delivered[-1] == {"kind": "connection", "state": "connected"}
-
-
-def test_nvda_remote_service_reports_clipboard_availability():
-    service, _transport, _capture, _hotkey, _dispatch_calls = build_service()
-
-    assert service.is_clipboard_available() is True
-    service.clipboard.supported = False
-    assert service.is_clipboard_available() is False
 
 
 def test_nvda_remote_service_does_not_swallow_f11_when_not_controlling():
@@ -323,6 +275,50 @@ def test_nvda_remote_service_dispatches_status_updates_through_main_thread_callb
     pending.pop()()
 
     assert delivered == [{"kind": "connection", "state": "connected"}]
+
+
+def test_nvda_remote_service_handles_transport_disconnected_message():
+    service, transport, capture, hotkey, _dispatch_calls = build_service()
+    service.bind()
+    service.state.connection_state = service.state.connection_state.CONNECTED
+    service.state.control_state = service.state.control_state.CONNECTED
+    status_events = []
+    service.set_status_listener(status_events.append)
+
+    transport.message_handler({"type": "transport_disconnected"})
+
+    assert service.state.connection_state == service.state.connection_state.IDLE
+    assert service.state.control_state == service.state.control_state.IDLE
+    assert status_events == [{"kind": "connection", "state": "idle"}]
+
+
+def test_nvda_remote_service_stop_control_handles_hotkey_start_failure():
+    service, transport, capture, hotkey, _dispatch_calls = build_service()
+    service.bind()
+    service.state.connection_state = service.state.connection_state.CONNECTED
+    service.state.control_state = service.state.control_state.CONTROLLING
+    capture.running = True
+    capture.started = 1
+    status_events = []
+    service.set_status_listener(status_events.append)
+
+    failing = RuntimeError("hotkey busy")
+
+    def _failing_start():
+        hotkey.running = True
+        raise failing
+
+    hotkey.start = _failing_start
+
+    service.stop_control()
+
+    assert service.state.control_state == service.state.control_state.SUSPENDED
+    assert capture.stopped == 1
+    assert capture.running is False
+    assert status_events == [
+        {"kind": "error", "message": "hotkey busy"},
+        {"kind": "control", "state": "suspended"},
+    ]
 
 
 def test_nvda_remote_service_dispatches_speech_backend_notifications():

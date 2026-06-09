@@ -178,32 +178,36 @@ def _build_clipboard_service() -> ClipboardService:
 def _get_windows_keyboard_capture_class() -> Any:
     global WindowsKeyboardCapture
     if WindowsKeyboardCapture is None:
-        module = importlib.import_module("adapters.windows.keyboard_hook")
-        WindowsKeyboardCapture = module.WindowsKeyboardCapture
+        from adapters.windows.keyboard_hook import WindowsKeyboardCapture as Capture
+
+        WindowsKeyboardCapture = Capture
     return WindowsKeyboardCapture
 
 
 def _get_windows_hotkey_capture_class() -> Any:
     global WindowsHotkeyCapture
     if WindowsHotkeyCapture is None:
-        module = importlib.import_module("adapters.windows.hotkey")
-        WindowsHotkeyCapture = module.WindowsHotkeyCapture
+        from adapters.windows.hotkey import WindowsHotkeyCapture as Capture
+
+        WindowsHotkeyCapture = Capture
     return WindowsHotkeyCapture
 
 
 def _get_windows_clipboard_service_class() -> Any:
     global WindowsClipboardService
     if WindowsClipboardService is None:
-        module = importlib.import_module("adapters.windows.clipboard")
-        WindowsClipboardService = module.WindowsClipboardService
+        from adapters.windows.clipboard import WindowsClipboardService as Service
+
+        WindowsClipboardService = Service
     return WindowsClipboardService
 
 
 def _get_nvda_controller_speech_output_class() -> Any:
     global NvdaControllerSpeechOutput
     if NvdaControllerSpeechOutput is None:
-        module = importlib.import_module("adapters.windows.nvda_controller")
-        NvdaControllerSpeechOutput = module.NvdaControllerSpeechOutput
+        from adapters.windows.nvda_controller import NvdaControllerSpeechOutput as Output
+
+        NvdaControllerSpeechOutput = Output
     return NvdaControllerSpeechOutput
 
 
