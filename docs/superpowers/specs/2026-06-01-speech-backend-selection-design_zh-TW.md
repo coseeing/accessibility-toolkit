@@ -34,7 +34,7 @@ GUI 會提供一個下拉選單，且只會有兩個後端選項：
 
 ### 分層
 
-#### `interop`
+#### `remote_core`
 
 核心的 protocol/session/routing 職責維持不變，只是 `CANCEL` 與 `PAUSE_SPEECH` 仍然會路由到統一的語音輸出介面。
 

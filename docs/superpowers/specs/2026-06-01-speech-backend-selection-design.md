@@ -34,7 +34,7 @@ The recommended design is a small backend manager in the application layer plus 
 
 ### Layers
 
-#### `interop`
+#### `remote_core`
 
 No change to the core protocol/session/routing responsibilities except that `CANCEL` and `PAUSE_SPEECH` continue to route into the generic speech output interface.
 

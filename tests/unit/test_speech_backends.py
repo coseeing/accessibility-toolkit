@@ -208,6 +208,12 @@ class FakeTaskManager:
     def cancel(self) -> None:
         self.calls.append(("cancel", None))
 
+    def notify_done(self) -> None:
+        pass
+
+    def cancel_all(self) -> None:
+        self.calls.append(("cancel_all", None))
+
 
 class FakeClipboard:
     def __init__(self) -> None:

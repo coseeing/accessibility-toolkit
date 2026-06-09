@@ -26,6 +26,7 @@ class WindowsHotkeyCapture:
         self._user32 = user32
         self._kernel32 = kernel32
         self._thread: threading.Thread | None = None
+        self._ready: threading.Event | None = None
         self._thread_id: int | None = None
         self._vk = vk
 
@@ -40,9 +41,15 @@ class WindowsHotkeyCapture:
         if self._running:
             return
         self._ensure_backend()
+        ready = threading.Event()
+        self._ready = ready
         self._thread = threading.Thread(target=self._message_loop, daemon=True)
         self._thread.start()
-        self._running = True
+        ready.wait()
+        if not self._running:
+            raise RuntimeError(
+                "Failed to register F11 hotkey — may already be in use by another app"
+            )
 
     def stop(self) -> None:
         if not self._running:
@@ -53,6 +60,7 @@ class WindowsHotkeyCapture:
             self._thread.join(timeout=1)
         self._thread = None
         self._thread_id = None
+        self._ready = None
         self._running = False
 
     def _ensure_backend(self) -> None:
@@ -94,9 +102,18 @@ class WindowsHotkeyCapture:
             return
 
     def _message_loop(self) -> None:
-        self._thread_id = int(self._kernel32.GetCurrentThreadId())
-        if not self._user32.RegisterHotKey(None, HOTKEY_ID, 0, self._vk):
-            self._running = False
+        ready = self._ready
+        self._ready = None
+        try:
+            self._thread_id = int(self._kernel32.GetCurrentThreadId())
+            if not self._user32.RegisterHotKey(None, HOTKEY_ID, 0, self._vk):
+                self._running = False
+                return
+            self._running = True
+        finally:
+            if ready is not None:
+                ready.set()
+        if not self._running:
             return
         try:
             msg = wintypes.MSG()

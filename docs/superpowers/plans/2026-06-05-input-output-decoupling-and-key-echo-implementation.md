@@ -83,7 +83,7 @@
 ```python
 from adapters.inputs.base import KeyEventDecision
 from application.keyboard import KeyboardInputService
-from interop.models.keys import KeyEvent
+from remote_core.models.keys import KeyEvent
 
 
 class FakeCapture:
@@ -148,7 +148,7 @@ Expected: FAIL with `ModuleNotFoundError` for `application.keyboard` or missing 
 from typing import Protocol
 
 from adapters.inputs.base import InputCapture, KeyEventDecision
-from interop.models.keys import KeyEvent
+from remote_core.models.keys import KeyEvent
 
 
 class KeyEventHandler(Protocol):
@@ -201,7 +201,7 @@ git commit -m "feat: add shared keyboard input service"
 ```python
 from application.speech_service import SpeechService
 from application.speech_backends import SpeechBackendOption
-from interop.models.speech_sequence import SpeechSequence
+from remote_core.models.speech_sequence import SpeechSequence
 
 
 class FakeSpeechOutput:
@@ -306,7 +306,7 @@ from dataclasses import dataclass
 
 from adapters.outputs.interfaces import BrailleOutput, SpeechOutput, ToneOutput
 from application.speech_backends import SpeechBackendOption
-from interop.models.speech_sequence import SpeechSequence
+from remote_core.models.speech_sequence import SpeechSequence
 
 
 @dataclass
@@ -409,7 +409,7 @@ git commit -m "feat: add shared speech service"
 from adapters.inputs.base import KeyEventDecision
 from apps.key_echo.service import KeyEchoAppService
 from application.output_capabilities import OutputCapabilities
-from interop.models.keys import KeyEvent
+from remote_core.models.keys import KeyEvent
 
 
 class FakeSpeechService:
@@ -445,8 +445,8 @@ Expected: FAIL with `ModuleNotFoundError` for `apps.key_echo.service`
 from adapters.inputs.base import KeyEventDecision
 from application.keyboard import KeyEventHandler
 from application.output_capabilities import OutputCapabilities
-from interop.models.keys import KeyEvent
-from interop.models.speech_sequence import SpeechSequence
+from remote_core.models.keys import KeyEvent
+from remote_core.models.speech_sequence import SpeechSequence
 
 
 class KeyEchoAppService(KeyEventHandler):
@@ -506,7 +506,7 @@ git commit -m "feat: add key echo app service"
 - Create: `src/apps/nvda_remote/__init__.py`
 - Create: `src/apps/nvda_remote/service.py`
 - Test: `tests/unit/test_nvda_remote_app_service.py`
-- Modify: `src/interop/routing/message_router.py`
+- Modify: `src/remote_core/routing/message_router.py`
 - Modify: `src/application/state.py`
 - Delete: `src/application/controller.py`
 
@@ -515,8 +515,8 @@ git commit -m "feat: add key echo app service"
 ```python
 from adapters.inputs.base import KeyEventDecision
 from apps.nvda_remote.service import NvdaRemoteAppService
-from interop.models.keys import KeyEvent
-from interop.protocol import RemoteMessageType
+from remote_core.models.keys import KeyEvent
+from remote_core.protocol import RemoteMessageType
 
 
 class FakeTransport:
@@ -609,12 +609,12 @@ from typing import Any
 from adapters.inputs.base import HotkeyCapture, InputCapture, KeyEventDecision
 from application.keyboard import KeyEventHandler
 from application.state import ConnectionState, ControlState, RuntimeState
-from interop.connection_info import ConnectionInfo
-from interop.models.keys import KeyEvent
-from interop.protocol import RemoteMessageType
-from interop.routing.message_router import MessageRouter
-from interop.session.remote_session import RemoteSession
-from interop.transport.base import Transport
+from remote_core.connection_info import ConnectionInfo
+from remote_core.models.keys import KeyEvent
+from remote_core.protocol import RemoteMessageType
+from remote_core.routing.message_router import MessageRouter
+from remote_core.session.remote_session import RemoteSession
+from remote_core.transport.base import Transport
 
 
 class NvdaRemoteAppService(KeyEventHandler):
@@ -690,7 +690,7 @@ Expected: PASS
 - [ ] **Step 5: Commit**
 
 ```bash
-git add tests/unit/test_nvda_remote_app_service.py src/apps/nvda_remote/__init__.py src/apps/nvda_remote/service.py src/application/state.py src/interop/routing/message_router.py
+git add tests/unit/test_nvda_remote_app_service.py src/apps/nvda_remote/__init__.py src/apps/nvda_remote/service.py src/application/state.py src/remote_core/routing/message_router.py
 git commit -m "refactor: extract nvda remote app service"
 ```
 
@@ -742,8 +742,8 @@ from application.keyboard import KeyboardInputService
 from application.speech_backends import SpeechBackendOption
 from application.speech_service import SpeechService
 from apps.nvda_remote.service import NvdaRemoteAppService
-from interop.serializer import JSONSerializer
-from interop.transport.relay import RelayTransport
+from remote_core.serializer import JSONSerializer
+from remote_core.transport.relay import RelayTransport
 from ui.app import NvdaRemoteApp
 
 

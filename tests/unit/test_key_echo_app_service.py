@@ -275,11 +275,89 @@ def test_build_runtime_composes_local_keyboard_and_speech(monkeypatch) -> None:
     assert speech_output.spoken == [SpeechSequence(items=("VK 66",))]
 
 
-def test_build_runtime_rejects_non_windows_platform(monkeypatch) -> None:
+def test_build_runtime_macos_path_composes_capture(monkeypatch) -> None:
     monkeypatch.setattr(main_module.sys, "platform", "darwin")
 
-    with pytest.raises(RuntimeError, match="key_echo is currently supported only on Windows"):
-        main_module.build_runtime()
+    class MacOSFakeCapture:
+        def __init__(self, *, manager):
+            self.manager = manager
+            self.listener = None
+            self.start_calls = 0
+            self.stop_calls = 0
+
+        def set_listener(self, listener):
+            self.listener = listener
+
+        def start(self):
+            self.start_calls += 1
+
+        def stop(self):
+            self.stop_calls += 1
+
+        @property
+        def running(self):
+            return self.start_calls > self.stop_calls
+
+    main_module.MacOSKeyboardCapture = MacOSFakeCapture
+
+    class FakePermissions:
+        @classmethod
+        def load_default(cls):
+            return cls()
+
+        def is_trusted(self, *, prompt=False):
+            return True
+
+        def has_listen_event_access(self, *, prompt=False):
+            return True
+
+    class FakeManager:
+        def __init__(self, *, permissions, backend):
+            self.permissions = permissions
+            self.backend = backend
+
+    class FakeOutputScheduler:
+        pass
+
+    class FakeKeyboardInputService:
+        def __init__(self, capture, handler):
+            self.capture = capture
+            self.handler = handler
+
+        def bind(self):
+            pass
+
+    class FakeQueuedOutputService:
+        def __init__(self, *, speech, scheduler):
+            self.speech = speech
+            self.scheduler = scheduler
+
+    class FakeApp:
+        def __init__(self, controller):
+            self.controller = controller
+
+    main_module.AccessibilityPermissions = FakePermissions
+    main_module.MacOSEventTapManager = FakeManager
+    main_module.MacOSEventTapBackend = lambda: object()
+    monkeypatch.setattr(main_module, "OutputScheduler", FakeOutputScheduler)
+    monkeypatch.setattr(main_module, "KeyboardInputService", FakeKeyboardInputService)
+    monkeypatch.setattr(main_module, "QueuedOutputService", FakeQueuedOutputService)
+    monkeypatch.setattr(
+        main_module.Pyttsx3SpeechOutput,
+        "load_default",
+        classmethod(lambda cls, scheduler=None: FakeSpeechOutput()),
+    )
+
+    import sys as _sys
+    import types
+    fake_echo_app_module = types.ModuleType("ui.echo.app")
+    fake_echo_app_module.EchoApp = FakeApp
+    monkeypatch.setitem(_sys.modules, "ui.echo.app", fake_echo_app_module)
+
+    runtime = main_module.build_runtime()
+    assert isinstance(runtime.capture, MacOSFakeCapture)
+    assert runtime.speech_service.get_selected_backend() == "pyttsx3"
+    assert runtime.capture.manager is not None
 
 
 def test_main_runs_echo_app_main_loop(monkeypatch) -> None:

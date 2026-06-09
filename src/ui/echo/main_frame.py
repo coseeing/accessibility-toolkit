@@ -36,7 +36,12 @@ class EchoMainFrame(wx.Frame, SpeechControlsMixin):
         if self._is_echo_running():
             self.controller.stop_echo()
         else:
-            self.controller.start_echo()
+            try:
+                self.controller.start_echo()
+            except Exception as error:
+                self._show_error(str(error), "Input Error")
+                self._sync_echo_controls()
+                return
         self._sync_echo_controls()
 
     def _is_echo_running(self) -> bool:

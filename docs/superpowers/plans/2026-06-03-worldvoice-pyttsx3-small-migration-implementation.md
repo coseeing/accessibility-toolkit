@@ -6,7 +6,7 @@
 
 **Architecture:** Keep the larger `WorldVoice` core-extraction work out of scope. Follow NVDA `_remoteClient.serializer` by reconstructing speech commands during deserialization, then carry full speech sequences end-to-end, transplant only `taskManager`, and evolve the existing `pyttsx3` backend into a sequence-aware backend that interprets commands locally while the GUI remains a thin shell over controller/backend APIs.
 
-**Tech Stack:** Python 3.11+, `pytest`, `wxPython`, `pyttsx3`, transplanted `WorldVoice` `taskManager`, existing `application` / `interop` / `adapters` layers
+**Tech Stack:** Python 3.11+, `pytest`, `wxPython`, `pyttsx3`, transplanted `WorldVoice` `taskManager`, existing `application` / `remote_core` / `adapters` layers
 
 ---
 
@@ -14,9 +14,9 @@
 
 ### Create
 
-- `src/interop/models/speech_commands.py`
+- `src/remote_core/models/speech_commands.py`
   Client-local NVDA speech command compatibility classes such as `SpeechCommand`, `BreakCommand`, `PitchCommand`, `RateCommand`, `VolumeCommand`, `LangChangeCommand`, and `IndexCommand`.
-- `src/interop/models/speech_sequence.py`
+- `src/remote_core/models/speech_sequence.py`
   Immutable container plus payload restoration helpers for `list[str | SpeechCommand]` sequences.
 - `src/adapters/worldvoice_task/__init__.py`
   Package marker for transplanted scheduling code.
@@ -31,9 +31,9 @@
 
 ### Modify
 
-- `src/interop/serializer.py`
+- `src/remote_core/serializer.py`
   Reconstruct `speak` payload sequences during deserialization, following NVDA `_remoteClient.serializer`.
-- `src/interop/routing/message_router.py`
+- `src/remote_core/routing/message_router.py`
   Consume already-restored full speech sequences instead of only `NormalizedSpeech`.
 - `src/application/services.py`
   Let `OutputManager` forward full speech sequences.
@@ -65,21 +65,21 @@
 ## Task 1: Add Speech Command Compatibility Types
 
 **Files:**
-- Create: `src/interop/models/speech_commands.py`
-- Create: `src/interop/models/speech_sequence.py`
+- Create: `src/remote_core/models/speech_commands.py`
+- Create: `src/remote_core/models/speech_sequence.py`
 - Test: `tests/unit/test_speech_commands.py`
 
 - [ ] **Step 1: Write the failing tests**
 
 ```python
-from interop.models.speech_commands import (
+from remote_core.models.speech_commands import (
     BreakCommand,
     PitchCommand,
     RateCommand,
     SpeechCommand,
     VolumeCommand,
 )
-from interop.models.speech_sequence import SpeechSequence
+from remote_core.models.speech_sequence import SpeechSequence
 
 
 def test_speech_sequence_restores_text_and_supported_commands():
@@ -119,12 +119,12 @@ def test_speech_sequence_preserves_unknown_command_as_generic_speech_command():
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `pytest tests/unit/test_speech_commands.py -v`
-Expected: FAIL with `ModuleNotFoundError` for `interop.models.speech_commands`
+Expected: FAIL with `ModuleNotFoundError` for `remote_core.models.speech_commands`
 
 - [ ] **Step 3: Write the minimal compatibility layer**
 
 ```python
-# src/interop/models/speech_commands.py
+# src/remote_core/models/speech_commands.py
 from dataclasses import dataclass, field
 
 
@@ -185,10 +185,10 @@ class VolumeCommand(SpeechCommand):
 ```
 
 ```python
-# src/interop/models/speech_sequence.py
+# src/remote_core/models/speech_sequence.py
 from dataclasses import dataclass
 
-from interop.models.speech_commands import (
+from remote_core.models.speech_commands import (
     BreakCommand,
     PitchCommand,
     RateCommand,
@@ -242,21 +242,21 @@ Expected: PASS
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/interop/models/speech_commands.py src/interop/models/speech_sequence.py tests/unit/test_speech_commands.py
+git add src/remote_core/models/speech_commands.py src/remote_core/models/speech_sequence.py tests/unit/test_speech_commands.py
 git commit -m "feat: add speech command compatibility layer"
 ```
 
 ## Task 2: Reconstruct Full Speech Sequences During Deserialization
 
 **Files:**
-- Modify: `src/interop/serializer.py`
+- Modify: `src/remote_core/serializer.py`
 - Modify: `tests/unit/test_protocol_serializer.py`
 
 - [ ] **Step 1: Write the failing serializer tests**
 
 ```python
-from interop.models.speech_commands import BreakCommand, PitchCommand
-from interop.serializer import JSONSerializer
+from remote_core.models.speech_commands import BreakCommand, PitchCommand
+from remote_core.serializer import JSONSerializer
 
 
 def test_serializer_restores_speak_sequence_during_deserialize():
@@ -278,10 +278,10 @@ Expected: FAIL because deserialization still returns raw JSON list items
 - [ ] **Step 3: Update serializer to follow NVDA `_remoteClient.serializer`**
 
 ```python
-# src/interop/serializer.py
+# src/remote_core/serializer.py
 import json
 
-from interop.models.speech_commands import (
+from remote_core.models.speech_commands import (
     BreakCommand,
     PitchCommand,
     RateCommand,
@@ -333,14 +333,14 @@ Expected: PASS
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/interop/serializer.py tests/unit/test_protocol_serializer.py
+git add src/remote_core/serializer.py tests/unit/test_protocol_serializer.py
 git commit -m "feat: restore speech commands during deserialize"
 ```
 
 ## Task 3: Route Full Speech Sequences Through MessageRouter And OutputManager
 
 **Files:**
-- Modify: `src/interop/routing/message_router.py`
+- Modify: `src/remote_core/routing/message_router.py`
 - Modify: `src/application/services.py`
 - Modify: `src/adapters/outputs/speech.py`
 - Modify: `tests/unit/test_message_router.py`
@@ -349,8 +349,8 @@ git commit -m "feat: restore speech commands during deserialize"
 - [ ] **Step 1: Write the failing routing and output tests**
 
 ```python
-from interop.models.speech_commands import BreakCommand
-from interop.models.speech_sequence import SpeechSequence
+from remote_core.models.speech_commands import BreakCommand
+from remote_core.models.speech_sequence import SpeechSequence
 
 
 def test_router_dispatches_full_speech_sequence():
@@ -420,7 +420,7 @@ Expected: FAIL because router still produces `NormalizedSpeech`
 # src/adapters/outputs/speech.py
 from typing import Protocol
 
-from interop.models.speech_sequence import SpeechSequence
+from remote_core.models.speech_sequence import SpeechSequence
 
 
 class SpeechOutput(Protocol):
@@ -440,7 +440,7 @@ class SpeechOutput(Protocol):
 
 ```python
 # src/application/services.py
-from interop.models.speech_sequence import SpeechSequence
+from remote_core.models.speech_sequence import SpeechSequence
 
 
 class OutputManager:
@@ -449,8 +449,8 @@ class OutputManager:
 ```
 
 ```python
-# src/interop/routing/message_router.py
-from interop.models.speech_sequence import SpeechSequence
+# src/remote_core/routing/message_router.py
+from remote_core.models.speech_sequence import SpeechSequence
 
 
 class MessageRouter:
@@ -468,7 +468,7 @@ Expected: PASS
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/adapters/outputs/speech.py src/application/services.py src/interop/routing/message_router.py tests/unit/test_message_router.py tests/unit/test_output_manager.py
+git add src/adapters/outputs/speech.py src/application/services.py src/remote_core/routing/message_router.py tests/unit/test_message_router.py tests/unit/test_output_manager.py
 git commit -m "feat: route full speech sequences to speech backends"
 ```
 
@@ -580,8 +580,8 @@ git commit -m "feat: transplant worldvoice task manager"
 - [ ] **Step 1: Write the failing backend tests**
 
 ```python
-from interop.models.speech_commands import BreakCommand, PitchCommand, RateCommand, VolumeCommand
-from interop.models.speech_sequence import SpeechSequence
+from remote_core.models.speech_commands import BreakCommand, PitchCommand, RateCommand, VolumeCommand
+from remote_core.models.speech_sequence import SpeechSequence
 
 
 def test_pyttsx3_backend_schedules_real_breaks_between_text_chunks():
@@ -627,8 +627,8 @@ Expected: FAIL because `pyttsx3` still expects `NormalizedSpeech`
 ```python
 # src/adapters/windows/pyttsx3_output.py
 from adapters.worldvoice_task.task_manager import TaskManager
-from interop.models.speech_commands import BreakCommand, PitchCommand, RateCommand, VolumeCommand
-from interop.models.speech_sequence import SpeechSequence
+from remote_core.models.speech_commands import BreakCommand, PitchCommand, RateCommand, VolumeCommand
+from remote_core.models.speech_sequence import SpeechSequence
 
 
 class Pyttsx3SpeechOutput:

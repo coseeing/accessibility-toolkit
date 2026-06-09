@@ -165,6 +165,7 @@ class Pyttsx3SpeechOutput:
                     self._active_engine = None
                 if self._recreate_engine_per_utterance:
                     self._engine = None
+            self._scheduler.notify_done()
 
     def _acquire_engine(self) -> Any:
         with self._lock:
