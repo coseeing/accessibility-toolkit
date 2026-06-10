@@ -5,6 +5,9 @@ import types
 
 import pytest
 
+import bootstrap.platform
+import bootstrap.runtime
+
 
 UI_MODULES = (
     "ui.app",
@@ -888,10 +891,13 @@ def test_nvda_remote_main_build_runtime_composes_app_service_and_gui(monkeypatch
     monkeypatch.setattr(nvda_remote_main, "SpeechService", FakeSpeechService)
     monkeypatch.setattr(nvda_remote_main, "QueuedOutputService", FakeQueuedOutputService)
     monkeypatch.setattr(nvda_remote_main, "RelayTransport", FakeTransport)
-    monkeypatch.setattr(nvda_remote_main, "WindowsKeyboardCapture", FakeKeyboardCapture)
-    monkeypatch.setattr(nvda_remote_main, "WindowsHotkeyCapture", FakeHotkeyCapture)
-    monkeypatch.setattr(nvda_remote_main.sys, "platform", "win32")
-    monkeypatch.setattr(nvda_remote_main, "_build_clipboard_service", lambda: FakeClipboard())
+    monkeypatch.setattr(bootstrap.platform, "create_input_capture", lambda: FakeKeyboardCapture())
+    monkeypatch.setattr(bootstrap.platform, "create_hotkey_capture", lambda: FakeHotkeyCapture())
+    monkeypatch.setattr(bootstrap.platform.sys, "platform", "win32")
+    monkeypatch.setattr(bootstrap.platform, "create_clipboard_service", lambda: FakeClipboard())
+    monkeypatch.setattr(nvda_remote_main, "create_input_capture", lambda: FakeKeyboardCapture())
+    monkeypatch.setattr(nvda_remote_main, "create_hotkey_capture", lambda: FakeHotkeyCapture())
+    monkeypatch.setattr(nvda_remote_main, "create_clipboard_service", lambda: FakeClipboard())
     monkeypatch.setattr(nvda_remote_main, "KeyboardInputService", FakeKeyboardInputService)
     monkeypatch.setattr(nvda_remote_main, "NvdaRemoteAppService", FakeAppService)
     monkeypatch.setattr(nvda_remote_main, "NvdaRemoteApp", FakeApp)
@@ -1001,25 +1007,26 @@ def test_build_runtime_uses_macos_input_and_hotkey_on_darwin(monkeypatch):
     monkeypatch.setattr(nvda_remote_main, "SpeechService", FakeSpeechService)
     monkeypatch.setattr(nvda_remote_main, "QueuedOutputService", FakeQueuedOutputService)
     monkeypatch.setattr(nvda_remote_main, "RelayTransport", FakeTransport)
-    monkeypatch.setattr(nvda_remote_main, "MacOSEventTapManager", FakeManager)
+    monkeypatch.setattr(bootstrap.platform, "_MacOSEventTapManager", FakeManager)
+    monkeypatch.setattr(bootstrap.platform, "_MacOSEventTapBackend", lambda: fake_backend)
+    monkeypatch.setattr(bootstrap.platform, "_MacOSKeyboardCapture", FakeMacKeyboardCapture)
+    monkeypatch.setattr(bootstrap.platform, "_MacOSHotkeyCapture", FakeMacHotkeyCapture)
     monkeypatch.setattr(
-        nvda_remote_main,
-        "MacOSEventTapBackend",
-        lambda: fake_backend,
+        bootstrap.platform,
+        "_AccessibilityPermissions",
+        type(
+            "FakePermissionsType",
+            (),
+            {"load_default": classmethod(lambda cls: fake_permissions)},
+        ),
     )
-    monkeypatch.setattr(nvda_remote_main, "MacOSKeyboardCapture", FakeMacKeyboardCapture)
-    monkeypatch.setattr(nvda_remote_main, "MacOSHotkeyCapture", FakeMacHotkeyCapture)
-    nvda_remote_main.AccessibilityPermissions = type(
-        "FakePermissionsType",
-        (),
-        {"load_default": classmethod(lambda cls: fake_permissions)},
-    )
-    monkeypatch.setattr(nvda_remote_main, "_build_clipboard_service", lambda: FakeClipboard())
+    monkeypatch.setattr(bootstrap.platform, "create_clipboard_service", lambda: FakeClipboard())
+    monkeypatch.setattr(nvda_remote_main, "create_clipboard_service", lambda: FakeClipboard())
     monkeypatch.setattr(nvda_remote_main, "KeyboardInputService", FakeKeyboardInputService)
     monkeypatch.setattr(nvda_remote_main, "NvdaRemoteAppService", FakeAppService)
     monkeypatch.setattr(nvda_remote_main, "NvdaRemoteApp", FakeApp)
     monkeypatch.setattr(nvda_remote_main, "default_config_path", lambda: "config.json")
-    monkeypatch.setattr(nvda_remote_main.sys, "platform", "darwin")
+    monkeypatch.setattr(bootstrap.platform.sys, "platform", "darwin")
 
     runtime = nvda_remote_main.build_runtime()
 
@@ -1076,10 +1083,6 @@ def test_build_runtime_uses_safe_clipboard_on_darwin(monkeypatch):
             self.permissions = permissions
             self.backend = backend
 
-    class FailingWindowsClipboardService:
-        def __init__(self):
-            raise AssertionError("WindowsClipboardService should not be used on darwin")
-
     class FakeKeyboardInputService:
         def __init__(self, capture, handler):
             self.capture = capture
@@ -1109,25 +1112,24 @@ def test_build_runtime_uses_safe_clipboard_on_darwin(monkeypatch):
     monkeypatch.setattr(nvda_remote_main, "SpeechService", FakeSpeechService)
     monkeypatch.setattr(nvda_remote_main, "QueuedOutputService", FakeQueuedOutputService)
     monkeypatch.setattr(nvda_remote_main, "RelayTransport", FakeTransport)
-    monkeypatch.setattr(nvda_remote_main, "MacOSEventTapManager", FakeManager)
-    monkeypatch.setattr(nvda_remote_main, "MacOSEventTapBackend", lambda: object())
-    monkeypatch.setattr(nvda_remote_main, "MacOSKeyboardCapture", FakeMacKeyboardCapture)
-    monkeypatch.setattr(nvda_remote_main, "MacOSHotkeyCapture", FakeMacHotkeyCapture)
-    nvda_remote_main.AccessibilityPermissions = type(
-        "FakePermissionsType",
-        (),
-        {"load_default": classmethod(lambda cls: object())},
-    )
+    monkeypatch.setattr(bootstrap.platform, "_MacOSEventTapManager", FakeManager)
+    monkeypatch.setattr(bootstrap.platform, "_MacOSEventTapBackend", lambda: object())
+    monkeypatch.setattr(bootstrap.platform, "_MacOSKeyboardCapture", FakeMacKeyboardCapture)
+    monkeypatch.setattr(bootstrap.platform, "_MacOSHotkeyCapture", FakeMacHotkeyCapture)
     monkeypatch.setattr(
-        nvda_remote_main,
-        "WindowsClipboardService",
-        FailingWindowsClipboardService,
+        bootstrap.platform,
+        "_AccessibilityPermissions",
+        type(
+            "FakePermissionsType",
+            (),
+            {"load_default": classmethod(lambda cls: object())},
+        ),
     )
     monkeypatch.setattr(nvda_remote_main, "KeyboardInputService", FakeKeyboardInputService)
     monkeypatch.setattr(nvda_remote_main, "NvdaRemoteAppService", FakeAppService)
     monkeypatch.setattr(nvda_remote_main, "NvdaRemoteApp", FakeApp)
     monkeypatch.setattr(nvda_remote_main, "default_config_path", lambda: "config.json")
-    monkeypatch.setattr(nvda_remote_main.sys, "platform", "darwin")
+    monkeypatch.setattr(bootstrap.platform.sys, "platform", "darwin")
 
     runtime = nvda_remote_main.build_runtime()
 
@@ -1137,8 +1139,7 @@ def test_build_runtime_uses_safe_clipboard_on_darwin(monkeypatch):
 
 def test_unavailable_macos_permissions_exposes_input_monitoring_error(monkeypatch):
     install_fake_wx(monkeypatch)
-    nvda_remote_main = importlib.import_module("apps.nvda_remote.main")
-    permissions = nvda_remote_main._UnavailableMacOSPermissions()
+    permissions = bootstrap.platform._UnavailableMacOSPermissions()
 
     with pytest.raises(
         RuntimeError,
@@ -1223,10 +1224,13 @@ def test_nvda_remote_main_build_runtime_falls_back_for_unknown_backend(monkeypat
     monkeypatch.setattr(nvda_remote_main, "SpeechService", FakeSpeechService)
     monkeypatch.setattr(nvda_remote_main, "QueuedOutputService", FakeQueuedOutputService)
     monkeypatch.setattr(nvda_remote_main, "RelayTransport", FakeTransport)
-    monkeypatch.setattr(nvda_remote_main, "WindowsKeyboardCapture", FakeKeyboardCapture)
-    monkeypatch.setattr(nvda_remote_main, "WindowsHotkeyCapture", FakeHotkeyCapture)
-    monkeypatch.setattr(nvda_remote_main, "WindowsClipboardService", FakeClipboard)
-    monkeypatch.setattr(nvda_remote_main.sys, "platform", "win32")
+    monkeypatch.setattr(bootstrap.platform, "create_input_capture", lambda: FakeKeyboardCapture())
+    monkeypatch.setattr(bootstrap.platform, "create_hotkey_capture", lambda: FakeHotkeyCapture())
+    monkeypatch.setattr(bootstrap.platform, "create_clipboard_service", lambda: FakeClipboard())
+    monkeypatch.setattr(bootstrap.platform.sys, "platform", "win32")
+    monkeypatch.setattr(nvda_remote_main, "create_input_capture", lambda: FakeKeyboardCapture())
+    monkeypatch.setattr(nvda_remote_main, "create_hotkey_capture", lambda: FakeHotkeyCapture())
+    monkeypatch.setattr(nvda_remote_main, "create_clipboard_service", lambda: FakeClipboard())
     monkeypatch.setattr(nvda_remote_main, "KeyboardInputService", FakeKeyboardInputService)
     monkeypatch.setattr(nvda_remote_main, "NvdaRemoteAppService", FakeAppService)
     monkeypatch.setattr(nvda_remote_main, "NvdaRemoteApp", FakeApp)
@@ -1247,7 +1251,7 @@ def test_nvda_remote_main_continues_startup_when_logging_setup_fails(monkeypatch
     nvda_remote_main = importlib.import_module("apps.nvda_remote.main")
     runtime = types.SimpleNamespace(app=types.SimpleNamespace(MainLoop=lambda: 91))
 
-    def fail_logging():
+    def fail_logging(*args, **kwargs):
         raise OSError("disk full")
 
     monkeypatch.setattr(nvda_remote_main, "configure_logging", fail_logging)
@@ -1279,7 +1283,7 @@ def test_nvda_remote_configure_logging_preserves_existing_handlers(monkeypatch):
         def setLevel(self, level):
             self.level = level
 
-    monkeypatch.setattr(nvda_remote_main, "default_log_path", lambda: "nvda.log")
+    monkeypatch.setattr(bootstrap.runtime, "default_log_path", lambda _app_name=None: "nvda.log")
     monkeypatch.setattr(nvda_remote_main.logging, "FileHandler", FakeFileHandler)
     monkeypatch.setattr(
         root_logger,
@@ -1325,14 +1329,14 @@ def test_default_config_path_uses_app_support_for_frozen_macos(monkeypatch):
     install_fake_wx(monkeypatch)
     nvda_remote_main = importlib.import_module("apps.nvda_remote.main")
 
-    monkeypatch.setattr(nvda_remote_main.sys, "frozen", True, raising=False)
-    monkeypatch.setattr(nvda_remote_main.sys, "executable", "/Applications/NVDARemote.app/Contents/MacOS/NVDARemote")
-    monkeypatch.setattr(nvda_remote_main.sys, "platform", "darwin")
-    monkeypatch.setattr(nvda_remote_main.Path, "home", classmethod(lambda cls: cls("/Users/tester")))
+    monkeypatch.setattr(bootstrap.runtime.sys, "frozen", True, raising=False)
+    monkeypatch.setattr(bootstrap.runtime.sys, "executable", "/Applications/NVDARemote.app/Contents/MacOS/NVDARemote")
+    monkeypatch.setattr(bootstrap.runtime.sys, "platform", "darwin")
+    monkeypatch.setattr(bootstrap.runtime.Path, "home", classmethod(lambda cls: cls("/Users/tester")))
 
     assert (
         nvda_remote_main.default_config_path()
-        == nvda_remote_main.Path("/Users/tester/Library/Application Support/nvda-remote-client/nvda-remote-client.json")
+        == bootstrap.runtime.Path("/Users/tester/Library/Application Support/nvda-remote-client/nvda-remote-client.json")
     )
 
 
@@ -1340,12 +1344,12 @@ def test_default_log_path_uses_library_logs_for_frozen_macos(monkeypatch):
     install_fake_wx(monkeypatch)
     nvda_remote_main = importlib.import_module("apps.nvda_remote.main")
 
-    monkeypatch.setattr(nvda_remote_main.sys, "frozen", True, raising=False)
-    monkeypatch.setattr(nvda_remote_main.sys, "executable", "/Applications/NVDARemote.app/Contents/MacOS/NVDARemote")
-    monkeypatch.setattr(nvda_remote_main.sys, "platform", "darwin")
-    monkeypatch.setattr(nvda_remote_main.Path, "home", classmethod(lambda cls: cls("/Users/tester")))
+    monkeypatch.setattr(bootstrap.runtime.sys, "frozen", True, raising=False)
+    monkeypatch.setattr(bootstrap.runtime.sys, "executable", "/Applications/NVDARemote.app/Contents/MacOS/NVDARemote")
+    monkeypatch.setattr(bootstrap.runtime.sys, "platform", "darwin")
+    monkeypatch.setattr(bootstrap.runtime.Path, "home", classmethod(lambda cls: cls("/Users/tester")))
 
     assert (
-        nvda_remote_main.default_log_path()
-        == nvda_remote_main.Path("/Users/tester/Library/Logs/nvda-remote-client/nvda-remote-client.log")
+        bootstrap.runtime.default_log_path()
+        == bootstrap.runtime.Path("/Users/tester/Library/Logs/nvda-remote-client/nvda-remote-client.log")
     )
