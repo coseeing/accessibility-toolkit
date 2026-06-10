@@ -131,7 +131,7 @@ def _load_macos_permissions() -> Any:
 def _load_macos_event_tap_backend() -> Any:
     global _MacOSEventTapBackend
     _load_macos_input_components()
-    return _MacOSEventTapBackend
+    return _MacOSEventTapBackend()
 
 
 def _load_macos_input_components() -> None:
