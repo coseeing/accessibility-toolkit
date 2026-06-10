@@ -49,14 +49,26 @@ def _is_frozen() -> bool:
     return bool(getattr(sys, "frozen", False))
 
 
+def _macos_app_support_dir() -> Path:
+    return Path.home() / "Library" / "Application Support" / "nvda-remote-client"
+
+
+def _macos_logs_dir() -> Path:
+    return Path.home() / "Library" / "Logs" / "nvda-remote-client"
+
+
 def default_log_path() -> Path:
     if _is_frozen():
+        if sys.platform == "darwin":
+            return _macos_logs_dir() / "nvda-remote-client.log"
         return Path(sys.executable).resolve().parent / "nvda-remote-client.log"
     return Path.cwd().resolve() / "nvda-remote-client.log"
 
 
 def default_config_path() -> Path:
     if _is_frozen():
+        if sys.platform == "darwin":
+            return _macos_app_support_dir() / "nvda-remote-client.json"
         return Path(sys.executable).resolve().parent / "nvda-remote-client.json"
     return Path.cwd().resolve() / "nvda-remote-client.json"
 

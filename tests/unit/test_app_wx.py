@@ -1319,3 +1319,33 @@ def test_nvda_remote_main_main_runs_gui_app(monkeypatch):
     monkeypatch.setattr(nvda_remote_main, "build_runtime", lambda: runtime)
 
     assert nvda_remote_main.main() == 55
+
+
+def test_default_config_path_uses_app_support_for_frozen_macos(monkeypatch):
+    install_fake_wx(monkeypatch)
+    nvda_remote_main = importlib.import_module("apps.nvda_remote.main")
+
+    monkeypatch.setattr(nvda_remote_main.sys, "frozen", True, raising=False)
+    monkeypatch.setattr(nvda_remote_main.sys, "executable", "/Applications/NVDARemote.app/Contents/MacOS/NVDARemote")
+    monkeypatch.setattr(nvda_remote_main.sys, "platform", "darwin")
+    monkeypatch.setattr(nvda_remote_main.Path, "home", classmethod(lambda cls: cls("/Users/tester")))
+
+    assert (
+        nvda_remote_main.default_config_path()
+        == nvda_remote_main.Path("/Users/tester/Library/Application Support/nvda-remote-client/nvda-remote-client.json")
+    )
+
+
+def test_default_log_path_uses_library_logs_for_frozen_macos(monkeypatch):
+    install_fake_wx(monkeypatch)
+    nvda_remote_main = importlib.import_module("apps.nvda_remote.main")
+
+    monkeypatch.setattr(nvda_remote_main.sys, "frozen", True, raising=False)
+    monkeypatch.setattr(nvda_remote_main.sys, "executable", "/Applications/NVDARemote.app/Contents/MacOS/NVDARemote")
+    monkeypatch.setattr(nvda_remote_main.sys, "platform", "darwin")
+    monkeypatch.setattr(nvda_remote_main.Path, "home", classmethod(lambda cls: cls("/Users/tester")))
+
+    assert (
+        nvda_remote_main.default_log_path()
+        == nvda_remote_main.Path("/Users/tester/Library/Logs/nvda-remote-client/nvda-remote-client.log")
+    )
