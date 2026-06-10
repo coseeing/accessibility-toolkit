@@ -1,7 +1,5 @@
 from dataclasses import dataclass
 import logging
-from typing import Any
-
 from adapters.inputs.base import HotkeyCapture, InputCapture
 from application.config import SpeechBackendConfigStore
 from application.keyboard import KeyboardInputService
@@ -35,7 +33,7 @@ class NvdaRemoteRuntime:
     output_service: QueuedOutputService
     input_service: KeyboardInputService
     app_service: NvdaRemoteAppService
-    app: Any
+    app: NvdaRemoteApp
 
 
 def build_runtime() -> NvdaRemoteRuntime:
