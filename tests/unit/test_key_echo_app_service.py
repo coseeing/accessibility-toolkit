@@ -236,17 +236,18 @@ def test_build_runtime_composes_local_keyboard_and_speech(monkeypatch) -> None:
             self.controller = controller
             app_calls.append(controller)
 
-    monkeypatch.setattr(main_module, "WindowsKeyboardCapture", lambda: capture)
-    monkeypatch.setattr(main_module.sys, "platform", "win32")
+    from application.speech_backends import SpeechBackendOption
+    monkeypatch.setattr(main_module, "create_input_capture", lambda: capture)
     monkeypatch.setattr(
-        main_module.Pyttsx3SpeechOutput,
-        "load_default",
-        classmethod(lambda cls, scheduler=None: speech_output),
-    )
-    main_module.NvdaControllerSpeechOutput = type(
-        "FakeNvdaControllerSpeechOutput",
-        (),
-        {"load_default": classmethod(lambda cls, scheduler=None: speech_output)},
+        main_module,
+        "default_speech_backend_options",
+        lambda scheduler: (
+            SpeechBackendOption(
+                backend_id="pyttsx3",
+                label="pyttsx3",
+                factory=lambda: speech_output,
+            ),
+        ),
     )
     monkeypatch.setattr(main_module, "QueuedOutputService", FakeQueuedOutputService)
     monkeypatch.setattr(main_module, "OutputScheduler", FakeOutputScheduler)
@@ -276,8 +277,6 @@ def test_build_runtime_composes_local_keyboard_and_speech(monkeypatch) -> None:
 
 
 def test_build_runtime_macos_path_composes_capture(monkeypatch) -> None:
-    monkeypatch.setattr(main_module.sys, "platform", "darwin")
-
     class MacOSFakeCapture:
         def __init__(self, *, manager):
             self.manager = manager
@@ -297,8 +296,6 @@ def test_build_runtime_macos_path_composes_capture(monkeypatch) -> None:
         @property
         def running(self):
             return self.start_calls > self.stop_calls
-
-    main_module.MacOSKeyboardCapture = MacOSFakeCapture
 
     class FakePermissions:
         @classmethod
@@ -336,17 +333,28 @@ def test_build_runtime_macos_path_composes_capture(monkeypatch) -> None:
         def __init__(self, controller):
             self.controller = controller
 
-    main_module.AccessibilityPermissions = FakePermissions
-    main_module.MacOSEventTapManager = FakeManager
-    main_module.MacOSEventTapBackend = lambda: object()
+    from application.speech_backends import SpeechBackendOption
+    monkeypatch.setattr(
+        main_module,
+        "create_input_capture",
+        lambda: MacOSFakeCapture(
+            manager=FakeManager(permissions=FakePermissions(), backend=object()),
+        ),
+    )
+    monkeypatch.setattr(
+        main_module,
+        "default_speech_backend_options",
+        lambda scheduler: (
+            SpeechBackendOption(
+                backend_id="pyttsx3",
+                label="pyttsx3",
+                factory=lambda: FakeSpeechOutput(),
+            ),
+        ),
+    )
     monkeypatch.setattr(main_module, "OutputScheduler", FakeOutputScheduler)
     monkeypatch.setattr(main_module, "KeyboardInputService", FakeKeyboardInputService)
     monkeypatch.setattr(main_module, "QueuedOutputService", FakeQueuedOutputService)
-    monkeypatch.setattr(
-        main_module.Pyttsx3SpeechOutput,
-        "load_default",
-        classmethod(lambda cls, scheduler=None: FakeSpeechOutput()),
-    )
 
     import sys as _sys
     import types
