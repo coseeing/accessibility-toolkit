@@ -234,17 +234,17 @@ def test_nvda_remote_service_registers_transport_message_handler():
     assert hotkey.started == 1
 
 
-def test_nvda_remote_service_does_not_swallow_f11_when_not_controlling():
+def test_nvda_remote_service_does_not_swallow_unmapped_key_when_not_controlling():
     service, transport, _capture, _hotkey, _dispatch_calls = build_service()
     service.bind()
     service.state.connection_state = service.state.connection_state.CONNECTED
     service.state.control_state = service.state.control_state.SUSPENDED
 
     keydown_decision = service.handle_key_event(
-        KeyEvent(vk=0x7A, scan=87, extended=False, pressed=True)
+        KeyEvent(vk=65, scan=30, extended=False, pressed=True)
     )
     keyup_decision = service.handle_key_event(
-        KeyEvent(vk=0x7A, scan=87, extended=False, pressed=False)
+        KeyEvent(vk=65, scan=30, extended=False, pressed=False)
     )
 
     assert keydown_decision == KeyEventDecision.PASS_THROUGH
@@ -364,4 +364,4 @@ def test_nvda_remote_service_f11_toggles_control_on_keydown_only():
     assert keyup_decision == KeyEventDecision.SUPPRESS
     assert service.state.control_state == service.state.control_state.CONTROLLING
     assert capture.started == 1
-    assert hotkey.stopped == 1
+    assert hotkey.stopped == 0
