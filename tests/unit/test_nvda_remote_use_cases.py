@@ -1,4 +1,3 @@
-from adapters.inputs.base import KeyEventDecision
 from interop.key.key_event import KeyEvent
 
 from apps.nvda_remote.use_cases.state_transition_hotkeys import (
