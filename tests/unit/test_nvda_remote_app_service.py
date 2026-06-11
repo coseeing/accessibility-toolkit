@@ -345,3 +345,23 @@ def test_nvda_remote_service_dispatches_speech_backend_notifications():
     pending.pop()()
 
     assert delivered == [{"kind": "speech_backend", "backend_id": "pyttsx3"}]
+
+
+def test_nvda_remote_service_f11_toggles_control_on_keydown_only():
+    service, _transport, capture, hotkey, _dispatch_calls = build_service()
+    service.bind()
+    service.state.connection_state = service.state.connection_state.CONNECTED
+    service.state.control_state = service.state.control_state.SUSPENDED
+
+    keydown_decision = service.handle_key_event(
+        KeyEvent(vk=0x7A, scan=87, extended=False, pressed=True)
+    )
+    keyup_decision = service.handle_key_event(
+        KeyEvent(vk=0x7A, scan=87, extended=False, pressed=False)
+    )
+
+    assert keydown_decision == KeyEventDecision.SUPPRESS
+    assert keyup_decision == KeyEventDecision.SUPPRESS
+    assert service.state.control_state == service.state.control_state.CONTROLLING
+    assert capture.started == 1
+    assert hotkey.stopped == 1

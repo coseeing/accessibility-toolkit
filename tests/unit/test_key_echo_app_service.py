@@ -394,6 +394,43 @@ def test_main_runs_echo_app_main_loop(monkeypatch) -> None:
     assert runtime.app.main_loop_calls == 1
 
 
+def test_key_echo_app_service_starts_echo_on_enter_keydown() -> None:
+    capture = FakeCapture()
+    speech_output = FakeSpeechOutput()
+    service = KeyEchoAppService(
+        outputs=OutputCapabilities(speech=SpeechService.single_backend(speech_output))
+    )
+    input_service = KeyboardInputService(capture, service)
+    service.attach_input_service(input_service)
+
+    decision = service.handle_key_event(
+        KeyEvent(vk=0x0D, scan=28, extended=False, pressed=True)
+    )
+
+    assert decision == KeyEventDecision.SUPPRESS
+    assert capture.start_calls == 1
+    assert service.is_echo_running() is True
+    assert speech_output.spoken == []
+
+
+def test_key_echo_app_service_enter_keyup_does_not_duplicate_start() -> None:
+    capture = FakeCapture()
+    speech_output = FakeSpeechOutput()
+    service = KeyEchoAppService(
+        outputs=OutputCapabilities(speech=SpeechService.single_backend(speech_output))
+    )
+    input_service = KeyboardInputService(capture, service)
+    service.attach_input_service(input_service)
+
+    service.handle_key_event(KeyEvent(vk=0x0D, scan=28, extended=False, pressed=True))
+    decision = service.handle_key_event(
+        KeyEvent(vk=0x0D, scan=28, extended=False, pressed=False)
+    )
+
+    assert decision == KeyEventDecision.SUPPRESS
+    assert capture.start_calls == 1
+
+
 def test_module_executes_main_when_run_as_script(monkeypatch) -> None:
     import pytest
 
