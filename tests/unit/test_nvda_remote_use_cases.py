@@ -1,3 +1,4 @@
+from adapters.inputs.base import KeyEventDecision
 from application.state import ConnectionState, ControlState, RuntimeState
 from interop.key.key_event import KeyEvent
 
@@ -135,3 +136,47 @@ def test_control_mode_use_case_start_control_starts_capture_and_stops_hotkey():
     assert state.control_state == ControlState.CONTROLLING
     assert input_capture.started == 1
     assert hotkey_capture.stopped == 1
+
+
+def test_control_mode_use_case_stop_control_stops_capture_and_restarts_hotkey():
+    from apps.nvda_remote.use_cases.control_mode import NvdaRemoteControlModeUseCase
+
+    state = RuntimeState(
+        connection_state=ConnectionState.CONNECTED,
+        control_state=ControlState.CONTROLLING,
+    )
+    input_capture = FakeRunningCapture()
+    input_capture.running = True
+    hotkey_capture = FakeRunningHotkey()
+
+    use_case = NvdaRemoteControlModeUseCase(
+        state=state,
+        input_capture=input_capture,
+        hotkey_capture=hotkey_capture,
+        notify_error=lambda _message: None,
+        notify_status=lambda _status: None,
+    )
+
+    use_case.stop_control()
+
+    assert state.control_state == ControlState.SUSPENDED
+    assert input_capture.stopped == 1
+    assert hotkey_capture.started == 1
+
+
+def test_input_forwarding_use_case_sends_remote_key_when_controlling():
+    from apps.nvda_remote.use_cases.input_forwarding import NvdaRemoteInputForwardingUseCase
+
+    sent = []
+    use_case = NvdaRemoteInputForwardingUseCase(
+        is_connected=lambda: True,
+        is_controlling=lambda: True,
+        send_key=lambda payload: sent.append(payload),
+        on_local_stop=lambda: None,
+    )
+    event = KeyEvent(vk=65, scan=30, extended=False, pressed=True)
+
+    decision = use_case.handle(event)
+
+    assert decision == KeyEventDecision.SUPPRESS
+    assert sent == [event.to_remote_payload()]

@@ -1,3 +1,4 @@
+from adapters.inputs.base import KeyEventDecision
 from interop.key.key_event import KeyEvent
 
 from apps.key_echo.use_cases.state_transition_hotkeys import (
@@ -138,3 +139,19 @@ def test_echo_control_use_case_start_and_stop_echo():
         {"kind": "echo", "state": "running"},
         {"kind": "echo", "state": "stopped"},
     ]
+
+
+def test_echo_input_use_case_speaks_vk_text_on_keydown():
+    from apps.key_echo.use_cases.echo_input import KeyEchoInputUseCase
+
+    calls = []
+    use_case = KeyEchoInputUseCase(
+        cancel=lambda: calls.append(("cancel", None)),
+        speak=lambda sequence: calls.append(("speak", sequence)),
+    )
+
+    decision = use_case.handle(KeyEvent(vk=65, scan=30, extended=False, pressed=True))
+
+    assert decision == KeyEventDecision.SUPPRESS
+    assert calls[0] == ("cancel", None)
+    assert calls[1][0] == "speak"
