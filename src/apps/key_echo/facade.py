@@ -94,6 +94,8 @@ class KeyEchoAppFacade(KeyEventHandler):
 
     def shutdown(self) -> None:
         self.stop_echo()
+        if self._input_service is not None and self._input_service.running:
+            self._input_service.stop()
         self._outputs.speech.shutdown()
 
     def handle_key_event(self, event: KeyEvent) -> KeyEventDecision:
