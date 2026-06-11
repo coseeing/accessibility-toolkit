@@ -899,7 +899,7 @@ def test_nvda_remote_main_build_runtime_composes_app_service_and_gui(monkeypatch
     monkeypatch.setattr(nvda_remote_main, "create_hotkey_capture", lambda: FakeHotkeyCapture())
     monkeypatch.setattr(nvda_remote_main, "create_clipboard_service", lambda: FakeClipboard())
     monkeypatch.setattr(nvda_remote_main, "KeyboardInputService", FakeKeyboardInputService)
-    monkeypatch.setattr(nvda_remote_main, "NvdaRemoteAppService", FakeAppService)
+    monkeypatch.setattr(nvda_remote_main, "NvdaRemoteAppFacade", FakeAppService)
     monkeypatch.setattr(nvda_remote_main, "NvdaRemoteApp", FakeApp)
     monkeypatch.setattr(nvda_remote_main, "default_config_path", lambda: "config.json")
 
@@ -1023,7 +1023,7 @@ def test_build_runtime_uses_macos_input_and_hotkey_on_darwin(monkeypatch):
     monkeypatch.setattr(bootstrap.platform, "create_clipboard_service", lambda: FakeClipboard())
     monkeypatch.setattr(nvda_remote_main, "create_clipboard_service", lambda: FakeClipboard())
     monkeypatch.setattr(nvda_remote_main, "KeyboardInputService", FakeKeyboardInputService)
-    monkeypatch.setattr(nvda_remote_main, "NvdaRemoteAppService", FakeAppService)
+    monkeypatch.setattr(nvda_remote_main, "NvdaRemoteAppFacade", FakeAppService)
     monkeypatch.setattr(nvda_remote_main, "NvdaRemoteApp", FakeApp)
     monkeypatch.setattr(nvda_remote_main, "default_config_path", lambda: "config.json")
     monkeypatch.setattr(bootstrap.platform.sys, "platform", "darwin")
@@ -1126,7 +1126,7 @@ def test_build_runtime_uses_safe_clipboard_on_darwin(monkeypatch):
         ),
     )
     monkeypatch.setattr(nvda_remote_main, "KeyboardInputService", FakeKeyboardInputService)
-    monkeypatch.setattr(nvda_remote_main, "NvdaRemoteAppService", FakeAppService)
+    monkeypatch.setattr(nvda_remote_main, "NvdaRemoteAppFacade", FakeAppService)
     monkeypatch.setattr(nvda_remote_main, "NvdaRemoteApp", FakeApp)
     monkeypatch.setattr(nvda_remote_main, "default_config_path", lambda: "config.json")
     monkeypatch.setattr(bootstrap.platform.sys, "platform", "darwin")
@@ -1232,7 +1232,7 @@ def test_nvda_remote_main_build_runtime_falls_back_for_unknown_backend(monkeypat
     monkeypatch.setattr(nvda_remote_main, "create_hotkey_capture", lambda: FakeHotkeyCapture())
     monkeypatch.setattr(nvda_remote_main, "create_clipboard_service", lambda: FakeClipboard())
     monkeypatch.setattr(nvda_remote_main, "KeyboardInputService", FakeKeyboardInputService)
-    monkeypatch.setattr(nvda_remote_main, "NvdaRemoteAppService", FakeAppService)
+    monkeypatch.setattr(nvda_remote_main, "NvdaRemoteAppFacade", FakeAppService)
     monkeypatch.setattr(nvda_remote_main, "NvdaRemoteApp", FakeApp)
     monkeypatch.setattr(nvda_remote_main, "default_config_path", lambda: "config.json")
 

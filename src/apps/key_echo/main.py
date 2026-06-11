@@ -6,7 +6,7 @@ from application.output_capabilities import OutputCapabilities
 from application.output_scheduler import OutputScheduler
 from application.output_service import QueuedOutputService
 from application.speech_service import SpeechService
-from apps.key_echo.service import KeyEchoAppService
+from apps.key_echo.facade import KeyEchoAppFacade
 from bootstrap.platform import (
     create_input_capture,
     default_speech_backend_options,
@@ -20,7 +20,7 @@ class KeyEchoRuntime:
     speech_service: SpeechService
     output_service: QueuedOutputService
     input_service: KeyboardInputService
-    app_service: KeyEchoAppService
+    app_service: KeyEchoAppFacade
     app: Any
 
 
@@ -37,7 +37,7 @@ def build_runtime() -> KeyEchoRuntime:
         speech=speech_service,
         scheduler=output_scheduler,
     )
-    app_service = KeyEchoAppService(
+    app_service = KeyEchoAppFacade(
         outputs=OutputCapabilities(speech=output_service),
     )
     input_service = KeyboardInputService(capture, app_service)

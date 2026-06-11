@@ -7,7 +7,7 @@ from application.output_scheduler import OutputScheduler
 from application.output_service import QueuedOutputService
 from application.services import ClipboardService
 from application.speech_service import SpeechService
-from apps.nvda_remote.service import NvdaRemoteAppService
+from apps.nvda_remote.facade import NvdaRemoteAppFacade
 from bootstrap.platform import (
     create_input_capture,
     create_hotkey_capture,
@@ -32,7 +32,7 @@ class NvdaRemoteRuntime:
     speech_service: SpeechService
     output_service: QueuedOutputService
     input_service: KeyboardInputService
-    app_service: NvdaRemoteAppService
+    app_service: NvdaRemoteAppFacade
     app: NvdaRemoteApp
 
 
@@ -65,7 +65,7 @@ def build_runtime() -> NvdaRemoteRuntime:
     input_capture = create_input_capture()
     hotkey_capture = create_hotkey_capture()
     clipboard = create_clipboard_service()
-    app_service = NvdaRemoteAppService(
+    app_service = NvdaRemoteAppFacade(
         transport=transport,
         input_capture=input_capture,
         hotkey_capture=hotkey_capture,
