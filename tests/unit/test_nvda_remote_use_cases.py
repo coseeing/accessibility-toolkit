@@ -1,3 +1,4 @@
+from application.state import ConnectionState, ControlState, RuntimeState
 from interop.key.key_event import KeyEvent
 
 from apps.nvda_remote.use_cases.state_transition_hotkeys import (
@@ -89,3 +90,48 @@ def test_nvda_speech_settings_use_case_proxies_backend_and_voice_controls():
     assert speech.get_voice() == "voice-2"
     assert speech.get_rate() == 120
     assert saved == ["pyttsx3"]
+
+
+class FakeRunningCapture:
+    def __init__(self):
+        self.running = False
+        self.started = 0
+        self.stopped = 0
+
+    def start(self):
+        self.started += 1
+        self.running = True
+
+    def stop(self):
+        self.stopped += 1
+        self.running = False
+
+
+class FakeRunningHotkey(FakeRunningCapture):
+    pass
+
+
+def test_control_mode_use_case_start_control_starts_capture_and_stops_hotkey():
+    from apps.nvda_remote.use_cases.control_mode import NvdaRemoteControlModeUseCase
+
+    state = RuntimeState(
+        connection_state=ConnectionState.CONNECTED,
+        control_state=ControlState.SUSPENDED,
+    )
+    input_capture = FakeRunningCapture()
+    hotkey_capture = FakeRunningHotkey()
+    hotkey_capture.running = True
+
+    use_case = NvdaRemoteControlModeUseCase(
+        state=state,
+        input_capture=input_capture,
+        hotkey_capture=hotkey_capture,
+        notify_error=lambda _message: None,
+        notify_status=lambda _status: None,
+    )
+
+    use_case.start_control()
+
+    assert state.control_state == ControlState.CONTROLLING
+    assert input_capture.started == 1
+    assert hotkey_capture.stopped == 1
