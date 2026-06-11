@@ -74,9 +74,14 @@ class NvdaRemoteAppFacade(KeyEventHandler):
             on_local_stop=self.stop_control,
             local_stop_vk=self._LOCAL_STOP_VK,
         )
+
+        def _on_backend_changed_wrapper(backend_id: str) -> None:
+            if self._on_speech_backend_changed is not None:
+                self._on_speech_backend_changed(backend_id)
+
         self._speech_settings = NvdaRemoteSpeechSettingsUseCase(
             speech=speech,
-            on_backend_changed=None,
+            on_backend_changed=_on_backend_changed_wrapper,
         )
 
     def bind(self) -> None:
@@ -127,9 +132,7 @@ class NvdaRemoteAppFacade(KeyEventHandler):
         return self._speech_settings.get_selected_backend()
 
     def set_speech_backend(self, backend_id: str) -> None:
-        self.speech.set_backend(backend_id)
-        if self._on_speech_backend_changed is not None:
-            self._on_speech_backend_changed(backend_id)
+        self._speech_settings.set_backend(backend_id)
         self._notify_status_listener(
             {"kind": "speech_backend", "backend_id": backend_id}
         )

@@ -98,13 +98,15 @@ class KeyEchoAppFacade(KeyEventHandler):
 
     def handle_key_event(self, event: KeyEvent) -> KeyEventDecision:
         action = self._state_transition_hotkeys.match(event)
-        if action == KeyEchoHotkeyAction.START_ECHO:
+        if action == KeyEchoHotkeyAction.START_ECHO and not self.is_echo_running():
             self.start_echo()
             return KeyEventDecision.SUPPRESS
-        if action == KeyEchoHotkeyAction.STOP_ECHO:
+        if action == KeyEchoHotkeyAction.STOP_ECHO and self.is_echo_running():
             self.stop_echo()
             return KeyEventDecision.SUPPRESS
-        return self._echo_input.handle(event)
+        if self.is_echo_running():
+            return self._echo_input.handle(event)
+        return KeyEventDecision.PASS_THROUGH
 
     def _notify_status_listener(self, status: dict[str, str]) -> None:
         if self._status_listener is not None:

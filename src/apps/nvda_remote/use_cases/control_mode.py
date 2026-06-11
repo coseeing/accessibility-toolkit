@@ -1,6 +1,6 @@
 from collections.abc import Callable
-from typing import Any
 
+from adapters.inputs.base import HotkeyCapture, InputCapture
 from application.state import ConnectionState, ControlState, RuntimeState
 
 
@@ -9,8 +9,8 @@ class NvdaRemoteControlModeUseCase:
         self,
         *,
         state: RuntimeState,
-        input_capture: Any,
-        hotkey_capture: Any,
+        input_capture: InputCapture,
+        hotkey_capture: HotkeyCapture,
         notify_error: Callable[[str], None],
         notify_status: Callable[[dict[str, str]], None],
     ) -> None:

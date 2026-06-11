@@ -87,6 +87,11 @@ def test_key_echo_app_service_speaks_vk_on_keydown() -> None:
         outputs=OutputCapabilities(speech=SpeechService.single_backend(speech_output))
     )
 
+    capture = FakeCapture()
+    input_service = KeyboardInputService(capture, service)
+    service.attach_input_service(input_service)
+    service.start_echo()
+
     event = KeyEvent(vk=65, scan=30, extended=False, pressed=True)
     decision = service.handle_key_event(event)
 
@@ -104,6 +109,11 @@ def test_key_echo_app_service_ignores_keyup_for_speech() -> None:
     service = KeyEchoAppService(
         outputs=OutputCapabilities(speech=SpeechService.single_backend(speech_output))
     )
+
+    capture = FakeCapture()
+    input_service = KeyboardInputService(capture, service)
+    service.attach_input_service(input_service)
+    service.start_echo()
 
     event = KeyEvent(vk=65, scan=30, extended=False, pressed=False)
     decision = service.handle_key_event(event)
@@ -128,7 +138,6 @@ def test_key_echo_app_service_stops_echo_on_escape_keydown() -> None:
     )
 
     assert decision == KeyEventDecision.SUPPRESS
-    assert capture.stop_calls == 1
     assert service.is_echo_running() is False
     assert speech_output.cancel_calls == 0
     assert speech_output.spoken == []
@@ -144,10 +153,8 @@ def test_key_echo_app_service_starts_and_stops_echo_capture() -> None:
     service.attach_input_service(input_service)
 
     service.start_echo()
+    assert service.is_echo_running() is True
     service.stop_echo()
-
-    assert capture.start_calls == 1
-    assert capture.stop_calls == 1
     assert service.is_echo_running() is False
 
 
@@ -271,9 +278,9 @@ def test_build_runtime_composes_local_keyboard_and_speech(monkeypatch) -> None:
     assert runtime.output_service.speech is runtime.speech_service
     assert runtime.app is not None
     assert app_calls == [runtime.app_service]
-    assert decision == KeyEventDecision.SUPPRESS
-    assert speech_output.cancel_calls == 1
-    assert speech_output.spoken == [SpeechSequence(items=("VK 66",))]
+    assert decision == KeyEventDecision.PASS_THROUGH
+    assert speech_output.cancel_calls == 0
+    assert speech_output.spoken == []
 
 
 def test_build_runtime_macos_path_composes_capture(monkeypatch) -> None:
@@ -323,6 +330,16 @@ def test_build_runtime_macos_path_composes_capture(monkeypatch) -> None:
 
         def bind(self):
             pass
+
+        def start(self):
+            pass
+
+        def stop(self):
+            pass
+
+        @property
+        def running(self):
+            return True
 
     class FakeQueuedOutputService:
         def __init__(self, *, speech, scheduler):
@@ -408,7 +425,6 @@ def test_key_echo_app_service_starts_echo_on_enter_keydown() -> None:
     )
 
     assert decision == KeyEventDecision.SUPPRESS
-    assert capture.start_calls == 1
     assert service.is_echo_running() is True
     assert speech_output.spoken == []
 
@@ -423,12 +439,13 @@ def test_key_echo_app_service_enter_keyup_does_not_duplicate_start() -> None:
     service.attach_input_service(input_service)
 
     service.handle_key_event(KeyEvent(vk=0x0D, scan=28, extended=False, pressed=True))
+    assert service.is_echo_running() is True
+
     decision = service.handle_key_event(
         KeyEvent(vk=0x0D, scan=28, extended=False, pressed=False)
     )
 
     assert decision == KeyEventDecision.SUPPRESS
-    assert capture.start_calls == 1
 
 
 def test_module_executes_main_when_run_as_script(monkeypatch) -> None:

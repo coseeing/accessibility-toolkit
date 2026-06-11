@@ -41,7 +41,7 @@ def build_runtime() -> KeyEchoRuntime:
         outputs=OutputCapabilities(speech=output_service),
     )
     input_service = KeyboardInputService(capture, app_service)
-    input_service.bind()
+    input_service.start()
     app_service.attach_input_service(input_service)
     app = EchoApp(controller=app_service)
     return KeyEchoRuntime(

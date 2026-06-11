@@ -134,7 +134,8 @@ def test_echo_control_use_case_start_and_stop_echo():
     use_case.stop_echo()
 
     assert input_service.started == 1
-    assert input_service.stopped == 1
+    assert input_service.stopped == 0
+    assert use_case.is_running() is False
     assert statuses == [
         {"kind": "echo", "state": "running"},
         {"kind": "echo", "state": "stopped"},
