@@ -1,5 +1,9 @@
+import importlib
 import logging
 import sys
+from types import ModuleType
+
+import bootstrap.platform as _bp
 
 from bootstrap.platform import (
     create_input_capture,
@@ -122,3 +126,83 @@ class TestNullHotkeyCapture:
         capture = create_hotkey_capture()
 
         capture.set_handler(lambda: None)
+
+
+class TestMacOSFactoriesWithColdGlobals:
+    """Verify macOS factory functions work when all lazy-load globals are still None."""
+
+    @staticmethod
+    def _register_fake_macos_modules(monkeypatch):
+        fake_event_tap = ModuleType("adapters.macos.event_tap")
+        fake_event_tap.MacOSEventTapManager = type(
+            "FakeEventTapManager", (), {"__init__": lambda self, permissions, backend: None}
+        )
+        fake_event_tap.QuartzEventTapBackend = type(
+            "FakeQuartzBackend", (), {}
+        )
+        monkeypatch.setitem(sys.modules, "adapters.macos.event_tap", fake_event_tap)
+        importlib.invalidate_caches()
+
+        fake_keyboard_hook = ModuleType("adapters.macos.keyboard_hook")
+        fake_keyboard_hook.MacOSKeyboardCapture = type(
+            "FakeMacKeyboardCapture", (), {"__init__": lambda self, manager: None}
+        )
+        monkeypatch.setitem(
+            sys.modules, "adapters.macos.keyboard_hook", fake_keyboard_hook
+        )
+
+        fake_hotkey = ModuleType("adapters.macos.hotkey")
+        fake_hotkey.MacOSHotkeyCapture = type(
+            "FakeMacHotkeyCapture", (), {"__init__": lambda self, manager: None}
+        )
+        monkeypatch.setitem(sys.modules, "adapters.macos.hotkey", fake_hotkey)
+
+        fake_permissions = ModuleType("adapters.macos.permissions")
+        fake_permissions.AccessibilityPermissions = type(
+            "FakePermissions",
+            (),
+            {"load_default": classmethod(lambda cls: type("FakePerm", (), {})())},
+        )
+        monkeypatch.setitem(
+            sys.modules, "adapters.macos.permissions", fake_permissions
+        )
+        importlib.invalidate_caches()
+
+    @staticmethod
+    def _reset_macos_lazy_globals():
+        _bp._MacOSEventTapManager = None
+        _bp._MacOSEventTapBackend = None
+        _bp._MacOSKeyboardCapture = None
+        _bp._MacOSHotkeyCapture = None
+        _bp._AccessibilityPermissions = None
+        _bp._macos_event_tap_manager_instance = None
+
+    def test_create_input_capture_darwin_cold_globals(self, monkeypatch):
+        monkeypatch.setattr(sys, "platform", "darwin")
+        self._register_fake_macos_modules(monkeypatch)
+        self._reset_macos_lazy_globals()
+
+        capture = create_input_capture()
+
+        assert capture is not None
+
+    def test_create_hotkey_capture_darwin_cold_globals(self, monkeypatch):
+        monkeypatch.setattr(sys, "platform", "darwin")
+        self._register_fake_macos_modules(monkeypatch)
+        self._reset_macos_lazy_globals()
+
+        capture = create_hotkey_capture()
+
+        assert capture is not None
+
+    def test_event_tap_manager_is_shared_darwin(self, monkeypatch):
+        monkeypatch.setattr(sys, "platform", "darwin")
+        self._register_fake_macos_modules(monkeypatch)
+        self._reset_macos_lazy_globals()
+
+        capture_a = create_input_capture()
+        capture_b = create_hotkey_capture()
+
+        assert _bp._macos_event_tap_manager_instance is not None
+        assert capture_a is not None
+        assert capture_b is not None

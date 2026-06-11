@@ -173,7 +173,8 @@ def _ensure_macos_event_tap_manager() -> Any:
 
 def create_input_capture() -> InputCapture:
     if sys.platform == "darwin":
-        return _MacOSKeyboardCapture(manager=_ensure_macos_event_tap_manager())
+        manager = _ensure_macos_event_tap_manager()
+        return _MacOSKeyboardCapture(manager=manager)
     if sys.platform == "win32":
         return _get_windows_keyboard_capture_class()()
     return _NullInputCapture()
@@ -181,7 +182,8 @@ def create_input_capture() -> InputCapture:
 
 def create_hotkey_capture() -> HotkeyCapture:
     if sys.platform == "darwin":
-        return _MacOSHotkeyCapture(manager=_ensure_macos_event_tap_manager())
+        manager = _ensure_macos_event_tap_manager()
+        return _MacOSHotkeyCapture(manager=manager)
     if sys.platform == "win32":
         return _get_windows_hotkey_capture_class()()
     return _NullHotkeyCapture()
