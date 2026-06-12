@@ -5,6 +5,7 @@ from ctypes import wintypes
 from typing import Any
 
 from adapters.inputs.base import KeyEventDecision
+from adapters.windows.hid_map import key_event_from_windows
 from interop.key.key_event import KeyEvent
 
 
@@ -118,23 +119,20 @@ class WindowsKeyboardCapture:
     def _handle_keyboard_event(self, n_code: int, w_param: int, l_param: int) -> int:
         if n_code >= 0 and w_param in (WM_KEYDOWN, WM_KEYUP, WM_SYSKEYDOWN, WM_SYSKEYUP):
             data = ctypes.cast(l_param, ctypes.POINTER(KBDLLHOOKSTRUCT)).contents
-            decision = self._emit_for_tests(
-                vk=int(data.vkCode),
-                scan=int(data.scanCode),
+            event = key_event_from_windows(
+                vk_code=int(data.vkCode),
+                scan_code=int(data.scanCode),
                 extended=bool(data.flags & LLKHF_EXTENDED),
                 pressed=w_param in (WM_KEYDOWN, WM_SYSKEYDOWN),
             )
+            decision = self._emit_for_tests(event)
             if decision == KeyEventDecision.SUPPRESS:
                 return 1
         if self._user32 is None:
             return 0
         return int(self._user32.CallNextHookEx(self._hook_handle, n_code, w_param, l_param))
 
-    def _emit_for_tests(
-        self, vk: int, scan: int | None, extended: bool, pressed: bool
-    ) -> KeyEventDecision:
-        if self._listener is None:
+    def _emit_for_tests(self, event: KeyEvent | None) -> KeyEventDecision:
+        if event is None or self._listener is None:
             return KeyEventDecision.PASS_THROUGH
-        return self._listener(
-            KeyEvent(vk=vk, scan=scan, extended=extended, pressed=pressed)
-        )
+        return self._listener(event)

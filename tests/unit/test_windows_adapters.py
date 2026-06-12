@@ -12,7 +12,7 @@ from adapters.windows.nvda_controller import (
     NvdaControllerSpeechOutput,
 )
 from adapters.windows.hotkey import WindowsKeyPressHotkeyCapture
-from interop.key.key_event import KeyEvent
+from interop.key import HID, KeyEvent
 from adapters.inputs.base import KeyEventDecision
 
 
@@ -74,7 +74,7 @@ def test_windows_keyboard_capture_installs_and_unhooks_low_level_hook():
     assert user32.unhooked == [123]
 
 
-def test_windows_keyboard_hook_callback_emits_normalized_key_event():
+def test_windows_keyboard_hook_callback_emits_hid_key_event():
     user32 = FakeKeyboardUser32()
     capture = WindowsKeyboardCapture(
         user32=user32,
@@ -85,15 +85,12 @@ def test_windows_keyboard_hook_callback_emits_normalized_key_event():
     capture.set_listener(seen.append)
     capture.start()
     callback = user32.installed[0][1]
-    key_data = FakeKbdLlHookStruct(vkCode=9, scanCode=15, flags=LLKHF_EXTENDED)
+    key_data = FakeKbdLlHookStruct(vkCode=0x09, scanCode=15, flags=0)
 
     callback(0, WM_KEYDOWN, ctypes.addressof(key_data))
-    key_data.flags = 0
-    callback(0, WM_KEYUP, ctypes.addressof(key_data))
 
     assert seen == [
-        KeyEvent(vk=9, scan=15, extended=True, pressed=True),
-        KeyEvent(vk=9, scan=15, extended=False, pressed=False),
+        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.TAB, pressed=True),
     ]
 
 

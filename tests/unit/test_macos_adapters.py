@@ -6,9 +6,10 @@ from adapters.macos.event_tap import (
     QuartzEventTapBackend,
     RawMacKeyEvent,
 )
-from adapters.macos.keymap import KEYCODE_TO_VK, key_event_from_macos
+from adapters.macos.hid_map import KEYCODE_TO_USAGE
+from adapters.macos.keymap import key_event_from_macos
 from adapters.macos.permissions import AccessibilityPermissions
-from interop.key.key_event import KeyEvent
+from interop.key import HID, KeyEvent
 
 
 def test_accessibility_permissions_returns_false_without_prompt():
@@ -41,16 +42,16 @@ def test_accessibility_permissions_passes_prompt_option():
     assert called == [{"prompt-key": True}]
 
 
-def test_key_event_from_macos_maps_letter_keydown():
+def test_key_event_from_macos_maps_letter_keydown_to_hid():
     event = key_event_from_macos(key_code=0, pressed=True, is_repeat=False)
 
-    assert event == KeyEvent(vk=0x41, scan=30, extended=False, pressed=True)
+    assert event == KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.A, pressed=True)
 
 
-def test_key_event_from_macos_maps_f11_keyup():
+def test_key_event_from_macos_maps_f11_keyup_to_hid():
     event = key_event_from_macos(key_code=103, pressed=False, is_repeat=False)
 
-    assert event == KeyEvent(vk=0x7A, scan=87, extended=False, pressed=False)
+    assert event == KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.F11, pressed=False)
 
 
 def test_key_event_from_macos_rejects_unknown_key_code():
@@ -59,7 +60,7 @@ def test_key_event_from_macos_rejects_unknown_key_code():
 
 
 def test_keycode_table_contains_f11_mapping():
-    assert KEYCODE_TO_VK[103] == 0x7A
+    assert KEYCODE_TO_USAGE[103] == 0x44
 
 
 class FakePermissions:
