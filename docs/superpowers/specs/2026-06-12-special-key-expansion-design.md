@@ -1,68 +1,68 @@
-# 特殊鍵與 JIS HID 擴充設計
+# Special Keys and JIS HID Expansion Design
 
-## 摘要
+## Summary
 
-本設計延續既有 HID-first 鍵盤模型，補上前一輪 `hid-104-key-expansion` 刻意排除的特殊鍵與 JIS 專用鍵處理。目標不是重新設計輸入架構，而是在不更動現有 relay wire format 的前提下，讓更多實體鍵能被 Windows 與 macOS 正規化為 HID，並在 legacy relay 相容層中採取「能穩定 relay 就 relay，否則明確 local-only」的策略。
+This design extends the existing HID-first keyboard model to cover the special keys and JIS-specific keys that were intentionally excluded from the previous `hid-104-key-expansion` round. The goal is not to redesign the input architecture, but to allow more physical keys to be normalized into HID on both Windows and macOS without changing the current relay wire format, while keeping a clear legacy relay compatibility rule: relay keys when the mapping is stable, otherwise keep them explicitly local-only.
 
-本輪涵蓋兩類擴充：
+This round covers two expansion groups:
 
-- 特殊控制鍵：`PrintScreen`、`ScrollLock`、`Pause`、`NumLock`、application/menu key
-- JIS 專用鍵：常見日文鍵盤專用鍵位，先完整納入 HID 與平台正規化，再依 relay 穩定性決定是否支援遠端轉送
+- Special control keys: `PrintScreen`, `ScrollLock`, `Pause`, `NumLock`, and the application/menu key
+- JIS-specific keys: common Japanese keyboard-only keys, first added to HID and platform normalization in full, then evaluated individually for remote relay support based on mapping stability
 
-整體分層維持不變。HID 仍然是 `src/` 內唯一的共通鍵盤表示法；`apps/nvda_remote/legacy_key_payload.py` 仍然是唯一可以處理 `vk_code/scan_code/extended` 的邊界 adapter。
+The overall layering remains unchanged. HID is still the only shared keyboard representation inside `src/`, and `apps/nvda_remote/legacy_key_payload.py` remains the only boundary adapter allowed to handle `vk_code`, `scan_code`, and `extended`.
 
-## 背景
+## Background
 
-前一輪 `docs/superpowers/specs/2026-06-12-hid-104-key-expansion-design_zh-TW.md` 已把 HID-first 模型擴充到完整 ANSI 104-key 與 ISO 額外鍵 `NonUsBackslash`，並明確把下列鍵排除在範圍外：
+The previous round, documented in `docs/superpowers/specs/2026-06-12-hid-104-key-expansion-design_zh-TW.md`, expanded the HID-first model to full ANSI 104-key coverage plus the ISO extra key `NonUsBackslash`, and explicitly excluded the following keys from scope:
 
-- JIS 專用鍵
+- JIS-specific keys
 - `PrintScreen`
 - `ScrollLock`
 - `Pause`
 - `NumLock`
-- application/menu key
+- the application/menu key
 
-目前程式碼也反映同樣邊界：
+The current codebase reflects the same boundary:
 
-- `src/interop/key/hid.py` 尚未定義上述特殊鍵與 JIS 鍵
-- Windows/macOS HID mapping 尚未補齊這些鍵
-- `src/apps/nvda_remote/legacy_key_payload.py` 尚未處理這些鍵的 relay 相容轉換
+- `src/interop/key/hid.py` does not yet define these special keys or JIS keys
+- the Windows and macOS HID mappings do not yet cover them
+- `src/apps/nvda_remote/legacy_key_payload.py` does not yet handle relay-compatible conversions for them
 
-因此這一輪的性質是既有 HID 擴充的 follow-up，而不是架構重做。
+As a result, this round is a follow-up to the existing HID expansion work, not an architecture reset.
 
-## 目標
+## Goals
 
-- 在共通 HID 常數中補上特殊控制鍵與常見 JIS 專用鍵。
-- 補齊 Windows 與 macOS 的 native event -> HID 正規化。
-- 讓可穩定表示的特殊鍵支援 legacy relay payload 轉換。
-- 讓 JIS 鍵完整可用於本地 HID-first 邏輯，即使其中一部分無法 relay。
-- 維持 control mode 的安全規則：unsupported relay key 一律記 log 並本機 suppress，不可 pass-through。
+- Add special control keys and common JIS-specific keys to the shared HID constants.
+- Complete native event -> HID normalization on both Windows and macOS for those keys.
+- Support legacy relay payload conversion for special keys that have stable representations.
+- Make JIS keys fully usable in local HID-first logic even when some of them cannot be relayed.
+- Preserve the current control mode safety rule: unsupported relay keys must always be logged and locally suppressed, never passed through.
 
-## 非目標
+## Non-goals
 
-- 不更動現有 NVDA Remote `type="key"` wire format。
-- 不新增 consumer/media keys 或其他 `usage page` `0x07` 以外的鍵類。
-- 不把 relay 相容性邏輯散落到 Windows/macOS adapter。
-- 不為無法辯護的特殊鍵或 JIS 鍵發明近似 legacy 映射。
-- 不保證所有 JIS 鍵都能 end-to-end relay。
+- Do not change the existing NVDA Remote `type="key"` wire format.
+- Do not add consumer/media keys or any keys outside HID `usage page` `0x07`.
+- Do not spread relay compatibility logic into the Windows or macOS adapters.
+- Do not invent approximate legacy mappings for special keys or JIS keys that cannot be defended technically.
+- Do not guarantee end-to-end relay support for every JIS key.
 
-## 範圍
+## Scope
 
-### 納入範圍
+### In scope
 
-#### 特殊控制鍵
+#### Special control keys
 
-下列鍵納入共通 HID 模型，並優先嘗試做到 end-to-end relay：
+The following keys are added to the shared HID model and should be prioritized for end-to-end relay support:
 
 - `PrintScreen`
 - `ScrollLock`
 - `Pause`
 - `NumLock`
-- application/menu key
+- the application/menu key
 
-#### JIS 專用鍵
+#### JIS-specific keys
 
-本輪將常見 JIS 專用鍵完整納入 HID 與平台正規化。至少包含：
+This round adds common JIS-only keys to HID and platform normalization in full. At minimum, this includes:
 
 - `NonUsHash`
 - `International1`
@@ -70,238 +70,238 @@
 - `International4`
 - `International5`
 
-若平台事件模型可穩定辨識更多日文鍵盤專用 usage，可同樣納入；但本設計不要求超出「常見 JIS 專用鍵」的完整地區鍵盤研究。
+If the platform event model can reliably identify more Japanese-keyboard-specific usages, they may also be included, but this design does not require a broader region-keyboard research effort beyond the common JIS-only set.
 
-### 可能 local-only 的鍵
+### Keys that may remain local-only
 
-下列類型即使納入 HID，也可能因 legacy payload 無法穩定表達而維持 local-only：
+The following kinds of keys may still remain local-only even after being added to HID, if the legacy payload cannot represent them reliably:
 
-- 部分 JIS 專用鍵
-- `Pause`，若平台或 legacy 對應出現不可穩定重建的情況
-- 任何需要猜測 `scan_code`、複合事件或模糊 `extended` 語意的鍵
+- some JIS-specific keys
+- `Pause`, if its platform or legacy representation cannot be reconstructed in a stable way
+- any key that would require guessed `scan_code` values, composite events, or ambiguous `extended` semantics
 
-## 架構
+## Architecture
 
-本輪不更動分層：
+This round does not change the layering:
 
-- `src/interop/key/*`：定義 HID 常數與共通 `KeyEvent`
-- `src/adapters/windows/*`：Windows 原生事件 -> HID
-- `src/adapters/macos/*`：macOS 原生事件 -> HID
-- `src/application/*` 與 `src/apps/*`：只消費 HID
-- `src/apps/nvda_remote/legacy_key_payload.py`：HID -> legacy relay payload
+- `src/interop/key/*`: defines HID constants and the shared `KeyEvent`
+- `src/adapters/windows/*`: normalizes Windows native events into HID
+- `src/adapters/macos/*`: normalizes macOS native events into HID
+- `src/application/*` and `src/apps/*`: consume HID only
+- `src/apps/nvda_remote/legacy_key_payload.py`: converts HID into the legacy relay payload
 
-設計原則仍是：
+The design principles remain:
 
-- 平台層只做 native -> HID 正規化
-- 核心層與 app 層只依賴 HID
-- relay 相容性只在單一邊界處理
+- platform layers only perform native -> HID normalization
+- core and app layers depend only on HID
+- relay compatibility is handled at a single boundary
 
-## 設計決策
+## Design decisions
 
-### 1. 採用 HID-first + relay-best-effort
+### 1. Use HID-first + relay-best-effort
 
-本輪不會因為 relay 相容性有限，就延後把鍵納入 HID。所有目標鍵都應先進入共通 HID 模型與平台 adapter；relay 則採 best-effort：
+This round does not delay adding keys to HID just because relay compatibility may be limited. Every target key should first become part of the shared HID model and platform adapters. Relay support then follows a best-effort rule:
 
-- 可穩定表達成 `vk_code/scan_code/extended` 的鍵：支援 relay
-- 無法穩定表達的鍵：明確 local-only
+- keys that can be represented stably as `vk_code/scan_code/extended`: support relay
+- keys that cannot be represented stably: remain explicitly local-only
 
-這讓核心模型保持完整，也避免舊 relay 邊界反向主導整個輸入系統的表達能力。
+This keeps the core model complete and prevents the old relay boundary from dictating the expressive limits of the input system.
 
-### 2. 不以「可抓到事件」等同於「可 relay」
+### 2. Capturable does not automatically mean relay-capable
 
-某鍵能從 Windows hook 或 macOS event tap 捕獲，不代表它就應該直接納入 legacy relay adapter。relay 支援的判準必須更嚴格：
+A key being capturable through the Windows hook or the macOS event tap is not enough to justify including it in the legacy relay adapter. The relay bar is higher:
 
-- 是否存在單一且可辯護的 `vk_code`
-- 是否存在穩定的 `scan_code`
-- `extended` 語意是否明確
-- 是否不會把不同 HID usage 錯誤合併成相同 legacy 鍵
+- there must be a single defensible `vk_code`
+- there must be a stable `scan_code`
+- the `extended` meaning must be clear
+- distinct HID usages must not be collapsed incorrectly into the same legacy key
 
-若答案是否定的，則該鍵應維持 local-only。
+If those conditions are not met, the key should stay local-only.
 
-### 3. JIS 先完整進 HID，再逐一評估 relay
+### 3. Bring JIS fully into HID first, then evaluate relay one key at a time
 
-本輪不採「先挑少數 JIS 鍵試做」的策略，而是先把常見 JIS 專用鍵完整納入 HID 常數與平台 mapping。這樣可以：
+This round does not follow a strategy of trying only a small subset of JIS keys. Instead, it brings the common JIS-only keys fully into HID constants and platform mappings first. That allows:
 
-- 讓 `key_echo`、本地控制與未來 app 邏輯能立即看見這些鍵
-- 把「本地可辨識」與「可遠端 relay」的能力清楚分開
-- 避免把 JIS 鍵永久卡在前置研究狀態
+- `key_echo`, local control logic, and future app logic to see those keys immediately
+- a clean separation between "locally recognizable" and "relay-capable"
+- avoiding a permanent state where JIS support is blocked behind endless pre-work research
 
-relay 層對 JIS 的策略是逐一審核，而不是一次全開。
+The relay layer should review JIS keys individually rather than enabling them all at once.
 
-### 4. 不做近似降級映射
+### 4. Do not use approximate downgrade mappings
 
-若某 JIS 鍵沒有可靠 legacy 對應，不應把它降級映成某個看起來相近的 ANSI 鍵；若某特殊鍵的 `scan_code` / `extended` 表示含糊，也不應硬塞近似值。
+If a JIS key has no reliable legacy mapping, it should not be downgraded into a similar-looking ANSI key. If a special key has ambiguous `scan_code` or `extended` behavior, it should not be forced into an approximate legacy value.
 
-禁止的行為包含：
+Examples of explicitly disallowed behavior:
 
-- 把 JIS 專用鍵映成一般標點鍵
-- 把 application/menu key 映成其他修飾鍵或字元鍵
-- 用不穩定的複合 Windows 鍵序列假裝單一 legacy payload
+- mapping a JIS-specific key to an ordinary punctuation key
+- mapping the application/menu key to another modifier or character key
+- pretending an unstable multi-part Windows sequence is a single legacy payload
 
-這些做法都會破壞 HID distinction，並讓遠端行為不可預期。
+These would all break HID distinctions and make remote behavior unpredictable.
 
-### 5. Unsupported relay key 維持 suppress + log
+### 5. Unsupported relay keys keep the suppress + log rule
 
-本輪不新增新的 forwarding 狀態模型。若 `legacy_key_payload.py` 拒絕某 HID 鍵：
+This round does not introduce a new forwarding state model. If `legacy_key_payload.py` rejects a HID key:
 
-- `key_event_to_legacy_remote_payload()` 應丟出 `ValueError`
-- `NvdaRemoteInputForwardingUseCase` 應記錄清楚 log
-- control mode 下回傳 `SUPPRESS`
+- `key_event_to_legacy_remote_payload()` should raise `ValueError`
+- `NvdaRemoteInputForwardingUseCase` should log the failure clearly
+- control mode should return `SUPPRESS`
 
-這延續前一輪修正後的安全邏輯，避免 unsupported key 在遠端控制時意外作用在本機。
+This continues the safety logic established after the previous fix and prevents unsupported keys from affecting the local machine during remote control.
 
-## 鍵級別策略
+## Key-level strategy
 
-### 優先 end-to-end relay 的鍵
+### Keys prioritized for end-to-end relay
 
-下列鍵應優先嘗試補齊 HID、平台 mapping 與 legacy relay mapping：
+The following keys should be prioritized for HID coverage, platform mapping, and legacy relay mapping:
 
 - `PrintScreen`
 - `ScrollLock`
 - `Pause`
 - `NumLock`
-- application/menu key
+- the application/menu key
 
-其中若某鍵在 relay 邊界上無法建立穩定對應，可退回 local-only，但必須有明確測試與文件說明，不可默默缺漏。
+If any one of them turns out not to have a stable relay representation, it may fall back to local-only, but that decision must be explicit in both tests and documentation rather than silently omitted.
 
-### JIS 鍵策略
+### JIS key strategy
 
-JIS 鍵分成兩層能力：
+JIS keys are split into two capability levels:
 
-- `HID-capable`：一定要支援。Windows/macOS 若能穩定辨識，必須映成對應 usage。
-- `Relay-capable`：只有在 legacy payload 對應明確時才支援。
+- `HID-capable`: required. If Windows or macOS can recognize the key reliably, it must map to the appropriate usage.
+- `Relay-capable`: optional, supported only when the legacy payload mapping is explicit and defensible.
 
-因此，JIS 鍵在本輪的完成定義不是「全部都能 relay」，而是：
+So the definition of done for JIS in this round is not "all JIS keys relay end to end." It is:
 
-- 共通 HID 可表示
-- 平台層能正規化
-- relay 能力逐鍵明確決定，而不是模糊未知
+- they are representable in shared HID
+- they can be normalized at the platform layer
+- their relay capability is decided explicitly key by key rather than left ambiguous
 
-## 檔案層級變更
+## File-level changes
 
 ### `src/interop/key/hid.py`
 
-新增以下 HID 常數群組：
+Add the following HID constant groups:
 
-- 特殊控制鍵：`PRINT_SCREEN`、`SCROLL_LOCK`、`PAUSE`、`NUM_LOCK`、`APPLICATION`
-- JIS 常數：`NON_US_HASH`、`INTERNATIONAL1`、`INTERNATIONAL3`、`INTERNATIONAL4`、`INTERNATIONAL5`
+- special control keys: `PRINT_SCREEN`, `SCROLL_LOCK`, `PAUSE`, `NUM_LOCK`, `APPLICATION`
+- JIS constants: `NON_US_HASH`, `INTERNATIONAL1`, `INTERNATIONAL3`, `INTERNATIONAL4`, `INTERNATIONAL5`
 
-維持同一檔案內按區塊分組，不引入新的抽象層。
+Keep them grouped within the same file without introducing a new abstraction layer.
 
 ### `src/adapters/windows/hid_map.py`
 
-補上 Windows `scanCode + extended (+ vkCode only when necessary)` 到新增 HID usage 的映射。
+Add Windows `scanCode + extended` mappings, with `vkCode` used only where necessary, for the new HID usages.
 
-原則：
+Rules:
 
-- 仍以 `scanCode + extended` 為主
-- 只有在某些特殊鍵需要排歧義時才輔助參考 `vkCode`
-- 若 JIS 鍵無法穩定映射，不新增脆弱規則
+- still prefer `scanCode + extended`
+- only consult `vkCode` when a special key needs disambiguation
+- do not add fragile JIS mappings if they cannot be made stable
 
 ### `src/adapters/macos/hid_map.py`
 
-補上 macOS virtual key code 到新增 HID usage 的映射。
+Add macOS virtual key code mappings for the new HID usages.
 
-原則：
+Rules:
 
-- JIS 部分優先補齊，因為 macOS 對日文鍵盤佈局通常有更直接的 key code 區分
-- 其餘特殊鍵只有在目前 event tap 路徑真的能穩定捕獲時才加入
+- prioritize JIS coverage because macOS usually exposes clearer key code distinctions for Japanese keyboard layouts
+- add the other special keys only when the current event tap path can capture them reliably
 
 ### `src/apps/nvda_remote/legacy_key_payload.py`
 
-新增可辯護的 legacy 映射：
+Add defensible legacy mappings:
 
-- 對特殊控制鍵：若存在穩定 `vk_code/scan_code/extended`，則加入 `_USAGE_TO_LEGACY`
-- 對 JIS 鍵：逐鍵判斷；可支援者加入，不可支援者維持 `ValueError`
+- for special control keys: add entries to `_USAGE_TO_LEGACY` when stable `vk_code/scan_code/extended` values exist
+- for JIS keys: evaluate each key individually; supported ones are added, unsupported ones continue to raise `ValueError`
 
-這個模組仍是唯一知道 legacy payload 細節的位置。
+This module remains the only place that knows the details of the legacy payload.
 
 ### `src/apps/nvda_remote/use_cases/input_forwarding.py`
 
-行為模型不變，但測試要擴充到新的 local-only 鍵：
+The behavior model does not change, but tests should expand to cover the new local-only keys:
 
-- unsupported 特殊鍵：`SUPPRESS + log`
-- unsupported JIS 鍵：`SUPPRESS + log`
+- unsupported special keys: `SUPPRESS + log`
+- unsupported JIS keys: `SUPPRESS + log`
 
-## 資料流
+## Data flow
 
-### 本地輸入
+### Local input
 
-1. 平台 adapter 捕獲原生鍵盤事件。
-2. Windows/macOS mapping 將事件轉成 HID `KeyEvent`。
-3. `application` / `apps` 只依賴 HID。
-4. 即使某鍵不能 relay，本地 app 邏輯仍可辨識它。
+1. A platform adapter captures a native keyboard event.
+2. The Windows/macOS mapping converts it into a HID `KeyEvent`.
+3. `application` and `apps` consume only HID.
+4. Even if a key cannot be relayed, local app logic can still recognize it.
 
-### 遠端轉送
+### Remote forwarding
 
-1. `nvda_remote` 收到 HID `KeyEvent`。
-2. 若 `legacy_key_payload.py` 可穩定轉換，產生既有 `key` payload。
-3. 若無法穩定轉換，拋出 `ValueError`。
-4. forwarding use case 記 log 並在 control mode 下 suppress 該鍵。
+1. `nvda_remote` receives a HID `KeyEvent`.
+2. If `legacy_key_payload.py` can convert it stably, it produces the existing `key` payload.
+3. If it cannot convert the key stably, it raises `ValueError`.
+4. The forwarding use case logs the failure and suppresses the key in control mode.
 
-## 測試策略
+## Test strategy
 
-### 單元測試：HID 常數
+### Unit tests: HID constants
 
-在 `tests/unit/test_hid_keys.py` 補上：
+Extend `tests/unit/test_hid_keys.py` with:
 
-- 特殊控制鍵的 usage 值測試
-- JIS 常數的 usage 值測試
-- 與既有 ANSI/ISO 鍵的 distinction 測試
+- usage-value tests for the special control keys
+- usage-value tests for the JIS constants
+- distinction tests against existing ANSI/ISO keys
 
-### 單元測試：Windows adapter
+### Unit tests: Windows adapter
 
-在 `tests/unit/test_windows_adapters.py` 補上：
+Extend `tests/unit/test_windows_adapters.py` with:
 
 - `PrintScreen`
 - `ScrollLock`
 - `Pause`
 - `NumLock`
-- application/menu key
-- 每個納入範圍的 JIS 鍵
+- the application/menu key
+- every JIS key included in scope
 
-測試必須直接驗證 hook callback 產生的 HID `KeyEvent`，不能只測 helper function。
+The tests should validate the HID `KeyEvent` emitted from the hook callback directly, not just a helper function.
 
-### 單元測試：macOS adapter
+### Unit tests: macOS adapter
 
-在 `tests/unit/test_macos_adapters.py` 補上：
+Extend `tests/unit/test_macos_adapters.py` with:
 
-- 可由 event tap 穩定收到的特殊控制鍵
-- 納入範圍的 JIS 鍵
+- special control keys that can be captured reliably through the event tap
+- the JIS keys included in scope
 
-若某鍵在 macOS 路徑上無法穩定取得，測試應明確標記設計限制，而不是省略。
+If a key cannot be obtained reliably through the macOS path, the test should document that design limitation explicitly instead of silently omitting it.
 
-### 單元測試：legacy relay adapter
+### Unit tests: legacy relay adapter
 
-在 `tests/unit/test_nvda_remote_legacy_key_payload.py` 補上兩類測試：
+Extend `tests/unit/test_nvda_remote_legacy_key_payload.py` with two categories:
 
-- `relay-capable`：驗證 payload 值精準正確
-- `local-only`：驗證拋出 `ValueError`
+- `relay-capable`: verify exact payload values
+- `local-only`: verify that `ValueError` is raised
 
-這份測試應成為每顆新增鍵 relay 能力的唯一真相來源。
+This test file should become the single source of truth for the relay capability of each newly added key.
 
-### 單元測試：forwarding safety
+### Unit tests: forwarding safety
 
-在 `tests/unit/test_nvda_remote_use_cases.py` 補上：
+Extend `tests/unit/test_nvda_remote_use_cases.py` with:
 
-- unsupported 特殊鍵在 control mode 下被 suppress
-- unsupported JIS 鍵在 control mode 下被 suppress
-- log 內容包含足夠辨識資訊，便於後續追蹤
+- unsupported special keys are suppressed in control mode
+- unsupported JIS keys are suppressed in control mode
+- log output contains enough identifying information for later debugging
 
-## 風險
+## Risks
 
-### 1. 特殊鍵在平台間語意不完全對稱
+### 1. Special keys are not fully symmetrical across platforms
 
-像 `Pause`、`PrintScreen` 這類鍵在不同平台與不同底層事件模型中的表示方式，可能不是一般單鍵的穩定對應。即使本地能抓到，也不代表 relay 可重建一致行為。
+Keys like `Pause` and `PrintScreen` may not behave like ordinary single keys in every platform event model. Even if they can be captured locally, that does not guarantee that relay can reconstruct matching behavior reliably.
 
-### 2. JIS 與 legacy relay 之間存在根本語意落差
+### 2. JIS and the legacy relay model have a fundamental semantic mismatch
 
-JIS 鍵盤的部分專用鍵在 HID 上有清楚 usage，但 legacy relay 仍受限於 Windows-style `vk/scan/extended`。這代表「HID 支援」與「relay 支援」本來就不會完全重疊。
+Some JIS-only keys have clear HID usages, while the legacy relay path is still constrained by Windows-style `vk/scan/extended`. That means HID support and relay support will not fully overlap by default.
 
-### 3. 錯誤的降級映射比明確 unsupported 更危險
+### 3. Incorrect downgrade mappings are more dangerous than explicit unsupported behavior
 
-若為了追求表面上的 relay 覆蓋率而使用近似 mapping，會讓遠端實際收到錯鍵，這比清楚地 local-only 更難 debug，也更容易造成控制模式下的誤操作。
+If approximate mappings are used just to increase apparent relay coverage, the remote side may receive the wrong key. That is harder to debug and more dangerous in control mode than keeping the key explicitly local-only.
 
-## 結論
+## Conclusion
 
-本輪應把特殊鍵與 JIS 鍵視為既有 HID 擴充的下一個受控階段：先把鍵納入 HID 與平台正規化，然後在 relay 邊界採 best-effort，對無法穩定表示的鍵維持 explicit local-only。這樣可以在不破壞現有架構與安全模型的前提下，擴大共通鍵盤輸入模型的真實覆蓋範圍。
+This round should treat special keys and JIS keys as the next controlled phase of the existing HID expansion work: first add them to HID and platform normalization, then apply a best-effort policy at the relay boundary, keeping keys explicitly local-only when they cannot be represented stably. That expands the real coverage of the shared keyboard input model without breaking the current architecture or safety model.
