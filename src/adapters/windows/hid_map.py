@@ -12,6 +12,8 @@ _SCAN_TO_USAGE: dict[tuple[int, bool], int] = {
     (9, False): HID.DIGIT_8,
     (10, False): HID.DIGIT_9,
     (11, False): HID.DIGIT_0,
+    (12, False): HID.MINUS,
+    (13, False): HID.EQUALS,
     (14, False): HID.BACKSPACE,
     (15, False): HID.TAB,
     (16, False): HID.Q,
@@ -65,8 +67,8 @@ _SCAN_TO_USAGE: dict[tuple[int, bool], int] = {
     (80, True): HID.DOWN,
     (87, False): HID.F11,
     (88, False): HID.F12,
-    (91, False): HID.LEFT_META,
-    (92, False): HID.RIGHT_META,
+    (91, True): HID.LEFT_META,
+    (92, True): HID.RIGHT_META,
 }
 
 

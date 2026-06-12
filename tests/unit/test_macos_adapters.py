@@ -71,6 +71,14 @@ def test_key_event_from_macos_maps_digit_to_hid():
     assert event == KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.DIGIT_0, pressed=True)
 
 
+def test_key_event_from_macos_maps_minus_equals_to_hid():
+    event = key_event_from_macos(key_code=27, pressed=True, is_repeat=False)
+    assert event == KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.MINUS, pressed=True)
+
+    event = key_event_from_macos(key_code=24, pressed=True, is_repeat=False)
+    assert event == KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.EQUALS, pressed=True)
+
+
 class FakePermissions:
     def __init__(self, trusted=True):
         self.trusted = trusted

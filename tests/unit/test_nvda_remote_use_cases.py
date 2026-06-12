@@ -172,7 +172,7 @@ def test_input_forwarding_use_case_sends_remote_key_when_controlling():
     assert sent == [{"vk_code": 65, "scan_code": 30, "extended": False, "pressed": True}]
 
 
-def test_input_forwarding_passes_through_unsupported_usage():
+def test_input_forwarding_suppresses_unsupported_usage():
     from apps.nvda_remote.use_cases.input_forwarding import NvdaRemoteInputForwardingUseCase
 
     sent = []
@@ -186,5 +186,5 @@ def test_input_forwarding_passes_through_unsupported_usage():
 
     decision = use_case.handle(event)
 
-    assert decision == KeyEventDecision.PASS_THROUGH
+    assert decision == KeyEventDecision.SUPPRESS
     assert sent == []

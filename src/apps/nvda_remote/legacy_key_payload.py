@@ -43,6 +43,8 @@ _USAGE_TO_LEGACY: dict[int, tuple[int, int, bool]] = {
     HID.BACKSPACE: (8, 14, False),
     HID.TAB: (9, 15, False),
     HID.SPACE: (32, 57, False),
+    HID.MINUS: (189, 12, False),
+    HID.EQUALS: (187, 13, False),
     HID.F1: (112, 59, False),
     HID.F2: (113, 60, False),
     HID.F3: (114, 61, False),
@@ -65,8 +67,8 @@ _USAGE_TO_LEGACY: dict[int, tuple[int, int, bool]] = {
     HID.RIGHT_SHIFT: (16, 54, False),
     HID.LEFT_ALT: (18, 56, False),
     HID.RIGHT_ALT: (18, 56, True),
-    HID.LEFT_META: (91, 91, False),
-    HID.RIGHT_META: (92, 92, False),
+    HID.LEFT_META: (91, 91, True),
+    HID.RIGHT_META: (92, 92, True),
 }
 
 

@@ -85,8 +85,18 @@ def test_hid_left_meta_maps_to_legacy_remote_payload():
     assert key_event_to_legacy_remote_payload(event) == {
         "vk_code": 91,
         "scan_code": 91,
-        "extended": False,
+        "extended": True,
         "pressed": True,
+    }
+
+
+def test_hid_right_meta_maps_to_legacy_remote_payload():
+    event = KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.RIGHT_META, pressed=False)
+    assert key_event_to_legacy_remote_payload(event) == {
+        "vk_code": 92,
+        "scan_code": 92,
+        "extended": True,
+        "pressed": False,
     }
 
 
@@ -95,6 +105,26 @@ def test_hid_f1_maps_to_legacy_remote_payload():
     assert key_event_to_legacy_remote_payload(event) == {
         "vk_code": 112,
         "scan_code": 59,
+        "extended": False,
+        "pressed": True,
+    }
+
+
+def test_hid_minus_maps_to_legacy_remote_payload():
+    event = KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.MINUS, pressed=True)
+    assert key_event_to_legacy_remote_payload(event) == {
+        "vk_code": 189,
+        "scan_code": 12,
+        "extended": False,
+        "pressed": True,
+    }
+
+
+def test_hid_equals_maps_to_legacy_remote_payload():
+    event = KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.EQUALS, pressed=True)
+    assert key_event_to_legacy_remote_payload(event) == {
+        "vk_code": 187,
+        "scan_code": 13,
         "extended": False,
         "pressed": True,
     }

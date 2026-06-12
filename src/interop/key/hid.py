@@ -45,6 +45,8 @@ class _HIDKeyboard:
     BACKSPACE: int = 0x2A
     TAB: int = 0x2B
     SPACE: int = 0x2C
+    MINUS: int = 0x2D
+    EQUALS: int = 0x2E
     F1: int = 0x3A
     F2: int = 0x3B
     F3: int = 0x3C

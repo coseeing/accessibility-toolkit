@@ -46,7 +46,7 @@ class NvdaRemoteInputForwardingUseCase:
                 event.usage_page,
                 event.usage,
             )
-            return KeyEventDecision.PASS_THROUGH
+            return KeyEventDecision.SUPPRESS
         return KeyEventDecision.SUPPRESS
 
     def clear(self) -> None:
