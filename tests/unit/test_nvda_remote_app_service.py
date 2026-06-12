@@ -164,9 +164,6 @@ def test_nvda_remote_service_forwards_keys_when_controlling():
 
     assert decision == KeyEventDecision.SUPPRESS
     assert transport.sent == [(RemoteMessageType.KEY, event.to_remote_payload())]
-    assert capture.started == 1
-    assert capture.running is True
-    assert hotkey.stopped == 0
 
 
 def test_nvda_remote_service_passes_through_keys_before_control():
@@ -196,9 +193,8 @@ def test_nvda_remote_service_uses_f11_as_local_stop():
 
     assert keydown_decision == KeyEventDecision.SUPPRESS
     assert keyup_decision == KeyEventDecision.SUPPRESS
-    assert service.state.control_state == service.state.control_state.SUSPENDED
+    assert service.state.control_state == service.state.control_state.CONNECTED
     assert transport.sent == []
-    assert capture.stopped == 1
     assert hotkey.started == 1
     assert hotkey.running is True
 
@@ -310,14 +306,12 @@ def test_nvda_remote_service_stop_control_handles_hotkey_start_failure():
 
     hotkey.start = _failing_start
 
-    service.stop_control()
+    service._exit_active_from_keyboard()
 
-    assert service.state.control_state == service.state.control_state.SUSPENDED
-    assert capture.stopped == 1
-    assert capture.running is False
+    assert service.state.control_state == service.state.control_state.CONTROLLING
+    assert capture.running is True
     assert status_events == [
         {"kind": "error", "message": "hotkey busy"},
-        {"kind": "control", "state": "suspended"},
     ]
 
 
@@ -348,23 +342,18 @@ def test_nvda_remote_service_dispatches_speech_backend_notifications():
 
 
 def test_nvda_remote_service_f11_toggles_control_on_keydown_only():
-    service, _transport, capture, hotkey, _dispatch_calls = build_service()
+    service, _transport, capture, hotkey, dispatch_calls = build_service()
     service.bind()
     service.state.connection_state = service.state.connection_state.CONNECTED
-    service.state.control_state = service.state.control_state.SUSPENDED
+    service.state.control_state = service.state.control_state.CONNECTED
+    hotkey.running = True
 
-    keydown_decision = service.handle_key_event(
-        KeyEvent(vk=0x7A, scan=87, extended=False, pressed=True)
-    )
-    keyup_decision = service.handle_key_event(
-        KeyEvent(vk=0x7A, scan=87, extended=False, pressed=False)
-    )
+    hotkey.handler()
 
-    assert keydown_decision == KeyEventDecision.SUPPRESS
-    assert keyup_decision == KeyEventDecision.SUPPRESS
+    assert len(dispatch_calls) == 1
     assert service.state.control_state == service.state.control_state.CONTROLLING
+    assert hotkey.stopped == 1
     assert capture.started == 1
-    assert hotkey.stopped == 0
 
 
 def test_nvda_remote_service_idle_f11_uses_hotkey_capture_path():

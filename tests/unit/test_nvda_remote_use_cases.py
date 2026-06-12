@@ -117,25 +117,20 @@ def test_control_mode_use_case_start_control_starts_capture_and_stops_hotkey():
 
     state = RuntimeState(
         connection_state=ConnectionState.CONNECTED,
-        control_state=ControlState.SUSPENDED,
+        control_state=ControlState.CONNECTED,
     )
-    input_capture = FakeRunningCapture()
-    hotkey_capture = FakeRunningHotkey()
-    hotkey_capture.running = True
+    notifications: list[dict[str, str]] = []
 
     use_case = NvdaRemoteControlModeUseCase(
         state=state,
-        input_capture=input_capture,
-        hotkey_capture=hotkey_capture,
         notify_error=lambda _message: None,
-        notify_status=lambda _status: None,
+        notify_status=notifications.append,
     )
 
     use_case.start_control()
 
     assert state.control_state == ControlState.CONTROLLING
-    assert input_capture.started == 1
-    assert hotkey_capture.stopped == 1
+    assert notifications == [{"kind": "control", "state": ControlState.CONTROLLING.value}]
 
 
 def test_control_mode_use_case_stop_control_stops_capture_and_restarts_hotkey():
@@ -145,23 +140,18 @@ def test_control_mode_use_case_stop_control_stops_capture_and_restarts_hotkey():
         connection_state=ConnectionState.CONNECTED,
         control_state=ControlState.CONTROLLING,
     )
-    input_capture = FakeRunningCapture()
-    input_capture.running = True
-    hotkey_capture = FakeRunningHotkey()
+    notifications: list[dict[str, str]] = []
 
     use_case = NvdaRemoteControlModeUseCase(
         state=state,
-        input_capture=input_capture,
-        hotkey_capture=hotkey_capture,
         notify_error=lambda _message: None,
-        notify_status=lambda _status: None,
+        notify_status=notifications.append,
     )
 
     use_case.stop_control()
 
-    assert state.control_state == ControlState.SUSPENDED
-    assert input_capture.stopped == 1
-    assert hotkey_capture.started == 1
+    assert state.control_state == ControlState.CONNECTED
+    assert notifications == [{"kind": "control", "state": ControlState.CONNECTED.value}]
 
 
 def test_input_forwarding_use_case_sends_remote_key_when_controlling():

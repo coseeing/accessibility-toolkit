@@ -2,6 +2,11 @@ from collections.abc import Callable
 from typing import Any
 
 from adapters.inputs.base import HotkeyCapture, InputCapture, KeyEventDecision
+from application.input import (
+    ActiveKeyEventPolicy,
+    InputActivationUseCase,
+    StateTransitionHotkeyPolicy,
+)
 from application.keyboard import KeyEventHandler
 from application.output_service import SpeechOutputService
 from application.services import ClipboardService
@@ -15,7 +20,6 @@ from interop.protocol.transport.base import Transport
 
 from apps.nvda_remote.use_cases import (
     NvdaRemoteControlModeUseCase,
-    NvdaRemoteHotkeyAction,
     NvdaRemoteInputForwardingUseCase,
     NvdaRemoteSpeechSettingsUseCase,
     NvdaRemoteStateTransitionHotkeyUseCase,
@@ -62,8 +66,6 @@ class NvdaRemoteAppFacade(KeyEventHandler):
         self._state_transition_hotkeys = NvdaRemoteStateTransitionHotkeyUseCase.default()
         self._control_mode = NvdaRemoteControlModeUseCase(
             state=self.state,
-            input_capture=input_capture,
-            hotkey_capture=hotkey_capture,
             notify_error=self._notify_error,
             notify_status=self._notify_status_listener,
         )
@@ -84,9 +86,42 @@ class NvdaRemoteAppFacade(KeyEventHandler):
             on_backend_changed=_on_backend_changed_wrapper,
         )
 
+        self._activation = InputActivationUseCase(
+            input_capture=input_capture,
+            hotkey_capture=hotkey_capture,
+            is_active=lambda: self.state.control_state == ControlState.CONTROLLING,
+            set_active=self._set_control_active,
+            notify_error=self._notify_error,
+        )
+        self._idle_hotkeys = StateTransitionHotkeyPolicy(mapping={0x7A: "enter_active"})
+        self._active_keys = ActiveKeyEventPolicy(
+            exit_vk=0x7A,
+            on_exit=self._exit_active_from_keyboard,
+            on_key=self._input_forwarding.handle,
+        )
+
+    def _set_control_active(self, active: bool) -> None:
+        self.state.control_state = (
+            ControlState.CONTROLLING if active else ControlState.CONNECTED
+        )
+
+    def _exit_active_from_keyboard(self) -> KeyEventDecision:
+        if self._activation.exit_active():
+            self.stop_control()
+        self._suppressed_keyups.add(self._LOCAL_STOP_VK)
+        return KeyEventDecision.SUPPRESS
+
+    def _handle_idle_hotkey(self) -> None:
+        if self.state.connection_state == ConnectionState.IDLE:
+            return
+        if self.state.control_state == ControlState.CONTROLLING:
+            return
+        if self._activation.enter_active():
+            self._main_thread_dispatch(self.start_control)
+
     def bind(self) -> None:
         self.input_capture.set_listener(self.handle_key_event)
-        self.hotkey_capture.set_handler(self._handle_hotkey_toggle)
+        self.hotkey_capture.set_handler(self._handle_idle_hotkey)
         self.transport.set_message_handler(self._handle_transport_message)
 
     def connect(self, host: str, port: int, key: str, insecure: bool = False) -> None:
@@ -172,12 +207,9 @@ class NvdaRemoteAppFacade(KeyEventHandler):
         if not event.pressed and event.vk in self._suppressed_keyups:
             self._suppressed_keyups.discard(event.vk)
             return KeyEventDecision.SUPPRESS
-        action = self._state_transition_hotkeys.match(event)
-        if action == NvdaRemoteHotkeyAction.TOGGLE_CONTROL:
-            self._toggle_control_from_hotkey()
-            self._suppressed_keyups.add(event.vk)
-            return KeyEventDecision.SUPPRESS
-        return self._input_forwarding.handle(event)
+        if self.state.control_state != ControlState.CONTROLLING:
+            return KeyEventDecision.PASS_THROUGH
+        return self._active_keys.handle(event)
 
     def _handle_transport_message(self, payload: dict[str, Any]) -> None:
         if payload.get("type") == "transport_disconnected":
@@ -197,10 +229,8 @@ class NvdaRemoteAppFacade(KeyEventHandler):
                 self.state.connection_state = ConnectionState.CONNECTED
                 if self.state.control_state != ControlState.CONTROLLING:
                     self.state.control_state = ControlState.CONNECTED
-                    try:
-                        self._ensure_hotkey_started()
-                    except Exception as error:
-                        self._notify_error(str(error))
+                    self._activation.exit_active()
+                    self._ensure_hotkey_started()
             case ConnectionState.IDLE.value:
                 self._stop_capture()
                 self._stop_hotkey()
@@ -233,15 +263,4 @@ class NvdaRemoteAppFacade(KeyEventHandler):
         if self.hotkey_capture.running:
             self.hotkey_capture.stop()
 
-    def _handle_hotkey_toggle(self) -> None:
-        if self.state.connection_state == ConnectionState.IDLE:
-            return
-        self._main_thread_dispatch(self._toggle_control_from_hotkey)
 
-    def _toggle_control_from_hotkey(self) -> None:
-        if self.state.connection_state == ConnectionState.IDLE:
-            return
-        if self.state.control_state == ControlState.CONTROLLING:
-            self.stop_control()
-            return
-        self.start_control()
