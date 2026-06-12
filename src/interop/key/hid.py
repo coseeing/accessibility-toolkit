@@ -4,6 +4,8 @@ from dataclasses import dataclass
 @dataclass(frozen=True, slots=True)
 class _HIDKeyboard:
     KEYBOARD_PAGE: int = 0x07
+
+    # Alphanumeric
     A: int = 0x04
     B: int = 0x05
     C: int = 0x06
@@ -40,6 +42,8 @@ class _HIDKeyboard:
     DIGIT_8: int = 0x25
     DIGIT_9: int = 0x26
     DIGIT_0: int = 0x27
+
+    # Core controls and main-cluster punctuation
     ENTER: int = 0x28
     ESCAPE: int = 0x29
     BACKSPACE: int = 0x2A
@@ -47,6 +51,18 @@ class _HIDKeyboard:
     SPACE: int = 0x2C
     MINUS: int = 0x2D
     EQUALS: int = 0x2E
+    LEFT_BRACKET: int = 0x2F
+    RIGHT_BRACKET: int = 0x30
+    BACKSLASH: int = 0x31
+    SEMICOLON: int = 0x33
+    QUOTE: int = 0x34
+    GRAVE: int = 0x35
+    COMMA: int = 0x36
+    PERIOD: int = 0x37
+    SLASH: int = 0x38
+    CAPS_LOCK: int = 0x39
+
+    # Function keys
     F1: int = 0x3A
     F2: int = 0x3B
     F3: int = 0x3C
@@ -59,11 +75,40 @@ class _HIDKeyboard:
     F10: int = 0x43
     F11: int = 0x44
     F12: int = 0x45
+
+    # Navigation and editing
+    INSERT: int = 0x49
+    HOME: int = 0x4A
+    PAGE_UP: int = 0x4B
+    DELETE: int = 0x4C
+    END: int = 0x4D
+    PAGE_DOWN: int = 0x4E
     RIGHT: int = 0x4F
     LEFT: int = 0x50
     DOWN: int = 0x51
     UP: int = 0x52
+
+    # Numpad
+    KEYPAD_DIVIDE: int = 0x54
+    KEYPAD_MULTIPLY: int = 0x55
+    KEYPAD_SUBTRACT: int = 0x56
+    KEYPAD_ADD: int = 0x57
     KEYPAD_ENTER: int = 0x58
+    KEYPAD_1: int = 0x59
+    KEYPAD_2: int = 0x5A
+    KEYPAD_3: int = 0x5B
+    KEYPAD_4: int = 0x5C
+    KEYPAD_5: int = 0x5D
+    KEYPAD_6: int = 0x5E
+    KEYPAD_7: int = 0x5F
+    KEYPAD_8: int = 0x60
+    KEYPAD_9: int = 0x61
+    KEYPAD_0: int = 0x62
+    KEYPAD_DECIMAL: int = 0x63
+    NON_US_BACKSLASH: int = 0x64
+    KEYPAD_EQUALS: int = 0x67
+
+    # Modifiers
     LEFT_CONTROL: int = 0xE0
     LEFT_SHIFT: int = 0xE1
     LEFT_ALT: int = 0xE2
