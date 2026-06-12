@@ -365,3 +365,17 @@ def test_nvda_remote_service_f11_toggles_control_on_keydown_only():
     assert service.state.control_state == service.state.control_state.CONTROLLING
     assert capture.started == 1
     assert hotkey.stopped == 0
+
+
+def test_nvda_remote_service_idle_f11_uses_hotkey_capture_path():
+    service, transport, capture, hotkey, dispatch_calls = build_service()
+    service.bind()
+    service.state.connection_state = service.state.connection_state.CONNECTED
+    service.state.control_state = service.state.control_state.CONNECTED
+
+    hotkey.handler()
+
+    assert dispatch_calls == ["called"]
+    assert service.state.control_state == service.state.control_state.CONTROLLING
+    assert hotkey.stopped == 1
+    assert capture.started == 1

@@ -81,6 +81,26 @@ class FakeCapture:
         return self.start_calls > self.stop_calls
 
 
+class FakeHotkeyCapture:
+    def __init__(self) -> None:
+        self.handler = None
+        self.start_calls = 0
+        self.stop_calls = 0
+
+    def set_handler(self, handler) -> None:
+        self.handler = handler
+
+    def start(self) -> None:
+        self.start_calls += 1
+
+    def stop(self) -> None:
+        self.stop_calls += 1
+
+    @property
+    def running(self) -> bool:
+        return self.start_calls > self.stop_calls
+
+
 def test_key_echo_app_service_speaks_vk_on_keydown() -> None:
     speech_output = FakeSpeechOutput()
     service = KeyEchoAppService(
@@ -465,3 +485,43 @@ def test_module_executes_main_when_run_as_script(monkeypatch) -> None:
 
     assert error.value.code == 654
     assert calls == ["main"]
+
+
+def test_key_echo_app_service_idle_enter_uses_hotkey_path() -> None:
+    capture = FakeCapture()
+    hotkey = FakeHotkeyCapture()
+    speech_output = FakeSpeechOutput()
+    service = KeyEchoAppService(
+        hotkey_capture=hotkey,
+        outputs=OutputCapabilities(speech=SpeechService.single_backend(speech_output)),
+    )
+    input_service = KeyboardInputService(capture, service)
+    service.attach_input_service(input_service)
+    service.bind()
+
+    hotkey.handler()
+
+    assert service.is_echo_running() is True
+    assert hotkey.stop_calls == 1
+    assert capture.start_calls == 1
+
+
+def test_key_echo_app_service_active_escape_exits_through_keyboard_pipeline() -> None:
+    capture = FakeCapture()
+    hotkey = FakeHotkeyCapture()
+    speech_output = FakeSpeechOutput()
+    service = KeyEchoAppService(
+        hotkey_capture=hotkey,
+        outputs=OutputCapabilities(speech=SpeechService.single_backend(speech_output)),
+    )
+    input_service = KeyboardInputService(capture, service)
+    service.attach_input_service(input_service)
+    service.bind()
+    hotkey.handler()
+
+    decision = service.handle_key_event(KeyEvent(vk=0x1B, scan=1, extended=False, pressed=True))
+
+    assert decision == KeyEventDecision.SUPPRESS
+    assert service.is_echo_running() is False
+    assert capture.stop_calls == 1
+    assert hotkey.start_calls == 2
