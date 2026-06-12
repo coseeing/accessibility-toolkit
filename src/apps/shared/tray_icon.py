@@ -3,7 +3,7 @@ import wx.adv
 
 
 class ToolTrayIcon(wx.adv.TaskBarIcon):
-    def __init__(self, *, on_open_main, on_open_speech, on_exit):
+    def __init__(self, *, on_open_main, on_open_speech, on_exit, app_name="NVDA Remote"):
         super().__init__()
         self._on_open_main = on_open_main
         self._on_open_speech = on_open_speech
@@ -12,7 +12,7 @@ class ToolTrayIcon(wx.adv.TaskBarIcon):
             wx.ArtProvider.GetIcon(
                 wx.ART_INFORMATION, wx.ART_OTHER, (16, 16)
             ),
-            "NVDA Remote",
+            app_name,
         )
 
     def CreatePopupMenu(self):

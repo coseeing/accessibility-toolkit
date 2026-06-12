@@ -17,13 +17,10 @@ class EchoApp(wx.App):
             controller=self.controller,
             main_frame_factory=lambda ctrl: EchoMainFrame(controller=ctrl),
             speech_frame_factory=lambda ctrl: SpeechSettingsFrame(controller=ctrl),
+            app_name="Key Echo",
         )
         self.shell.initialize()
         return True
 
     def OnExit(self):
-        if self.controller is not None and hasattr(self.controller, "shutdown"):
-            self.controller.shutdown()
-        elif self.controller is not None and hasattr(self.controller, "stop_echo"):
-            self.controller.stop_echo()
         return 0

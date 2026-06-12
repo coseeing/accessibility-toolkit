@@ -22,6 +22,4 @@ class NvdaRemoteApp(wx.App):
         return True
 
     def OnExit(self):
-        if self.controller is not None and hasattr(self.controller, "shutdown"):
-            self.controller.shutdown()
         return 0

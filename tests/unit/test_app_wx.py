@@ -224,6 +224,22 @@ def install_fake_wx(monkeypatch):
         def MainLoop(self):
             return 0
 
+        def ExitMainLoop(self):
+            pass
+
+    fake_wx.App = App
+
+    class _FakeExitApp:
+        def ExitMainLoop(self):
+            pass
+
+    _app_instance = _FakeExitApp()
+
+    def GetApp():
+        return _app_instance
+
+    fake_wx.GetApp = GetApp
+
     def MessageBox(message, caption, style):
         fake_wx.message_box_calls.append((message, caption, style))
         return 0

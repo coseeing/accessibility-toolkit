@@ -1,12 +1,15 @@
+import wx
+
 from apps.shared.panel_controller import PanelController
 from apps.shared.tray_icon import ToolTrayIcon
 
 
 class ToolAppShell:
-    def __init__(self, *, controller, main_frame_factory, speech_frame_factory):
+    def __init__(self, *, controller, main_frame_factory, speech_frame_factory, app_name="NVDA Remote"):
         self.controller = controller
         self.main_frame_factory = main_frame_factory
         self.speech_frame_factory = speech_frame_factory
+        self.app_name = app_name
         self.panel_controller = PanelController()
         self.tray_icon = None
 
@@ -21,6 +24,7 @@ class ToolAppShell:
             on_open_main=lambda: self.panel_controller.show("main"),
             on_open_speech=lambda: self.panel_controller.show("speech"),
             on_exit=self.shutdown,
+            app_name=self.app_name,
         )
 
     def shutdown(self):
@@ -28,3 +32,4 @@ class ToolAppShell:
             self.tray_icon.Destroy()
         if self.controller is not None and hasattr(self.controller, "shutdown"):
             self.controller.shutdown()
+        wx.GetApp().ExitMainLoop()

@@ -39,6 +39,17 @@ def install_fake_wx(monkeypatch):
 
     fake_wx.ArtProvider = ArtProvider
 
+    class FakeApp:
+        def ExitMainLoop(self):
+            pass
+
+    _fake_app = FakeApp()
+
+    def GetApp():
+        return _fake_app
+
+    fake_wx.GetApp = GetApp
+
     class Menu:
         def __init__(self):
             self.items = []

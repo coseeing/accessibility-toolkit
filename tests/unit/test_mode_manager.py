@@ -9,6 +9,7 @@ class FakeActivation:
         self.entered = 0
         self.exited = 0
         self.active = False
+        self.fail_exit = False
 
     def enter_active(self) -> bool:
         if self.active:
@@ -20,6 +21,8 @@ class FakeActivation:
     def exit_active(self) -> bool:
         if not self.active:
             return True
+        if self.fail_exit:
+            return False
         self.exited += 1
         self.active = False
         return True
@@ -196,3 +199,24 @@ def test_mode_manager_handles_activate_rollback_on_enter_failure():
     assert result is False
     assert activation.active is False
     assert manager.active_mode_id is None
+
+
+def test_mode_manager_preserves_active_mode_when_exit_active_fails():
+    mode = FakeMode()
+    activation = FakeActivation()
+    activation.fail_exit = True
+    statuses = []
+    manager = ModeManager(
+        activation=activation,
+        notify_status=statuses.append,
+    )
+    manager.register(mode)
+    manager.activate_mode("echo")
+
+    decision = manager.handle_key_event(
+        KeyEvent(vk=27, scan=1, extended=False, pressed=True)
+    )
+
+    assert decision == KeyEventDecision.SUPPRESS
+    assert mode.exited == 0
+    assert manager.active_mode_id == "echo"

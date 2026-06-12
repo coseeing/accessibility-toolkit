@@ -44,7 +44,8 @@ class ModeManager:
             return KeyEventDecision.PASS_THROUGH
         mode = self._modes[self.active_mode_id]
         mode_id = mode.mode_id
-        self._activation.exit_active()
+        if not self._activation.exit_active():
+            return KeyEventDecision.SUPPRESS
         mode.exit()
         self._notify_status(
             {"kind": "mode", "mode_id": mode_id, "state": "idle"}

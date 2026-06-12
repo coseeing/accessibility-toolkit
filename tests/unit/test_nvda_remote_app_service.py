@@ -311,12 +311,10 @@ def test_nvda_remote_service_stop_control_handles_hotkey_start_failure():
     )
 
     assert decision == KeyEventDecision.SUPPRESS
-    assert service.state.control_state == service.state.control_state.CONNECTED
+    assert service.state.control_state == service.state.control_state.CONTROLLING
     assert capture.running is True
     assert status_events == [
         {"kind": "error", "message": "hotkey busy"},
-        {"kind": "control", "state": "connected"},
-        {"kind": "mode", "mode_id": "remote_control", "state": "idle"},
     ]
 
 
