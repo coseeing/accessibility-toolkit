@@ -2,10 +2,7 @@ from collections.abc import Callable
 from typing import Any
 
 from adapters.inputs.base import HotkeyCapture, InputCapture, KeyEventDecision
-from application.input import (
-    ActiveKeyEventPolicy,
-    InputActivationUseCase,
-)
+from application.input import InputActivationUseCase
 from application.keyboard import KeyEventHandler
 from application.output_service import SpeechOutputService
 from application.services import ClipboardService
@@ -21,7 +18,33 @@ from apps.nvda_remote.use_cases import (
     NvdaRemoteControlModeUseCase,
     NvdaRemoteInputForwardingUseCase,
 )
+from apps.shared.mode_manager import ModeManager
 from apps.shared.speech_settings_controller import SpeechSettingsController
+
+
+class RemoteControlMode:
+    mode_id = "remote_control"
+    enter_hotkey = "f11"
+    exit_hotkey = 0x7A
+
+    def __init__(self, control_mode, input_forwarding):
+        self._control_mode = control_mode
+        self._input_forwarding = input_forwarding
+
+    def can_enter(self) -> bool:
+        return True
+
+    def enter(self) -> bool:
+        self._control_mode.start_control()
+        return True
+
+    def exit(self) -> bool:
+        self._control_mode.stop_control()
+        self._input_forwarding.clear()
+        return True
+
+    def handle_key_event(self, event):
+        return self._input_forwarding.handle(event)
 
 
 class NvdaRemoteAppFacade(KeyEventHandler):
@@ -90,21 +113,18 @@ class NvdaRemoteAppFacade(KeyEventHandler):
             set_active=self._set_control_active,
             notify_error=self._notify_error,
         )
-        self._active_keys = ActiveKeyEventPolicy(
-            exit_vk=0x7A,
-            on_exit=self._exit_active_from_keyboard,
-            on_key=self._input_forwarding.handle,
+        self._mode_manager = ModeManager(
+            activation=self._activation,
+            notify_status=self._notify_status_listener,
+        )
+        self._mode_manager.register(
+            RemoteControlMode(self._control_mode, self._input_forwarding)
         )
 
     def _set_control_active(self, active: bool) -> None:
         self.state.control_state = (
             ControlState.CONTROLLING if active else ControlState.CONNECTED
         )
-
-    def _exit_active_from_keyboard(self) -> KeyEventDecision:
-        self.stop_control()
-        self._suppressed_keyups.add(self._LOCAL_STOP_VK)
-        return KeyEventDecision.SUPPRESS
 
     def _handle_idle_hotkey(self) -> None:
         if self.state.connection_state == ConnectionState.IDLE:
@@ -128,7 +148,9 @@ class NvdaRemoteAppFacade(KeyEventHandler):
         if self.state.control_state == ControlState.CONTROLLING:
             self.stop_control()
         elif self.state.connection_state != ConnectionState.IDLE:
-            self._stop_capture()
+            if self._mode_manager.active_mode_id is not None:
+                self._mode_manager.exit_active_mode()
+            self._activation.exit_active()
         self.transport.stop_reader()
         self.session.disconnect()
 
@@ -136,16 +158,12 @@ class NvdaRemoteAppFacade(KeyEventHandler):
         if self.state.connection_state == ConnectionState.IDLE:
             self._notify_error("Not connected")
             return
-        if not self._activation.enter_active():
-            return
-        self._control_mode.start_control()
+        self._mode_manager.activate_mode("remote_control")
 
     def stop_control(self) -> None:
         if self.state.control_state != ControlState.CONTROLLING:
             return
-        if not self._activation.exit_active():
-            return
-        self._control_mode.stop_control()
+        self._mode_manager.exit_active_mode()
         self._suppressed_keyups.clear()
         self._input_forwarding.clear()
 
@@ -210,9 +228,9 @@ class NvdaRemoteAppFacade(KeyEventHandler):
         if not event.pressed and event.vk in self._suppressed_keyups:
             self._suppressed_keyups.discard(event.vk)
             return KeyEventDecision.SUPPRESS
-        if self.state.control_state != ControlState.CONTROLLING:
-            return KeyEventDecision.PASS_THROUGH
-        return self._active_keys.handle(event)
+        if event.pressed and event.vk == self._LOCAL_STOP_VK and self._mode_manager.active_mode_id is not None:
+            self._suppressed_keyups.add(self._LOCAL_STOP_VK)
+        return self._mode_manager.handle_key_event(event)
 
     def _handle_transport_message(self, payload: dict[str, Any]) -> None:
         if payload.get("type") == "transport_disconnected":

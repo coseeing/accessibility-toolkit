@@ -292,9 +292,9 @@ def test_nvda_remote_service_stop_control_handles_hotkey_start_failure():
     service, transport, capture, hotkey, _dispatch_calls = build_service()
     service.bind()
     service.state.connection_state = service.state.connection_state.CONNECTED
-    service.state.control_state = service.state.control_state.CONTROLLING
     capture.running = True
     capture.started = 1
+    service.start_control()
     status_events = []
     service.set_status_listener(status_events.append)
 
@@ -311,10 +311,12 @@ def test_nvda_remote_service_stop_control_handles_hotkey_start_failure():
     )
 
     assert decision == KeyEventDecision.SUPPRESS
-    assert service.state.control_state == service.state.control_state.CONTROLLING
+    assert service.state.control_state == service.state.control_state.CONNECTED
     assert capture.running is True
     assert status_events == [
         {"kind": "error", "message": "hotkey busy"},
+        {"kind": "control", "state": "connected"},
+        {"kind": "mode", "mode_id": "remote_control", "state": "idle"},
     ]
 
 
@@ -357,3 +359,21 @@ def test_nvda_remote_service_f11_toggles_control_on_keydown_only():
     assert service.state.control_state == service.state.control_state.CONTROLLING
     assert hotkey.stopped == 1
     assert capture.started == 1
+
+
+def test_nvda_remote_service_stop_control_is_noop_when_not_controlling():
+    service, _transport, capture, hotkey, _dispatch_calls = build_service()
+
+    assert service.state.connection_state == service.state.connection_state.IDLE
+    assert service.state.control_state == service.state.control_state.IDLE
+    assert capture.running is False
+    assert hotkey.running is False
+
+    service.stop_control()
+
+    assert service.state.connection_state == service.state.connection_state.IDLE
+    assert service.state.control_state == service.state.control_state.IDLE
+    assert capture.started == 0
+    assert capture.stopped == 0
+    assert hotkey.started == 0
+    assert hotkey.stopped == 0
