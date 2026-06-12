@@ -54,6 +54,7 @@ class _HIDKeyboard:
     LEFT_BRACKET: int = 0x2F
     RIGHT_BRACKET: int = 0x30
     BACKSLASH: int = 0x31
+    NON_US_HASH: int = 0x32
     SEMICOLON: int = 0x33
     QUOTE: int = 0x34
     GRAVE: int = 0x35
@@ -76,6 +77,11 @@ class _HIDKeyboard:
     F11: int = 0x44
     F12: int = 0x45
 
+    # Special control keys
+    PRINT_SCREEN: int = 0x46
+    SCROLL_LOCK: int = 0x47
+    PAUSE: int = 0x48
+
     # Navigation and editing
     INSERT: int = 0x49
     HOME: int = 0x4A
@@ -87,6 +93,7 @@ class _HIDKeyboard:
     LEFT: int = 0x50
     DOWN: int = 0x51
     UP: int = 0x52
+    NUM_LOCK: int = 0x53
 
     # Numpad
     KEYPAD_DIVIDE: int = 0x54
@@ -106,7 +113,14 @@ class _HIDKeyboard:
     KEYPAD_0: int = 0x62
     KEYPAD_DECIMAL: int = 0x63
     NON_US_BACKSLASH: int = 0x64
+    APPLICATION: int = 0x65
     KEYPAD_EQUALS: int = 0x67
+
+    # International / JIS
+    INTERNATIONAL1: int = 0x87
+    INTERNATIONAL3: int = 0x89
+    INTERNATIONAL4: int = 0x8A
+    INTERNATIONAL5: int = 0x8B
 
     # Modifiers
     LEFT_CONTROL: int = 0xE0

@@ -47,3 +47,26 @@ def test_hid_distinguishes_main_cluster_from_numpad_keys():
     assert HID.DIGIT_1 != HID.KEYPAD_1
     assert HID.SLASH != HID.KEYPAD_DIVIDE
     assert HID.PERIOD != HID.KEYPAD_DECIMAL
+
+
+def test_hid_constants_cover_special_control_keys():
+    assert HID.PRINT_SCREEN == 0x46
+    assert HID.SCROLL_LOCK == 0x47
+    assert HID.PAUSE == 0x48
+    assert HID.NUM_LOCK == 0x53
+    assert HID.APPLICATION == 0x65
+
+
+def test_hid_constants_cover_common_jis_only_keys():
+    assert HID.NON_US_HASH == 0x32
+    assert HID.INTERNATIONAL1 == 0x87
+    assert HID.INTERNATIONAL3 == 0x89
+    assert HID.INTERNATIONAL4 == 0x8A
+    assert HID.INTERNATIONAL5 == 0x8B
+
+
+def test_hid_distinguishes_special_and_jis_keys_from_existing_keys():
+    assert HID.PRINT_SCREEN != HID.F12
+    assert HID.NUM_LOCK != HID.KEYPAD_0
+    assert HID.APPLICATION != HID.RIGHT_META
+    assert HID.NON_US_HASH != HID.BACKSLASH
