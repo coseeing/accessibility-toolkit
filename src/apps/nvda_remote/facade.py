@@ -141,6 +141,8 @@ class NvdaRemoteAppFacade(KeyEventHandler):
         self._control_mode.start_control()
 
     def stop_control(self) -> None:
+        if self.state.control_state != ControlState.CONTROLLING:
+            return
         if not self._activation.exit_active():
             return
         self._control_mode.stop_control()
