@@ -551,3 +551,69 @@ def test_key_echo_app_service_active_escape_exits_through_keyboard_pipeline() ->
     assert service.is_echo_running() is False
     assert capture.stop_calls == 1
     assert hotkey.start_calls == 2
+
+
+def test_build_runtime_starts_with_hotkey_running_and_keyboard_stopped(monkeypatch) -> None:
+    capture = FakeCapture()
+    hotkey = FakeHotkeyCapture()
+    speech_output = FakeSpeechOutput()
+
+    from application.speech_backends import SpeechBackendOption
+    monkeypatch.setattr(main_module, "create_input_capture", lambda: capture)
+    monkeypatch.setattr(main_module, "create_hotkey_capture", lambda: hotkey)
+    monkeypatch.setattr(
+        main_module,
+        "default_speech_backend_options",
+        lambda scheduler: (
+            SpeechBackendOption(
+                backend_id="pyttsx3",
+                label="pyttsx3",
+                factory=lambda: speech_output,
+            ),
+        ),
+    )
+
+    import sys as _sys
+    import types
+    fake_echo_app_module = types.ModuleType("ui.echo.app")
+    fake_echo_app_module.EchoApp = lambda controller: None
+    monkeypatch.setitem(_sys.modules, "ui.echo.app", fake_echo_app_module)
+
+    runtime = main_module.build_runtime()
+
+    assert hotkey.running is True
+    assert capture.running is False
+
+
+def test_build_runtime_shutdown_stops_both_captures(monkeypatch) -> None:
+    capture = FakeCapture()
+    hotkey = FakeHotkeyCapture()
+    speech_output = FakeSpeechOutput()
+
+    from application.speech_backends import SpeechBackendOption
+    monkeypatch.setattr(main_module, "create_input_capture", lambda: capture)
+    monkeypatch.setattr(main_module, "create_hotkey_capture", lambda: hotkey)
+    monkeypatch.setattr(
+        main_module,
+        "default_speech_backend_options",
+        lambda scheduler: (
+            SpeechBackendOption(
+                backend_id="pyttsx3",
+                label="pyttsx3",
+                factory=lambda: speech_output,
+            ),
+        ),
+    )
+
+    import sys as _sys
+    import types
+    fake_echo_app_module = types.ModuleType("ui.echo.app")
+    fake_echo_app_module.EchoApp = lambda controller: None
+    monkeypatch.setitem(_sys.modules, "ui.echo.app", fake_echo_app_module)
+
+    runtime = main_module.build_runtime()
+    runtime.app_service.start_echo()
+    runtime.app_service.shutdown()
+
+    assert hotkey.running is False
+    assert capture.running is False
