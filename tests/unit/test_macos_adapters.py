@@ -63,6 +63,14 @@ def test_keycode_table_contains_f11_mapping():
     assert KEYCODE_TO_USAGE[103] == 0x44
 
 
+def test_key_event_from_macos_maps_digit_to_hid():
+    event = key_event_from_macos(key_code=18, pressed=True, is_repeat=False)
+    assert event == KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.DIGIT_1, pressed=True)
+
+    event = key_event_from_macos(key_code=29, pressed=True, is_repeat=False)
+    assert event == KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.DIGIT_0, pressed=True)
+
+
 class FakePermissions:
     def __init__(self, trusted=True):
         self.trusted = trusted

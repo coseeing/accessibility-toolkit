@@ -94,6 +94,49 @@ def test_windows_keyboard_hook_callback_emits_hid_key_event():
     ]
 
 
+def test_windows_keyboard_hook_emits_hid_for_digit_and_letter():
+    user32 = FakeKeyboardUser32()
+    capture = WindowsKeyboardCapture(
+        user32=user32,
+        kernel32=FakeKeyboardKernel32(),
+        is_windows=True,
+    )
+    seen = []
+    capture.set_listener(seen.append)
+    capture.start()
+    callback = user32.installed[0][1]
+
+    key_data = FakeKbdLlHookStruct(vkCode=0x43, scanCode=46, flags=0)
+    callback(0, WM_KEYDOWN, ctypes.addressof(key_data))
+    key_data = FakeKbdLlHookStruct(vkCode=0x31, scanCode=2, flags=0)
+    callback(0, WM_KEYDOWN, ctypes.addressof(key_data))
+
+    assert seen == [
+        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.C, pressed=True),
+        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.DIGIT_1, pressed=True),
+    ]
+
+
+def test_windows_keyboard_hook_emits_hid_for_backspace():
+    user32 = FakeKeyboardUser32()
+    capture = WindowsKeyboardCapture(
+        user32=user32,
+        kernel32=FakeKeyboardKernel32(),
+        is_windows=True,
+    )
+    seen = []
+    capture.set_listener(seen.append)
+    capture.start()
+    callback = user32.installed[0][1]
+    key_data = FakeKbdLlHookStruct(vkCode=0x08, scanCode=14, flags=0)
+
+    callback(0, WM_KEYDOWN, ctypes.addressof(key_data))
+
+    assert seen == [
+        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.BACKSPACE, pressed=True),
+    ]
+
+
 def test_windows_keyboard_capture_start_failure_is_clear():
     user32 = FakeKeyboardUser32(hook_handle=0)
     capture = WindowsKeyboardCapture(

@@ -1,8 +1,11 @@
+import logging
 from collections.abc import Callable
 
 from adapters.inputs.base import KeyEventDecision
 from apps.nvda_remote.legacy_key_payload import key_event_to_legacy_remote_payload
 from interop.key.key_event import KeyEvent
+
+_logger = logging.getLogger(__name__)
 
 
 class NvdaRemoteInputForwardingUseCase:
@@ -35,7 +38,15 @@ class NvdaRemoteInputForwardingUseCase:
             return KeyEventDecision.SUPPRESS
         if not self._is_controlling():
             return KeyEventDecision.PASS_THROUGH
-        self._send_key(key_event_to_legacy_remote_payload(event))
+        try:
+            self._send_key(key_event_to_legacy_remote_payload(event))
+        except ValueError:
+            _logger.debug(
+                "Cannot forward HID 0x%02X:0x%02X — unsupported usage",
+                event.usage_page,
+                event.usage,
+            )
+            return KeyEventDecision.PASS_THROUGH
         return KeyEventDecision.SUPPRESS
 
     def clear(self) -> None:

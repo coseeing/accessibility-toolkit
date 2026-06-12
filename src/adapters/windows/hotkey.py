@@ -12,10 +12,14 @@ WM_HOTKEY = 0x0312
 WM_QUIT = 0x0012
 F11_USAGE = 0x44
 F11_VK = 0x7A
+F10_VK = 0x79
+ENTER_VK = 0x0D
 HOTKEY_ID = 1
 
 _USAGE_TO_VK: dict[int, int] = {
     F11_USAGE: F11_VK,
+    0x43: F10_VK,
+    0x28: ENTER_VK,
 }
 
 
