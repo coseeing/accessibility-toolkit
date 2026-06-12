@@ -100,14 +100,24 @@ _SCAN_TO_USAGE: dict[tuple[int, bool], int] = {
     (89, False): HID.KEYPAD_EQUALS,
     (87, False): HID.F11,
     (88, False): HID.F12,
+    (55, True): HID.PRINT_SCREEN,
+    (69, False): HID.PAUSE,
+    (69, True): HID.NUM_LOCK,
+    (70, False): HID.SCROLL_LOCK,
     (91, True): HID.LEFT_META,
     (92, True): HID.RIGHT_META,
+    (93, True): HID.APPLICATION,
+    (115, False): HID.INTERNATIONAL1,
+    (121, False): HID.INTERNATIONAL4,
+    (123, False): HID.INTERNATIONAL5,
+    (125, False): HID.NON_US_HASH,
 }
 
 
 def key_event_from_windows(*, vk_code: int, scan_code: int, extended: bool, pressed: bool) -> KeyEvent | None:
-    del vk_code
     usage = _SCAN_TO_USAGE.get((scan_code, extended))
+    if usage is None and vk_code == 0xF2:
+        usage = HID.INTERNATIONAL3
     if usage is None:
         return None
     return KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=usage, pressed=pressed)

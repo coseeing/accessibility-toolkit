@@ -577,3 +577,78 @@ def test_windows_keyboard_hook_emits_hid_for_keypad_equals():
     assert seen == [
         KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.KEYPAD_EQUALS, pressed=True),
     ]
+
+
+def test_windows_keyboard_hook_emits_hid_for_print_screen_scroll_lock_pause_num_lock_and_application():
+    user32 = FakeKeyboardUser32()
+    capture = WindowsKeyboardCapture(
+        user32=user32,
+        kernel32=FakeKeyboardKernel32(),
+        is_windows=True,
+    )
+    seen = []
+    capture.set_listener(seen.append)
+    capture.start()
+    callback = user32.installed[0][1]
+
+    key_data = FakeKbdLlHookStruct(vkCode=0x2C, scanCode=55, flags=LLKHF_EXTENDED)
+    callback(0, WM_KEYDOWN, ctypes.addressof(key_data))
+    key_data = FakeKbdLlHookStruct(vkCode=0x91, scanCode=70, flags=0)
+    callback(0, WM_KEYDOWN, ctypes.addressof(key_data))
+    key_data = FakeKbdLlHookStruct(vkCode=0x13, scanCode=69, flags=0)
+    callback(0, WM_KEYDOWN, ctypes.addressof(key_data))
+    key_data = FakeKbdLlHookStruct(vkCode=0x90, scanCode=69, flags=LLKHF_EXTENDED)
+    callback(0, WM_KEYDOWN, ctypes.addressof(key_data))
+    key_data = FakeKbdLlHookStruct(vkCode=0x5D, scanCode=93, flags=LLKHF_EXTENDED)
+    callback(0, WM_KEYDOWN, ctypes.addressof(key_data))
+
+    assert seen == [
+        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.PRINT_SCREEN, pressed=True),
+        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.SCROLL_LOCK, pressed=True),
+        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.PAUSE, pressed=True),
+        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.NUM_LOCK, pressed=True),
+        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.APPLICATION, pressed=True),
+    ]
+
+
+def test_windows_keyboard_hook_emits_hid_for_common_jis_keys_when_available():
+    user32 = FakeKeyboardUser32()
+    capture = WindowsKeyboardCapture(
+        user32=user32,
+        kernel32=FakeKeyboardKernel32(),
+        is_windows=True,
+    )
+    seen = []
+    capture.set_listener(seen.append)
+    capture.start()
+    callback = user32.installed[0][1]
+
+    key_data = FakeKbdLlHookStruct(vkCode=0xC0, scanCode=125, flags=0)
+    callback(0, WM_KEYDOWN, ctypes.addressof(key_data))
+    key_data = FakeKbdLlHookStruct(vkCode=0xE2, scanCode=115, flags=0)
+    callback(0, WM_KEYDOWN, ctypes.addressof(key_data))
+    key_data = FakeKbdLlHookStruct(vkCode=0xF3, scanCode=121, flags=0)
+    callback(0, WM_KEYDOWN, ctypes.addressof(key_data))
+    key_data = FakeKbdLlHookStruct(vkCode=0xF4, scanCode=123, flags=0)
+    callback(0, WM_KEYDOWN, ctypes.addressof(key_data))
+
+    assert seen == [
+        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.NON_US_HASH, pressed=True),
+        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.INTERNATIONAL1, pressed=True),
+        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.INTERNATIONAL4, pressed=True),
+        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.INTERNATIONAL5, pressed=True),
+    ]
+
+
+def test_windows_key_event_from_windows_maps_international3_via_vkcode_fallback():
+    from adapters.windows.hid_map import key_event_from_windows
+    assert key_event_from_windows(
+        vk_code=0xF2,
+        scan_code=0,
+        extended=False,
+        pressed=True,
+    ) == KeyEvent(
+        usage_page=HID.KEYBOARD_PAGE,
+        usage=HID.INTERNATIONAL3,
+        pressed=True,
+    )
