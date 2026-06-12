@@ -109,32 +109,14 @@ def test_key_echo_speech_settings_use_case_proxies_backend_and_voice_controls():
 def test_echo_control_use_case_start_and_stop_echo():
     from apps.key_echo.use_cases.echo_control import KeyEchoControlUseCase
 
-    class FakeInputService:
-        def __init__(self):
-            self.running = False
-            self.started = 0
-            self.stopped = 0
-
-        def start(self):
-            self.started += 1
-            self.running = True
-
-        def stop(self):
-            self.stopped += 1
-            self.running = False
-
     statuses = []
-    input_service = FakeInputService()
     use_case = KeyEchoControlUseCase(
-        input_service=input_service,
         notify_status=statuses.append,
     )
 
     use_case.start_echo()
     use_case.stop_echo()
 
-    assert input_service.started == 1
-    assert input_service.stopped == 0
     assert use_case.is_running() is False
     assert statuses == [
         {"kind": "echo", "state": "running"},

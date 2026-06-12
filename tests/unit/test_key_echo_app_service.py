@@ -104,7 +104,8 @@ class FakeHotkeyCapture:
 def test_key_echo_app_service_speaks_vk_on_keydown() -> None:
     speech_output = FakeSpeechOutput()
     service = KeyEchoAppService(
-        outputs=OutputCapabilities(speech=SpeechService.single_backend(speech_output))
+        hotkey_capture=FakeHotkeyCapture(),
+        outputs=OutputCapabilities(speech=SpeechService.single_backend(speech_output)),
     )
 
     capture = FakeCapture()
@@ -127,7 +128,8 @@ def test_key_echo_app_service_speaks_vk_on_keydown() -> None:
 def test_key_echo_app_service_ignores_keyup_for_speech() -> None:
     speech_output = FakeSpeechOutput()
     service = KeyEchoAppService(
-        outputs=OutputCapabilities(speech=SpeechService.single_backend(speech_output))
+        hotkey_capture=FakeHotkeyCapture(),
+        outputs=OutputCapabilities(speech=SpeechService.single_backend(speech_output)),
     )
 
     capture = FakeCapture()
@@ -147,7 +149,8 @@ def test_key_echo_app_service_stops_echo_on_escape_keydown() -> None:
     capture = FakeCapture()
     speech_output = FakeSpeechOutput()
     service = KeyEchoAppService(
-        outputs=OutputCapabilities(speech=SpeechService.single_backend(speech_output))
+        hotkey_capture=FakeHotkeyCapture(),
+        outputs=OutputCapabilities(speech=SpeechService.single_backend(speech_output)),
     )
     input_service = KeyboardInputService(capture, service)
     service.attach_input_service(input_service)
@@ -167,7 +170,8 @@ def test_key_echo_app_service_starts_and_stops_echo_capture() -> None:
     capture = FakeCapture()
     speech_output = FakeSpeechOutput()
     service = KeyEchoAppService(
-        outputs=OutputCapabilities(speech=SpeechService.single_backend(speech_output))
+        hotkey_capture=FakeHotkeyCapture(),
+        outputs=OutputCapabilities(speech=SpeechService.single_backend(speech_output)),
     )
     input_service = KeyboardInputService(capture, service)
     service.attach_input_service(input_service)
@@ -181,7 +185,8 @@ def test_key_echo_app_service_starts_and_stops_echo_capture() -> None:
 def test_key_echo_app_service_exposes_speech_settings_api() -> None:
     speech_output = FakeSpeechOutput()
     service = KeyEchoAppService(
-        outputs=OutputCapabilities(speech=SpeechService.single_backend(speech_output))
+        hotkey_capture=FakeHotkeyCapture(),
+        outputs=OutputCapabilities(speech=SpeechService.single_backend(speech_output)),
     )
 
     assert service.get_speech_backend_options() == (("default", "Default"),)
@@ -199,6 +204,7 @@ def test_key_echo_app_service_exposes_speech_settings_api() -> None:
 
 def test_build_runtime_composes_local_keyboard_and_speech(monkeypatch) -> None:
     capture = FakeCapture()
+    hotkey = FakeHotkeyCapture()
     speech_output = FakeSpeechOutput()
     app_calls: list[object] = []
 
@@ -265,6 +271,7 @@ def test_build_runtime_composes_local_keyboard_and_speech(monkeypatch) -> None:
 
     from application.speech_backends import SpeechBackendOption
     monkeypatch.setattr(main_module, "create_input_capture", lambda: capture)
+    monkeypatch.setattr(main_module, "create_hotkey_capture", lambda: hotkey)
     monkeypatch.setattr(
         main_module,
         "default_speech_backend_options",
@@ -292,7 +299,8 @@ def test_build_runtime_composes_local_keyboard_and_speech(monkeypatch) -> None:
 
     assert isinstance(runtime.input_service, KeyboardInputService)
     assert isinstance(runtime.app_service, KeyEchoAppService)
-    assert runtime.capture is capture
+    assert runtime.input_capture is capture
+    assert runtime.hotkey_capture is hotkey
     assert isinstance(runtime.output_scheduler, FakeOutputScheduler)
     assert runtime.speech_service.get_selected_backend() == "pyttsx3"
     assert runtime.output_service.speech is runtime.speech_service
@@ -345,7 +353,7 @@ def test_build_runtime_macos_path_composes_capture(monkeypatch) -> None:
 
     class FakeKeyboardInputService:
         def __init__(self, capture, handler):
-            self.capture = capture
+            self._capture = capture
             self.handler = handler
 
         def bind(self):
@@ -378,6 +386,7 @@ def test_build_runtime_macos_path_composes_capture(monkeypatch) -> None:
             manager=FakeManager(permissions=FakePermissions(), backend=object()),
         ),
     )
+    monkeypatch.setattr(main_module, "create_hotkey_capture", lambda: FakeHotkeyCapture())
     monkeypatch.setattr(
         main_module,
         "default_speech_backend_options",
@@ -400,9 +409,9 @@ def test_build_runtime_macos_path_composes_capture(monkeypatch) -> None:
     monkeypatch.setitem(_sys.modules, "ui.echo.app", fake_echo_app_module)
 
     runtime = main_module.build_runtime()
-    assert isinstance(runtime.capture, MacOSFakeCapture)
+    assert isinstance(runtime.input_capture, MacOSFakeCapture)
     assert runtime.speech_service.get_selected_backend() == "pyttsx3"
-    assert runtime.capture.manager is not None
+    assert runtime.input_capture.manager is not None
 
 
 def test_main_runs_echo_app_main_loop(monkeypatch) -> None:
@@ -415,12 +424,13 @@ def test_main_runs_echo_app_main_loop(monkeypatch) -> None:
             return 321
 
     runtime = main_module.KeyEchoRuntime(
-        capture=FakeCapture(),
+        input_capture=FakeCapture(),
+        hotkey_capture=FakeHotkeyCapture(),
         output_scheduler=object(),
         speech_service=SpeechService.single_backend(FakeSpeechOutput()),
         output_service=SpeechService.single_backend(FakeSpeechOutput()),
-        input_service=KeyboardInputService(FakeCapture(), KeyEchoAppService(outputs=OutputCapabilities(speech=SpeechService.single_backend(FakeSpeechOutput())))),
-        app_service=KeyEchoAppService(outputs=OutputCapabilities(speech=SpeechService.single_backend(FakeSpeechOutput()))),
+        input_service=KeyboardInputService(FakeCapture(), KeyEchoAppService(hotkey_capture=FakeHotkeyCapture(), outputs=OutputCapabilities(speech=SpeechService.single_backend(FakeSpeechOutput())))),
+        app_service=KeyEchoAppService(hotkey_capture=FakeHotkeyCapture(), outputs=OutputCapabilities(speech=SpeechService.single_backend(FakeSpeechOutput()))),
         app=FakeApp(),
     )
     monkeypatch.setattr(main_module, "build_runtime", lambda: runtime)
@@ -433,32 +443,37 @@ def test_main_runs_echo_app_main_loop(monkeypatch) -> None:
 
 def test_key_echo_app_service_starts_echo_on_enter_keydown() -> None:
     capture = FakeCapture()
+    hotkey = FakeHotkeyCapture()
     speech_output = FakeSpeechOutput()
     service = KeyEchoAppService(
-        outputs=OutputCapabilities(speech=SpeechService.single_backend(speech_output))
+        hotkey_capture=hotkey,
+        outputs=OutputCapabilities(speech=SpeechService.single_backend(speech_output)),
     )
     input_service = KeyboardInputService(capture, service)
     service.attach_input_service(input_service)
+    service.bind()
+    hotkey.start()
 
-    decision = service.handle_key_event(
-        KeyEvent(vk=0x0D, scan=28, extended=False, pressed=True)
-    )
+    hotkey.handler()
 
-    assert decision == KeyEventDecision.SUPPRESS
     assert service.is_echo_running() is True
     assert speech_output.spoken == []
 
 
 def test_key_echo_app_service_enter_keyup_does_not_duplicate_start() -> None:
     capture = FakeCapture()
+    hotkey = FakeHotkeyCapture()
     speech_output = FakeSpeechOutput()
     service = KeyEchoAppService(
-        outputs=OutputCapabilities(speech=SpeechService.single_backend(speech_output))
+        hotkey_capture=hotkey,
+        outputs=OutputCapabilities(speech=SpeechService.single_backend(speech_output)),
     )
     input_service = KeyboardInputService(capture, service)
     service.attach_input_service(input_service)
+    service.bind()
+    hotkey.start()
 
-    service.handle_key_event(KeyEvent(vk=0x0D, scan=28, extended=False, pressed=True))
+    hotkey.handler()
     assert service.is_echo_running() is True
 
     decision = service.handle_key_event(
@@ -498,6 +513,7 @@ def test_key_echo_app_service_idle_enter_uses_hotkey_path() -> None:
     input_service = KeyboardInputService(capture, service)
     service.attach_input_service(input_service)
     service.bind()
+    hotkey.start()
 
     hotkey.handler()
 
@@ -517,6 +533,7 @@ def test_key_echo_app_service_active_escape_exits_through_keyboard_pipeline() ->
     input_service = KeyboardInputService(capture, service)
     service.attach_input_service(input_service)
     service.bind()
+    hotkey.start()
     hotkey.handler()
 
     decision = service.handle_key_event(KeyEvent(vk=0x1B, scan=1, extended=False, pressed=True))
