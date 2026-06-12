@@ -5,7 +5,6 @@ from adapters.inputs.base import HotkeyCapture, InputCapture, KeyEventDecision
 from application.input import (
     ActiveKeyEventPolicy,
     InputActivationUseCase,
-    StateTransitionHotkeyPolicy,
 )
 from application.keyboard import KeyEventHandler
 from application.output_service import SpeechOutputService
@@ -22,7 +21,6 @@ from apps.nvda_remote.use_cases import (
     NvdaRemoteControlModeUseCase,
     NvdaRemoteInputForwardingUseCase,
     NvdaRemoteSpeechSettingsUseCase,
-    NvdaRemoteStateTransitionHotkeyUseCase,
 )
 
 
@@ -63,7 +61,6 @@ class NvdaRemoteAppFacade(KeyEventHandler):
             on_status=self._on_status,
         )
 
-        self._state_transition_hotkeys = NvdaRemoteStateTransitionHotkeyUseCase.default()
         self._control_mode = NvdaRemoteControlModeUseCase(
             state=self.state,
             notify_error=self._notify_error,
@@ -93,7 +90,6 @@ class NvdaRemoteAppFacade(KeyEventHandler):
             set_active=self._set_control_active,
             notify_error=self._notify_error,
         )
-        self._idle_hotkeys = StateTransitionHotkeyPolicy(mapping={0x7A: "enter_active"})
         self._active_keys = ActiveKeyEventPolicy(
             exit_vk=0x7A,
             on_exit=self._exit_active_from_keyboard,
