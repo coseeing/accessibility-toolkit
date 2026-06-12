@@ -1,4 +1,4 @@
-from adapters.inputs.base import HotkeyCapture, KeyEventDecision
+from adapters.inputs.base import HotkeyCapture, InputCapture, KeyEventDecision
 from application.input import (
     ActiveKeyEventPolicy,
     InputActivationUseCase,
@@ -15,13 +15,19 @@ from apps.key_echo.use_cases import (
 
 
 class KeyEchoAppFacade(KeyEventHandler):
-    def __init__(self, *, hotkey_capture: HotkeyCapture, outputs: OutputCapabilities) -> None:
+    def __init__(
+        self,
+        *,
+        hotkey_capture: HotkeyCapture,
+        input_capture: InputCapture,
+        outputs: OutputCapabilities,
+    ) -> None:
         self.hotkey_capture = hotkey_capture
+        self.input_capture = input_capture
         self._outputs = outputs
         self._input_service: KeyboardInputService | None = None
         self._status_listener = None
         self._echo_control: KeyEchoControlUseCase | None = None
-        self._activation: InputActivationUseCase | None = None
 
         self._echo_input = KeyEchoInputUseCase(
             cancel=lambda: self._outputs.speech.cancel(),
@@ -35,21 +41,24 @@ class KeyEchoAppFacade(KeyEventHandler):
             on_exit=self._exit_active_from_keyboard,
             on_key=self._echo_input.handle,
         )
+        self._activation = InputActivationUseCase(
+            input_capture=input_capture,
+            hotkey_capture=hotkey_capture,
+            is_active=self.is_echo_running,
+            set_active=self._set_echo_active,
+            notify_error=lambda message: self._notify_status_listener(
+                {"kind": "error", "message": message}
+            ),
+        )
 
     def attach_input_service(self, input_service: KeyboardInputService) -> None:
         self._input_service = input_service
         self._echo_control = KeyEchoControlUseCase(
             notify_status=self._notify_status_listener,
         )
-        self._activation = InputActivationUseCase(
-            input_capture=input_service._capture,
-            hotkey_capture=self.hotkey_capture,
-            is_active=self.is_echo_running,
-            set_active=lambda active: None,
-            notify_error=lambda message: self._notify_status_listener({"kind": "error", "message": message}),
-        )
 
     def bind(self) -> None:
+        self.input_capture.set_listener(self.handle_key_event)
         self.hotkey_capture.set_handler(self._handle_idle_hotkey)
 
     def set_status_listener(self, listener) -> None:
@@ -64,6 +73,10 @@ class KeyEchoAppFacade(KeyEventHandler):
         if self._echo_control is None:
             return
         self._echo_control.stop_echo()
+
+    def _set_echo_active(self, active: bool) -> None:
+        if self._echo_control is not None:
+            self._echo_control.set_running(active)
 
     def is_echo_running(self) -> bool:
         if self._echo_control is None:
@@ -111,8 +124,7 @@ class KeyEchoAppFacade(KeyEventHandler):
 
     def shutdown(self) -> None:
         self.stop_echo()
-        if self._activation is not None:
-            self._activation.exit_active()
+        self._activation.exit_active()
         if self._input_service is not None and self._input_service.running:
             self._input_service.stop()
         if self.hotkey_capture is not None and self.hotkey_capture.running:

@@ -18,5 +18,8 @@ class KeyEchoControlUseCase:
         self._echo_active = False
         self._notify_status({"kind": "echo", "state": "stopped"})
 
+    def set_running(self, running: bool) -> None:
+        self._echo_active = running
+
     def is_running(self) -> bool:
         return self._echo_active

@@ -43,6 +43,7 @@ def build_runtime() -> KeyEchoRuntime:
     )
     app_service = KeyEchoAppFacade(
         hotkey_capture=hotkey_capture,
+        input_capture=input_capture,
         outputs=OutputCapabilities(speech=output_service),
     )
     input_service = KeyboardInputService(input_capture, app_service)
