@@ -3,15 +3,13 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True, slots=True)
 class KeyEvent:
-    vk: int
-    scan: int | None
-    extended: bool
+    usage_page: int
+    usage: int
     pressed: bool
 
-    def to_remote_payload(self) -> dict[str, int | bool | None]:
+    def to_local_payload(self) -> dict[str, int | bool]:
         return {
-            "vk_code": self.vk,
-            "scan_code": self.scan,
-            "extended": self.extended,
+            "usage_page": self.usage_page,
+            "usage": self.usage,
             "pressed": self.pressed,
         }

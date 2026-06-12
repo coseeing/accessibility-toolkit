@@ -158,3 +158,15 @@ def test_serializer_logs_raw_and_decoded_speak_payload(caplog):
     assert decoded["type"] == "speak"
     assert "JSONSerializer.deserialize input" in caplog.text
     assert "JSONSerializer.deserialize output type='speak'" in caplog.text
+
+
+from interop.key import HID
+
+
+def test_key_event_to_local_payload():
+    event = KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.A, pressed=True)
+    assert event.to_local_payload() == {
+        "usage_page": 0x07,
+        "usage": 0x04,
+        "pressed": True,
+    }
