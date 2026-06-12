@@ -1078,3 +1078,59 @@ def test_key_event_from_macos_maps_non_us_backslash_to_hid():
         usage=HID.NON_US_BACKSLASH,
         pressed=True,
     )
+
+
+def test_key_event_from_macos_maps_special_control_keys_to_hid():
+    assert key_event_from_macos(key_code=105, pressed=True, is_repeat=False) == KeyEvent(
+        usage_page=HID.KEYBOARD_PAGE,
+        usage=HID.PRINT_SCREEN,
+        pressed=True,
+    )
+    assert key_event_from_macos(key_code=107, pressed=True, is_repeat=False) == KeyEvent(
+        usage_page=HID.KEYBOARD_PAGE,
+        usage=HID.SCROLL_LOCK,
+        pressed=True,
+    )
+    assert key_event_from_macos(key_code=113, pressed=True, is_repeat=False) == KeyEvent(
+        usage_page=HID.KEYBOARD_PAGE,
+        usage=HID.PAUSE,
+        pressed=True,
+    )
+    assert key_event_from_macos(key_code=71, pressed=True, is_repeat=False) == KeyEvent(
+        usage_page=HID.KEYBOARD_PAGE,
+        usage=HID.NUM_LOCK,
+        pressed=True,
+    )
+    assert key_event_from_macos(key_code=110, pressed=True, is_repeat=False) == KeyEvent(
+        usage_page=HID.KEYBOARD_PAGE,
+        usage=HID.APPLICATION,
+        pressed=True,
+    )
+
+
+def test_key_event_from_macos_maps_common_jis_keys_to_hid():
+    assert key_event_from_macos(key_code=94, pressed=True, is_repeat=False) == KeyEvent(
+        usage_page=HID.KEYBOARD_PAGE,
+        usage=HID.NON_US_HASH,
+        pressed=True,
+    )
+    assert key_event_from_macos(key_code=93, pressed=True, is_repeat=False) == KeyEvent(
+        usage_page=HID.KEYBOARD_PAGE,
+        usage=HID.INTERNATIONAL1,
+        pressed=True,
+    )
+    assert key_event_from_macos(key_code=102, pressed=True, is_repeat=False) == KeyEvent(
+        usage_page=HID.KEYBOARD_PAGE,
+        usage=HID.INTERNATIONAL3,
+        pressed=True,
+    )
+    assert key_event_from_macos(key_code=104, pressed=True, is_repeat=False) == KeyEvent(
+        usage_page=HID.KEYBOARD_PAGE,
+        usage=HID.INTERNATIONAL4,
+        pressed=True,
+    )
+    assert key_event_from_macos(key_code=95, pressed=True, is_repeat=False) == KeyEvent(
+        usage_page=HID.KEYBOARD_PAGE,
+        usage=HID.INTERNATIONAL5,
+        pressed=True,
+    )
