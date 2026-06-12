@@ -1,8 +1,5 @@
 from adapters.inputs.base import HotkeyCapture, InputCapture, KeyEventDecision
-from application.input import (
-    ActiveKeyEventPolicy,
-    InputActivationUseCase,
-)
+from application.input import InputActivationUseCase
 from application.keyboard import KeyEventHandler, KeyboardInputService
 from application.output_capabilities import OutputCapabilities
 from interop.key.key_event import KeyEvent
@@ -11,7 +8,32 @@ from apps.key_echo.use_cases import (
     KeyEchoControlUseCase,
     KeyEchoInputUseCase,
 )
+from apps.shared.mode_manager import ModeManager
 from apps.shared.speech_settings_controller import SpeechSettingsController
+
+
+class EchoKeysMode:
+    mode_id = "echo_keys"
+    enter_hotkey = "enter"
+    exit_hotkey = 0x1B
+
+    def __init__(self, control, echo_input):
+        self._control = control
+        self._echo_input = echo_input
+
+    def can_enter(self) -> bool:
+        return True
+
+    def enter(self) -> bool:
+        self._control.start_echo()
+        return True
+
+    def exit(self) -> bool:
+        self._control.stop_echo()
+        return True
+
+    def handle_key_event(self, event):
+        return self._echo_input.handle(event)
 
 
 class KeyEchoAppFacade(KeyEventHandler):
@@ -36,11 +58,6 @@ class KeyEchoAppFacade(KeyEventHandler):
         self._speech_settings = SpeechSettingsController(
             speech=outputs.speech,
         )
-        self._active_keys = ActiveKeyEventPolicy(
-            exit_vk=0x1B,
-            on_exit=self._exit_active_from_keyboard,
-            on_key=self._echo_input.handle,
-        )
         self._activation = InputActivationUseCase(
             input_capture=input_capture,
             hotkey_capture=hotkey_capture,
@@ -50,11 +67,18 @@ class KeyEchoAppFacade(KeyEventHandler):
                 {"kind": "error", "message": message}
             ),
         )
+        self._mode_manager = ModeManager(
+            activation=self._activation,
+            notify_status=self._notify_status_listener,
+        )
 
     def attach_input_service(self, input_service: KeyboardInputService) -> None:
         self._input_service = input_service
         self._echo_control = KeyEchoControlUseCase(
             notify_status=self._notify_status_listener,
+        )
+        self._mode_manager.register(
+            EchoKeysMode(self._echo_control, self._echo_input)
         )
 
     def bind(self) -> None:
@@ -67,15 +91,15 @@ class KeyEchoAppFacade(KeyEventHandler):
     def start_echo(self) -> None:
         if self._echo_control is None:
             raise RuntimeError("Keyboard input service is not attached")
-        if not self._activation.enter_active():
-            return
-        self._echo_control.start_echo()
+        self._mode_manager.activate_mode("echo_keys")
 
     def stop_echo(self) -> None:
         if self._echo_control is None:
             return
-        self._activation.exit_active()
-        self._echo_control.stop_echo()
+        if self._mode_manager.active_mode_id == "echo_keys":
+            self._mode_manager.exit_active_mode()
+        else:
+            self._echo_control.stop_echo()
 
     def _set_echo_active(self, active: bool) -> None:
         if self._echo_control is not None:
@@ -127,7 +151,6 @@ class KeyEchoAppFacade(KeyEventHandler):
 
     def shutdown(self) -> None:
         self.stop_echo()
-        self._activation.exit_active()
         if self._input_service is not None and self._input_service.running:
             self._input_service.stop()
         if self.hotkey_capture is not None and self.hotkey_capture.running:
@@ -135,9 +158,7 @@ class KeyEchoAppFacade(KeyEventHandler):
         self._outputs.speech.shutdown()
 
     def handle_key_event(self, event: KeyEvent) -> KeyEventDecision:
-        if not self.is_echo_running():
-            return KeyEventDecision.PASS_THROUGH
-        return self._active_keys.handle(event)
+        return self._mode_manager.handle_key_event(event)
 
     def _notify_status_listener(self, status: dict[str, str]) -> None:
         if self._status_listener is not None:
@@ -148,6 +169,4 @@ class KeyEchoAppFacade(KeyEventHandler):
             return
         self.start_echo()
 
-    def _exit_active_from_keyboard(self) -> KeyEventDecision:
-        self.stop_echo()
-        return KeyEventDecision.SUPPRESS
+
