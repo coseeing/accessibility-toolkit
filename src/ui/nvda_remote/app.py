@@ -1,6 +1,8 @@
 import wx
 
 from ui.nvda_remote.main_frame import MainFrame
+from ui.shared.speech_settings_frame import SpeechSettingsFrame
+from apps.shared.tool_app_shell import ToolAppShell
 
 
 class NvdaRemoteApp(wx.App):
@@ -11,9 +13,12 @@ class NvdaRemoteApp(wx.App):
         super().__init__(False)
 
     def OnInit(self):
-        frame = MainFrame(controller=self.controller)
-        frame.Show()
-        self.SetTopWindow(frame)
+        self.shell = ToolAppShell(
+            controller=self.controller,
+            main_frame_factory=lambda ctrl: MainFrame(controller=ctrl),
+            speech_frame_factory=lambda ctrl: SpeechSettingsFrame(controller=ctrl),
+        )
+        self.shell.initialize()
         return True
 
     def OnExit(self):

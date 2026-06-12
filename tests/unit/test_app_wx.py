@@ -21,6 +21,9 @@ UI_MODULES = (
     "ui.shared.speech_settings_frame",
     "apps.nvda_remote.main",
     "apps.key_echo.main",
+    "apps.shared.tool_app_shell",
+    "apps.shared.tray_icon",
+    "apps.shared.panel_controller",
 )
 
 
@@ -38,6 +41,8 @@ def clean_app_wx_module_cache():
 
 def install_fake_wx(monkeypatch):
     fake_wx = types.ModuleType("wx")
+    fake_wx.ID_ANY = -1
+    fake_wx.ID_EXIT = 5000
     fake_wx.VERTICAL = 1
     fake_wx.EXPAND = 2
     fake_wx.ALL = 4
@@ -45,6 +50,7 @@ def install_fake_wx(monkeypatch):
     fake_wx.EVT_CHOICE = object()
     fake_wx.EVT_TEXT = object()
     fake_wx.EVT_CLOSE = object()
+    fake_wx.EVT_MENU = object()
     fake_wx.OK = 16
     fake_wx.ICON_ERROR = 32
     fake_wx.message_box_calls = []
@@ -61,8 +67,8 @@ def install_fake_wx(monkeypatch):
         def GetTitle(self):
             return self._title
 
-        def Show(self):
-            self.shown = True
+        def Show(self, show=True):
+            self.shown = show
 
         def Hide(self):
             self.shown = False
@@ -182,6 +188,21 @@ def install_fake_wx(monkeypatch):
         def Bind(self, event, handler):
             self.bindings[event] = handler
 
+    class Menu:
+        def __init__(self):
+            self.items = []
+
+        def Append(self, id_, label):
+            item = type("MenuItem", (), {"id": id_, "label": label, "GetItemLabelText": lambda s=label: s})()
+            self.items.append(item)
+            return item
+
+        def Bind(self, event, handler, id_=None):
+            pass
+
+        def GetMenuItems(self):
+            return self.items
+
     class App:
         def __init__(self, redirect=False):
             self.redirect = redirect
@@ -208,9 +229,28 @@ def install_fake_wx(monkeypatch):
     fake_wx.TextCtrl = TextCtrl
     fake_wx.Button = Button
     fake_wx.Choice = Choice
+    fake_wx.Menu = Menu
     fake_wx.App = App
     fake_wx.MessageBox = MessageBox
     fake_wx.CallAfter = CallAfter
+
+    fake_adv = types.ModuleType("wx.adv")
+
+    class TaskBarIcon:
+        def __init__(self, iconType=None):
+            self.iconType = iconType
+            self.destroyed = False
+
+        def Destroy(self):
+            self.destroyed = True
+
+        def SetIcon(self, icon, tooltip=""):
+            return True
+
+    fake_adv.TaskBarIcon = TaskBarIcon
+    monkeypatch.setitem(sys.modules, "wx.adv", fake_adv)
+    fake_wx.adv = fake_adv
+
     monkeypatch.setitem(sys.modules, "wx", fake_wx)
     clear_ui_modules()
     return fake_wx
@@ -644,11 +684,10 @@ def test_nvda_remote_app_creates_and_shows_main_frame(monkeypatch):
     app = NvdaRemoteApp(controller=controller)
 
     assert app.OnInit() is True
-    assert app.top_window.GetTitle() == "NVDA Remote Client"
-    assert app.top_window.shown is True
+    assert "main" in app.shell.panel_controller._panels
 
 
-def test_echo_main_frame_exposes_start_stop_and_speech_controls(monkeypatch):
+def test_echo_main_frame_exposes_start_stop_controls(monkeypatch):
     install_fake_wx(monkeypatch)
     EchoMainFrame = importlib.import_module("ui.echo.main_frame").EchoMainFrame
     controller = FakeEchoController()
@@ -681,8 +720,7 @@ def test_echo_app_creates_and_shows_main_frame(monkeypatch):
     app = EchoApp(controller=controller)
 
     assert app.OnInit() is True
-    assert app.top_window.GetTitle() == "Key Echo Demo"
-    assert app.top_window.shown is True
+    assert "main" in app.shell.panel_controller._panels
 
 
 def test_ui_main_delegates_to_apps_nvda_remote_main(monkeypatch):
