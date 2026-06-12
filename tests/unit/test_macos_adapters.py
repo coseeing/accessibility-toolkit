@@ -1016,3 +1016,65 @@ def test_quartz_backend_attach_and_run_releases_source_on_source_add_failure():
     assert backend.pop_startup_error() is not None
     assert backend._source is None
     assert len(fake_q.released) >= 1
+
+
+def test_key_event_from_macos_maps_semicolon_quote_and_grave_to_hid():
+    assert key_event_from_macos(key_code=41, pressed=True, is_repeat=False) == KeyEvent(
+        usage_page=HID.KEYBOARD_PAGE,
+        usage=HID.SEMICOLON,
+        pressed=True,
+    )
+    assert key_event_from_macos(key_code=39, pressed=True, is_repeat=False) == KeyEvent(
+        usage_page=HID.KEYBOARD_PAGE,
+        usage=HID.QUOTE,
+        pressed=True,
+    )
+    assert key_event_from_macos(key_code=50, pressed=True, is_repeat=False) == KeyEvent(
+        usage_page=HID.KEYBOARD_PAGE,
+        usage=HID.GRAVE,
+        pressed=True,
+    )
+
+
+def test_key_event_from_macos_maps_navigation_keys_to_hid():
+    assert key_event_from_macos(key_code=114, pressed=True, is_repeat=False) == KeyEvent(
+        usage_page=HID.KEYBOARD_PAGE,
+        usage=HID.INSERT,
+        pressed=True,
+    )
+    assert key_event_from_macos(key_code=117, pressed=True, is_repeat=False) == KeyEvent(
+        usage_page=HID.KEYBOARD_PAGE,
+        usage=HID.DELETE,
+        pressed=True,
+    )
+    assert key_event_from_macos(key_code=121, pressed=True, is_repeat=False) == KeyEvent(
+        usage_page=HID.KEYBOARD_PAGE,
+        usage=HID.PAGE_DOWN,
+        pressed=True,
+    )
+
+
+def test_key_event_from_macos_distinguishes_numpad_keys_from_main_cluster_keys():
+    assert key_event_from_macos(key_code=83, pressed=True, is_repeat=False) == KeyEvent(
+        usage_page=HID.KEYBOARD_PAGE,
+        usage=HID.KEYPAD_1,
+        pressed=True,
+    )
+    assert key_event_from_macos(key_code=75, pressed=True, is_repeat=False) == KeyEvent(
+        usage_page=HID.KEYBOARD_PAGE,
+        usage=HID.KEYPAD_DIVIDE,
+        pressed=True,
+    )
+    assert key_event_from_macos(key_code=65, pressed=True, is_repeat=False) == KeyEvent(
+        usage_page=HID.KEYBOARD_PAGE,
+        usage=HID.KEYPAD_DECIMAL,
+        pressed=True,
+    )
+
+
+def test_key_event_from_macos_maps_non_us_backslash_to_hid():
+    assert key_event_from_macos(key_code=10, pressed=True, is_repeat=False) == KeyEvent(
+        usage_page=HID.KEYBOARD_PAGE,
+        usage=HID.NON_US_BACKSLASH,
+        pressed=True,
+    )
