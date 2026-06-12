@@ -557,3 +557,22 @@ def test_windows_keyboard_hook_emits_hid_for_non_us_backslash_when_available():
     assert seen == [
         KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.NON_US_BACKSLASH, pressed=True),
     ]
+
+
+def test_windows_keyboard_hook_emits_hid_for_keypad_equals():
+    user32 = FakeKeyboardUser32()
+    capture = WindowsKeyboardCapture(
+        user32=user32,
+        kernel32=FakeKeyboardKernel32(),
+        is_windows=True,
+    )
+    seen = []
+    capture.set_listener(seen.append)
+    capture.start()
+    callback = user32.installed[0][1]
+
+    callback(0, WM_KEYDOWN, ctypes.addressof(FakeKbdLlHookStruct(vkCode=0xBB, scanCode=89, flags=0)))
+
+    assert seen == [
+        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.KEYPAD_EQUALS, pressed=True),
+    ]

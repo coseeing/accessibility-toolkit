@@ -97,6 +97,7 @@ _SCAN_TO_USAGE: dict[tuple[int, bool], int] = {
     (83, False): HID.KEYPAD_DECIMAL,
     (83, True): HID.DELETE,
     (86, False): HID.NON_US_BACKSLASH,
+    (89, False): HID.KEYPAD_EQUALS,
     (87, False): HID.F11,
     (88, False): HID.F12,
     (91, True): HID.LEFT_META,
