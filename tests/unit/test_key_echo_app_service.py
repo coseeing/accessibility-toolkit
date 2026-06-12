@@ -4,7 +4,7 @@ from adapters.inputs.base import KeyEventDecision
 from application.keyboard import KeyboardInputService
 from application.output_capabilities import OutputCapabilities
 from application.speech_service import SpeechService
-from interop.key.key_event import KeyEvent
+from interop.key import HID, KeyEvent
 from interop.speech.speech_sequence import SpeechSequence
 
 from apps.key_echo.service import KeyEchoAppService
@@ -114,16 +114,16 @@ def test_key_echo_app_service_speaks_vk_on_keydown() -> None:
     service.attach_input_service(input_service)
     service.start_echo()
 
-    event = KeyEvent(vk=65, scan=30, extended=False, pressed=True)
+    event = KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.A, pressed=True)
     decision = service.handle_key_event(event)
 
     assert decision == KeyEventDecision.SUPPRESS
     assert speech_output.cancel_calls == 1
     assert speech_output.calls == [
         ("cancel", None),
-        ("speak", SpeechSequence(items=("VK 65",))),
+        ("speak", SpeechSequence(items=("HID 0x07:0x04",))),
     ]
-    assert speech_output.spoken == [SpeechSequence(items=("VK 65",))]
+    assert speech_output.spoken == [SpeechSequence(items=("HID 0x07:0x04",))]
 
 
 def test_key_echo_app_service_ignores_keyup_for_speech() -> None:
@@ -139,7 +139,7 @@ def test_key_echo_app_service_ignores_keyup_for_speech() -> None:
     service.attach_input_service(input_service)
     service.start_echo()
 
-    event = KeyEvent(vk=65, scan=30, extended=False, pressed=False)
+    event = KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.A, pressed=False)
     decision = service.handle_key_event(event)
 
     assert decision == KeyEventDecision.SUPPRESS
@@ -160,7 +160,7 @@ def test_key_echo_app_service_stops_echo_on_escape_keydown() -> None:
     service.start_echo()
 
     decision = service.handle_key_event(
-        KeyEvent(vk=0x1B, scan=1, extended=False, pressed=True)
+        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.ESCAPE, pressed=True)
     )
 
     assert decision == KeyEventDecision.SUPPRESS
@@ -279,7 +279,7 @@ def test_build_runtime_composes_local_keyboard_and_speech(monkeypatch) -> None:
     monkeypatch.setattr(
         main_module,
         "create_hotkey_capture",
-        lambda vk=0x7A: hotkey,
+        lambda usage=HID.F10: hotkey,
     )
     monkeypatch.setattr(
         main_module,
@@ -304,7 +304,7 @@ def test_build_runtime_composes_local_keyboard_and_speech(monkeypatch) -> None:
     runtime = main_module.build_runtime()
     runtime.input_service.bind()
 
-    decision = capture.listener(KeyEvent(vk=66, scan=48, extended=False, pressed=True))
+    decision = capture.listener(KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.B, pressed=True))
 
     assert isinstance(runtime.input_service, KeyboardInputService)
     assert isinstance(runtime.app_service, KeyEchoAppService)
@@ -398,7 +398,7 @@ def test_build_runtime_macos_path_composes_capture(monkeypatch) -> None:
     monkeypatch.setattr(
         main_module,
         "create_hotkey_capture",
-        lambda vk=0x7A: FakeHotkeyCapture(),
+        lambda usage=HID.F10: FakeHotkeyCapture(),
     )
     monkeypatch.setattr(
         main_module,
@@ -492,7 +492,7 @@ def test_key_echo_app_service_enter_keyup_does_not_duplicate_start() -> None:
     assert service.is_echo_running() is True
 
     decision = service.handle_key_event(
-        KeyEvent(vk=0x0D, scan=28, extended=False, pressed=False)
+        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.ENTER, pressed=False)
     )
 
     assert decision == KeyEventDecision.SUPPRESS
@@ -581,7 +581,7 @@ def test_key_echo_app_service_active_escape_exits_through_keyboard_pipeline() ->
     hotkey.start()
     hotkey.handler()
 
-    decision = service.handle_key_event(KeyEvent(vk=0x1B, scan=1, extended=False, pressed=True))
+    decision = service.handle_key_event(KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.ESCAPE, pressed=True))
 
     assert decision == KeyEventDecision.SUPPRESS
     assert service.is_echo_running() is False
@@ -600,7 +600,7 @@ def test_build_runtime_starts_with_hotkey_running_and_keyboard_stopped(monkeypat
     monkeypatch.setattr(
         main_module,
         "create_hotkey_capture",
-        lambda vk=0x7A: requested_hotkeys.append(vk) or hotkey,
+        lambda usage=HID.F10: requested_hotkeys.append(usage) or hotkey,
     )
     monkeypatch.setattr(
         main_module,
@@ -622,7 +622,7 @@ def test_build_runtime_starts_with_hotkey_running_and_keyboard_stopped(monkeypat
 
     runtime = main_module.build_runtime()
 
-    assert requested_hotkeys == [0x79]
+    assert requested_hotkeys == [HID.F10]
     assert hotkey.running is True
     assert capture.running is False
 
@@ -638,7 +638,7 @@ def test_build_runtime_uses_echo_mode_enter_hotkey_as_single_source_of_truth(mon
     monkeypatch.setattr(
         main_module,
         "create_hotkey_capture",
-        lambda vk=0x7A: requested_hotkeys.append(vk) or hotkey,
+        lambda usage=HID.F10: requested_hotkeys.append(usage) or hotkey,
     )
     monkeypatch.setattr(
         main_module,
@@ -652,8 +652,8 @@ def test_build_runtime_uses_echo_mode_enter_hotkey_as_single_source_of_truth(mon
         ),
     )
 
-    original = main_module.KeyEchoAppFacade.enter_vk
-    monkeypatch.setattr(main_module.KeyEchoAppFacade, "enter_vk", 0x7A)
+    original = main_module.KeyEchoAppFacade.enter_usage
+    monkeypatch.setattr(main_module.KeyEchoAppFacade, "enter_usage", HID.F10)
 
     import sys as _sys
     import types
@@ -664,9 +664,9 @@ def test_build_runtime_uses_echo_mode_enter_hotkey_as_single_source_of_truth(mon
     try:
         main_module.build_runtime()
     finally:
-        monkeypatch.setattr(main_module.KeyEchoAppFacade, "enter_vk", original)
+        monkeypatch.setattr(main_module.KeyEchoAppFacade, "enter_usage", original)
 
-    assert requested_hotkeys == [0x7A]
+    assert requested_hotkeys == [HID.F10]
 
 
 def test_build_runtime_shutdown_stops_both_captures(monkeypatch) -> None:
@@ -680,7 +680,7 @@ def test_build_runtime_shutdown_stops_both_captures(monkeypatch) -> None:
     monkeypatch.setattr(
         main_module,
         "create_hotkey_capture",
-        lambda vk=0x7A: requested_hotkeys.append(vk) or hotkey,
+        lambda usage=HID.F10: requested_hotkeys.append(usage) or hotkey,
     )
     monkeypatch.setattr(
         main_module,
@@ -704,6 +704,6 @@ def test_build_runtime_shutdown_stops_both_captures(monkeypatch) -> None:
     runtime.app_service.start_echo()
     runtime.app_service.shutdown()
 
-    assert requested_hotkeys == [0x79]
+    assert requested_hotkeys == [HID.F10]
     assert hotkey.running is False
     assert capture.running is False

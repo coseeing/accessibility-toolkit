@@ -18,5 +18,9 @@ class KeyEchoInputUseCase:
     def handle(self, event: KeyEvent) -> KeyEventDecision:
         if event.pressed:
             self._cancel()
-            self._speak(SpeechSequence(items=(f"VK {event.vk}",)))
+            self._speak(
+                SpeechSequence(
+                    items=(f"HID 0x{event.usage_page:02X}:0x{event.usage:02X}",)
+                )
+            )
         return KeyEventDecision.SUPPRESS

@@ -12,6 +12,7 @@ from bootstrap.platform import (
     default_speech_backend_id,
     default_speech_backend_options,
 )
+from interop.key import HID
 
 
 class TestDefaultSpeechBackendId:
@@ -75,16 +76,16 @@ class TestCreateHotkeyCapture:
         monkeypatch.setattr(sys, "platform", "win32")
 
         class FakeWindowsHotkeyCapture:
-            def __init__(self, *, vk, label):
-                self.vk = vk
+            def __init__(self, *, usage, label):
+                self.usage = usage
                 self.label = label
 
         monkeypatch.setattr(_bp, "_WindowsHotkeyCapture", FakeWindowsHotkeyCapture)
 
-        capture = create_hotkey_capture(0x0D)
+        capture = create_hotkey_capture(HID.ENTER)
 
-        assert capture.vk == 0x0D
-        assert capture.label == "VK_0D"
+        assert capture.usage == HID.ENTER
+        assert capture.label == "HID_0x28"
 
     def test_macos_enter_vk_uses_return_key_code(self, monkeypatch):
         monkeypatch.setattr(sys, "platform", "darwin")
@@ -97,7 +98,7 @@ class TestCreateHotkeyCapture:
         monkeypatch.setattr(_bp, "_MacOSHotkeyCapture", FakeMacHotkeyCapture)
         monkeypatch.setattr(_bp, "_macos_event_tap_manager_instance", object())
 
-        capture = create_hotkey_capture(0x0D)
+        capture = create_hotkey_capture(HID.ENTER)
 
         assert capture.key_code == 36
 
@@ -112,7 +113,7 @@ class TestCreateHotkeyCapture:
         monkeypatch.setattr(_bp, "_MacOSHotkeyCapture", FakeMacHotkeyCapture)
         monkeypatch.setattr(_bp, "_macos_event_tap_manager_instance", object())
 
-        capture = create_hotkey_capture(0x79)
+        capture = create_hotkey_capture(HID.F10)
 
         assert capture.key_code == 109
 

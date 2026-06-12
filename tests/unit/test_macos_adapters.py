@@ -345,7 +345,7 @@ def test_macos_keyboard_capture_binds_listener_and_translates_event():
     decision = manager.listener(RawMacKeyEvent(key_code=0, pressed=True, is_repeat=False))
 
     assert decision == KeyEventDecision.SUPPRESS
-    assert seen == [KeyEvent(vk=0x41, scan=30, extended=False, pressed=True)]
+    assert seen == [KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.A, pressed=True)]
 
 
 def test_macos_keyboard_capture_proxies_lifecycle():
@@ -465,7 +465,7 @@ def test_macos_hotkey_capture_stop_preserves_active_keyboard_capture():
     assert manager.running is True
     assert backend.stop_calls == 0
     assert decision == KeyEventDecision.SUPPRESS
-    assert seen == [KeyEvent(vk=0x41, scan=30, extended=False, pressed=True)]
+    assert seen == [KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.A, pressed=True)]
 
 
 class FakeQuartzModule:

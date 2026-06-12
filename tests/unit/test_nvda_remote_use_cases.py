@@ -1,6 +1,6 @@
 from adapters.inputs.base import KeyEventDecision
 from application.state import ConnectionState, ControlState, RuntimeState
-from interop.key.key_event import KeyEvent
+from interop.key import HID, KeyEvent
 
 from apps.nvda_remote.use_cases.state_transition_hotkeys import (
     NvdaRemoteHotkeyAction,
@@ -10,20 +10,20 @@ from apps.nvda_remote.use_cases.state_transition_hotkeys import (
 
 def test_nvda_hotkey_use_case_maps_f11_keydown_to_toggle_control():
     use_case = NvdaRemoteStateTransitionHotkeyUseCase(
-        mapping={0x7A: NvdaRemoteHotkeyAction.TOGGLE_CONTROL}
+        mapping={HID.F11: NvdaRemoteHotkeyAction.TOGGLE_CONTROL}
     )
 
-    action = use_case.match(KeyEvent(vk=0x7A, scan=87, extended=False, pressed=True))
+    action = use_case.match(KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.F11, pressed=True))
 
     assert action == NvdaRemoteHotkeyAction.TOGGLE_CONTROL
 
 
 def test_nvda_hotkey_use_case_ignores_f11_keyup():
     use_case = NvdaRemoteStateTransitionHotkeyUseCase(
-        mapping={0x7A: NvdaRemoteHotkeyAction.TOGGLE_CONTROL}
+        mapping={HID.F11: NvdaRemoteHotkeyAction.TOGGLE_CONTROL}
     )
 
-    action = use_case.match(KeyEvent(vk=0x7A, scan=87, extended=False, pressed=False))
+    action = use_case.match(KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.F11, pressed=False))
 
     assert action is None
 
@@ -164,9 +164,9 @@ def test_input_forwarding_use_case_sends_remote_key_when_controlling():
         send_key=lambda payload: sent.append(payload),
         on_local_stop=lambda: None,
     )
-    event = KeyEvent(vk=65, scan=30, extended=False, pressed=True)
+    event = KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.A, pressed=True)
 
     decision = use_case.handle(event)
 
     assert decision == KeyEventDecision.SUPPRESS
-    assert sent == [event.to_remote_payload()]
+    assert sent == [{"vk_code": 65, "scan_code": 30, "extended": False, "pressed": True}]

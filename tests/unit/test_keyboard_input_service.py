@@ -1,6 +1,6 @@
 from adapters.inputs.base import KeyEventDecision
 from application.keyboard import KeyboardInputService
-from interop.key.key_event import KeyEvent
+from interop.key import HID, KeyEvent
 
 
 class FakeCapture:
@@ -34,7 +34,7 @@ def test_keyboard_input_service_forwards_events_to_handler():
     service = KeyboardInputService(capture, handler)
     service.bind()
 
-    event = KeyEvent(vk=65, scan=30, extended=False, pressed=True)
+    event = KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.A, pressed=True)
     decision = capture.listener(event)
 
     assert decision == KeyEventDecision.PASS_THROUGH

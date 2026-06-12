@@ -63,7 +63,7 @@ def build_runtime() -> NvdaRemoteRuntime:
 
     transport = RelayTransport(JSONSerializer())
     input_capture = create_input_capture()
-    hotkey_capture = create_hotkey_capture(NvdaRemoteAppFacade.enter_vk)
+    hotkey_capture = create_hotkey_capture(NvdaRemoteAppFacade.enter_usage)
     clipboard = create_clipboard_service()
     app_service = NvdaRemoteAppFacade(
         transport=transport,

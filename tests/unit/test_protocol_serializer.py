@@ -1,7 +1,7 @@
 import pytest
 
 from interop.protocol.connection_info import ConnectionInfo, ConnectionMode
-from interop.key.key_event import KeyEvent
+from interop.key import HID, KeyEvent
 from interop.speech.speech_commands import (
     BreakCommand,
     PitchCommand,
@@ -36,8 +36,9 @@ def test_protocol_helpers_and_serializer_round_trip():
 
 
 def test_key_event_to_message_payload():
-    event = KeyEvent(vk=65, scan=30, extended=False, pressed=True)
-    assert event.to_remote_payload() == {
+    from apps.nvda_remote.legacy_key_payload import key_event_to_legacy_remote_payload
+    event = KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.A, pressed=True)
+    assert key_event_to_legacy_remote_payload(event) == {
         "vk_code": 65,
         "scan_code": 30,
         "extended": False,
@@ -158,9 +159,6 @@ def test_serializer_logs_raw_and_decoded_speak_payload(caplog):
     assert decoded["type"] == "speak"
     assert "JSONSerializer.deserialize input" in caplog.text
     assert "JSONSerializer.deserialize output type='speak'" in caplog.text
-
-
-from interop.key import HID
 
 
 def test_key_event_to_local_payload():

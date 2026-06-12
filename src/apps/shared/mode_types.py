@@ -6,8 +6,8 @@ from interop.key.key_event import KeyEvent
 
 class ActivationMode(Protocol):
     mode_id: str
-    enter_vk: int
-    exit_vk: int
+    enter_usage: int
+    exit_usage: int
 
     def can_enter(self) -> bool: ...
     def enter(self) -> bool: ...

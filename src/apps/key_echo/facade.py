@@ -2,7 +2,7 @@ from adapters.inputs.base import HotkeyCapture, InputCapture, KeyEventDecision
 from application.input import InputActivationUseCase
 from application.keyboard import KeyEventHandler, KeyboardInputService
 from application.output_capabilities import OutputCapabilities
-from interop.key.key_event import KeyEvent
+from interop.key import HID, KeyEvent
 
 from apps.key_echo.use_cases import (
     KeyEchoControlUseCase,
@@ -14,8 +14,8 @@ from apps.shared.speech_settings_controller import SpeechSettingsController
 
 class EchoKeysMode:
     mode_id = "echo_keys"
-    enter_vk = 0x79
-    exit_vk = 0x1B
+    enter_usage = HID.F10
+    exit_usage = HID.ESCAPE
 
     def __init__(self, control, echo_input):
         self._control = control
@@ -37,7 +37,7 @@ class EchoKeysMode:
 
 
 class KeyEchoAppFacade(KeyEventHandler):
-    enter_vk = EchoKeysMode.enter_vk
+    enter_usage = EchoKeysMode.enter_usage
 
     def __init__(
         self,

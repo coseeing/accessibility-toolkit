@@ -359,13 +359,13 @@ def test_windows_keypress_hotkey_capture_triggers_handler_on_matching_keydown():
     seen = []
     capture = WindowsKeyPressHotkeyCapture(
         keyboard_capture=keyboard,
-        vk=0x0D,
+        usage=HID.ENTER,
     )
     capture.set_handler(lambda: seen.append("enter"))
 
     capture.start()
     decision = keyboard.listener(
-        KeyEvent(vk=0x0D, scan=28, extended=False, pressed=True)
+        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.ENTER, pressed=True)
     )
 
     assert decision == KeyEventDecision.SUPPRESS
@@ -377,13 +377,13 @@ def test_windows_keypress_hotkey_capture_ignores_non_matching_keys():
     seen = []
     capture = WindowsKeyPressHotkeyCapture(
         keyboard_capture=keyboard,
-        vk=0x0D,
+        usage=HID.ENTER,
     )
     capture.set_handler(lambda: seen.append("enter"))
 
     capture.start()
     decision = keyboard.listener(
-        KeyEvent(vk=0x41, scan=30, extended=False, pressed=True)
+        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.A, pressed=True)
     )
 
     assert decision == KeyEventDecision.PASS_THROUGH

@@ -8,6 +8,7 @@ from adapters.outputs.drivers.pyttsx3 import Pyttsx3SpeechOutput
 from application.output_scheduler import OutputScheduler
 from application.services import ClipboardService
 from application.speech_backends import SpeechBackendOption
+from interop.key import HID
 
 _logger = logging.getLogger(__name__)
 
@@ -23,12 +24,12 @@ _MacOSKeyboardCapture: Any = None
 _MacOSHotkeyCapture: Any = None
 _macos_event_tap_manager_instance: Any = None
 
-_DEFAULT_HOTKEY_VK = 0x7A
+_DEFAULT_HOTKEY_USAGE = HID.F11
 
 _MACOS_HOTKEY_KEY_CODES: dict[int, int] = {
-    0x7A: 103,
-    0x79: 109,
-    0x0D: 36,
+    HID.F11: 103,
+    HID.F10: 109,
+    HID.ENTER: 36,
 }
 
 
@@ -188,17 +189,17 @@ def create_input_capture() -> InputCapture:
     return _NullInputCapture()
 
 
-def create_hotkey_capture(vk: int = _DEFAULT_HOTKEY_VK) -> HotkeyCapture:
+def create_hotkey_capture(usage: int = _DEFAULT_HOTKEY_USAGE) -> HotkeyCapture:
     if sys.platform == "darwin":
         manager = _ensure_macos_event_tap_manager()
-        key_code = _MACOS_HOTKEY_KEY_CODES.get(vk)
+        key_code = _MACOS_HOTKEY_KEY_CODES.get(usage)
         if key_code is None:
-            raise ValueError(f"Unsupported macOS hotkey vk: 0x{vk:02X}")
+            raise ValueError(f"Unsupported macOS hotkey usage: 0x{usage:02X}")
         return _MacOSHotkeyCapture(manager=manager, key_code=key_code)
     if sys.platform == "win32":
-        if vk <= 0:
-            raise ValueError(f"Unsupported Windows hotkey vk: 0x{vk:02X}")
-        return _get_windows_hotkey_capture_class()(vk=vk, label=f"VK_{vk:02X}")
+        if usage <= 0:
+            raise ValueError(f"Unsupported Windows hotkey usage: 0x{usage:02X}")
+        return _get_windows_hotkey_capture_class()(usage=usage, label=f"HID_0x{usage:02X}")
     return _NullHotkeyCapture()
 
 

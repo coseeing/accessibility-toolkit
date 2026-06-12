@@ -7,7 +7,7 @@ from application.keyboard import KeyEventHandler
 from application.output_service import SpeechOutputService
 from application.services import ClipboardService
 from application.state import ConnectionState, ControlState, RuntimeState
-from interop.key.key_event import KeyEvent
+from interop.key import HID, KeyEvent
 from interop.protocol.connection_info import ConnectionInfo
 from interop.protocol.messages import RemoteMessageType
 from interop.protocol.routing.message_router import MessageRouter
@@ -24,8 +24,8 @@ from apps.shared.speech_settings_controller import SpeechSettingsController
 
 class RemoteControlMode:
     mode_id = "remote_control"
-    enter_vk = 0x7A
-    exit_vk = 0x7A
+    enter_usage = HID.F11
+    exit_usage = HID.F11
 
     def __init__(self, control_mode, input_forwarding):
         self._control_mode = control_mode
@@ -48,8 +48,8 @@ class RemoteControlMode:
 
 
 class NvdaRemoteAppFacade(KeyEventHandler):
-    _LOCAL_STOP_VK = 0x7A
-    enter_vk = RemoteControlMode.enter_vk
+    _LOCAL_STOP_USAGE = HID.F11
+    enter_usage = RemoteControlMode.enter_usage
 
     def __init__(
         self,
@@ -95,7 +95,7 @@ class NvdaRemoteAppFacade(KeyEventHandler):
             is_controlling=lambda: self.state.control_state == ControlState.CONTROLLING,
             send_key=lambda payload: self.transport.send(RemoteMessageType.KEY, **payload),
             on_local_stop=self.stop_control,
-            local_stop_vk=self._LOCAL_STOP_VK,
+            local_stop_usage=self._LOCAL_STOP_USAGE,
         )
 
         def _on_backend_changed_wrapper(backend_id: str) -> None:
@@ -226,11 +226,11 @@ class NvdaRemoteAppFacade(KeyEventHandler):
         self.speech.shutdown()
 
     def handle_key_event(self, event: KeyEvent) -> KeyEventDecision:
-        if not event.pressed and event.vk in self._suppressed_keyups:
-            self._suppressed_keyups.discard(event.vk)
+        if not event.pressed and event.usage in self._suppressed_keyups:
+            self._suppressed_keyups.discard(event.usage)
             return KeyEventDecision.SUPPRESS
-        if event.pressed and event.vk == self._LOCAL_STOP_VK and self._mode_manager.active_mode_id is not None:
-            self._suppressed_keyups.add(self._LOCAL_STOP_VK)
+        if event.pressed and event.usage == self._LOCAL_STOP_USAGE and self._mode_manager.active_mode_id is not None:
+            self._suppressed_keyups.add(self._LOCAL_STOP_USAGE)
         return self._mode_manager.handle_key_event(event)
 
     def _handle_transport_message(self, payload: dict[str, Any]) -> None:

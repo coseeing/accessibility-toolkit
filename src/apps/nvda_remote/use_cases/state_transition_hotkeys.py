@@ -1,6 +1,6 @@
 from enum import StrEnum
 
-from interop.key.key_event import KeyEvent
+from interop.key import HID, KeyEvent
 
 
 class NvdaRemoteHotkeyAction(StrEnum):
@@ -13,9 +13,9 @@ class NvdaRemoteStateTransitionHotkeyUseCase:
 
     @classmethod
     def default(cls) -> "NvdaRemoteStateTransitionHotkeyUseCase":
-        return cls(mapping={0x7A: NvdaRemoteHotkeyAction.TOGGLE_CONTROL})
+        return cls(mapping={HID.F11: NvdaRemoteHotkeyAction.TOGGLE_CONTROL})
 
     def match(self, event: KeyEvent) -> NvdaRemoteHotkeyAction | None:
         if not event.pressed:
             return None
-        return self._mapping.get(event.vk)
+        return self._mapping.get(event.usage)

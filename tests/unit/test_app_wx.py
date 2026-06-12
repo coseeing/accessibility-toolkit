@@ -7,6 +7,7 @@ import pytest
 
 import bootstrap.platform
 import bootstrap.runtime
+from interop.key import HID
 
 
 UI_MODULES = (
@@ -819,7 +820,7 @@ def test_nvda_remote_main_build_runtime_composes_app_service_and_gui(monkeypatch
             self.bind_calls += 1
 
     class FakeAppService:
-        enter_vk = 0x7A
+        enter_usage = HID.F11
 
         def __init__(
             self,
@@ -862,7 +863,7 @@ def test_nvda_remote_main_build_runtime_composes_app_service_and_gui(monkeypatch
     monkeypatch.setattr(
         bootstrap.platform,
         "create_hotkey_capture",
-        lambda vk=0x7A: FakeHotkeyCapture(),
+        lambda usage=HID.F11: FakeHotkeyCapture(),
     )
     monkeypatch.setattr(bootstrap.platform.sys, "platform", "win32")
     monkeypatch.setattr(bootstrap.platform, "create_clipboard_service", lambda: FakeClipboard())
@@ -870,7 +871,7 @@ def test_nvda_remote_main_build_runtime_composes_app_service_and_gui(monkeypatch
     monkeypatch.setattr(
         nvda_remote_main,
         "create_hotkey_capture",
-        lambda vk=0x7A: FakeHotkeyCapture(),
+        lambda usage=HID.F11: FakeHotkeyCapture(),
     )
     monkeypatch.setattr(nvda_remote_main, "create_clipboard_service", lambda: FakeClipboard())
     monkeypatch.setattr(nvda_remote_main, "KeyboardInputService", FakeKeyboardInputService)
@@ -954,7 +955,7 @@ def test_nvda_remote_build_runtime_uses_mode_enter_hotkey_as_single_source_of_tr
             return None
 
     class FakeAppService:
-        enter_vk = 0x7B
+        enter_usage = HID.F11
 
         def __init__(self, **kwargs):
             self.__dict__.update(kwargs)
@@ -980,7 +981,7 @@ def test_nvda_remote_build_runtime_uses_mode_enter_hotkey_as_single_source_of_tr
     monkeypatch.setattr(
         nvda_remote_main,
         "create_hotkey_capture",
-        lambda vk=0x7A: requested_hotkeys.append(vk) or FakeHotkeyCapture(),
+        lambda usage=HID.F11: requested_hotkeys.append(usage) or FakeHotkeyCapture(),
     )
     monkeypatch.setattr(nvda_remote_main, "create_clipboard_service", lambda: FakeClipboard())
     monkeypatch.setattr(nvda_remote_main, "KeyboardInputService", FakeKeyboardInputService)
@@ -990,7 +991,7 @@ def test_nvda_remote_build_runtime_uses_mode_enter_hotkey_as_single_source_of_tr
 
     nvda_remote_main.build_runtime()
 
-    assert requested_hotkeys == [0x7B]
+    assert requested_hotkeys == [HID.F11]
 
 
 def test_build_runtime_uses_macos_input_and_hotkey_on_darwin(monkeypatch):
@@ -1055,7 +1056,7 @@ def test_build_runtime_uses_macos_input_and_hotkey_on_darwin(monkeypatch):
             return None
 
     class FakeAppService:
-        enter_vk = 0x7A
+        enter_usage = HID.F11
 
         def __init__(self, **kwargs):
             self.__dict__.update(kwargs)
@@ -1163,7 +1164,7 @@ def test_build_runtime_uses_safe_clipboard_on_darwin(monkeypatch):
             return None
 
     class FakeAppService:
-        enter_vk = 0x7A
+        enter_usage = HID.F11
 
         def __init__(self, **kwargs):
             self.__dict__.update(kwargs)
@@ -1277,7 +1278,7 @@ def test_nvda_remote_main_build_runtime_falls_back_for_unknown_backend(monkeypat
             return None
 
     class FakeAppService:
-        enter_vk = 0x7A
+        enter_usage = HID.F11
 
         def __init__(self, **kwargs):
             self.__dict__.update(kwargs)
@@ -1303,7 +1304,7 @@ def test_nvda_remote_main_build_runtime_falls_back_for_unknown_backend(monkeypat
     monkeypatch.setattr(
         bootstrap.platform,
         "create_hotkey_capture",
-        lambda vk=0x7A: FakeHotkeyCapture(),
+        lambda usage=HID.F11: FakeHotkeyCapture(),
     )
     monkeypatch.setattr(bootstrap.platform, "create_clipboard_service", lambda: FakeClipboard())
     monkeypatch.setattr(bootstrap.platform.sys, "platform", "win32")
@@ -1311,7 +1312,7 @@ def test_nvda_remote_main_build_runtime_falls_back_for_unknown_backend(monkeypat
     monkeypatch.setattr(
         nvda_remote_main,
         "create_hotkey_capture",
-        lambda vk=0x7A: FakeHotkeyCapture(),
+        lambda usage=HID.F11: FakeHotkeyCapture(),
     )
     monkeypatch.setattr(nvda_remote_main, "create_clipboard_service", lambda: FakeClipboard())
     monkeypatch.setattr(nvda_remote_main, "KeyboardInputService", FakeKeyboardInputService)

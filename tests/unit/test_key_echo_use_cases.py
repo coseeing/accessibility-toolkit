@@ -1,5 +1,5 @@
 from adapters.inputs.base import KeyEventDecision
-from interop.key.key_event import KeyEvent
+from interop.key import HID, KeyEvent
 
 from apps.key_echo.use_cases.state_transition_hotkeys import (
     KeyEchoHotkeyAction,
@@ -10,12 +10,12 @@ from apps.key_echo.use_cases.state_transition_hotkeys import (
 def test_key_echo_hotkey_use_case_maps_enter_to_start_echo():
     use_case = KeyEchoStateTransitionHotkeyUseCase(
         mapping={
-            0x0D: KeyEchoHotkeyAction.START_ECHO,
-            0x1B: KeyEchoHotkeyAction.STOP_ECHO,
+            HID.ENTER: KeyEchoHotkeyAction.START_ECHO,
+            HID.ESCAPE: KeyEchoHotkeyAction.STOP_ECHO,
         }
     )
 
-    action = use_case.match(KeyEvent(vk=0x0D, scan=28, extended=False, pressed=True))
+    action = use_case.match(KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.ENTER, pressed=True))
 
     assert action == KeyEchoHotkeyAction.START_ECHO
 
@@ -23,12 +23,12 @@ def test_key_echo_hotkey_use_case_maps_enter_to_start_echo():
 def test_key_echo_hotkey_use_case_maps_escape_to_stop_echo():
     use_case = KeyEchoStateTransitionHotkeyUseCase(
         mapping={
-            0x0D: KeyEchoHotkeyAction.START_ECHO,
-            0x1B: KeyEchoHotkeyAction.STOP_ECHO,
+            HID.ENTER: KeyEchoHotkeyAction.START_ECHO,
+            HID.ESCAPE: KeyEchoHotkeyAction.STOP_ECHO,
         }
     )
 
-    action = use_case.match(KeyEvent(vk=0x1B, scan=1, extended=False, pressed=True))
+    action = use_case.match(KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.ESCAPE, pressed=True))
 
     assert action == KeyEchoHotkeyAction.STOP_ECHO
 
@@ -36,12 +36,12 @@ def test_key_echo_hotkey_use_case_maps_escape_to_stop_echo():
 def test_key_echo_hotkey_use_case_ignores_keyup():
     use_case = KeyEchoStateTransitionHotkeyUseCase(
         mapping={
-            0x0D: KeyEchoHotkeyAction.START_ECHO,
-            0x1B: KeyEchoHotkeyAction.STOP_ECHO,
+            HID.ENTER: KeyEchoHotkeyAction.START_ECHO,
+            HID.ESCAPE: KeyEchoHotkeyAction.STOP_ECHO,
         }
     )
 
-    action = use_case.match(KeyEvent(vk=0x1B, scan=1, extended=False, pressed=False))
+    action = use_case.match(KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.ESCAPE, pressed=False))
 
     assert action is None
 
@@ -133,7 +133,7 @@ def test_echo_input_use_case_speaks_vk_text_on_keydown():
         speak=lambda sequence: calls.append(("speak", sequence)),
     )
 
-    decision = use_case.handle(KeyEvent(vk=65, scan=30, extended=False, pressed=True))
+    decision = use_case.handle(KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.A, pressed=True))
 
     assert decision == KeyEventDecision.SUPPRESS
     assert calls[0] == ("cancel", None)

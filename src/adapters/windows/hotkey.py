@@ -10,8 +10,13 @@ from adapters.windows.keyboard_hook import WindowsKeyboardCapture
 
 WM_HOTKEY = 0x0312
 WM_QUIT = 0x0012
+F11_USAGE = 0x44
 F11_VK = 0x7A
 HOTKEY_ID = 1
+
+_USAGE_TO_VK: dict[int, int] = {
+    F11_USAGE: F11_VK,
+}
 
 
 class WindowsHotkeyCapture:
@@ -21,7 +26,7 @@ class WindowsHotkeyCapture:
         user32: Any | None = None,
         kernel32: Any | None = None,
         is_windows: bool | None = None,
-        vk: int = F11_VK,
+        usage: int = F11_USAGE,
         label: str = "F11",
     ) -> None:
         self._handler = None
@@ -32,7 +37,7 @@ class WindowsHotkeyCapture:
         self._thread: threading.Thread | None = None
         self._ready: threading.Event | None = None
         self._thread_id: int | None = None
-        self._vk = vk
+        self._usage = usage
         self._label = label
 
     @property
@@ -111,7 +116,8 @@ class WindowsHotkeyCapture:
         self._ready = None
         try:
             self._thread_id = int(self._kernel32.GetCurrentThreadId())
-            if not self._user32.RegisterHotKey(None, HOTKEY_ID, 0, self._vk):
+            vk = _USAGE_TO_VK.get(self._usage, F11_VK)
+            if not self._user32.RegisterHotKey(None, HOTKEY_ID, 0, vk):
                 self._running = False
                 return
             self._running = True
@@ -138,11 +144,11 @@ class WindowsKeyPressHotkeyCapture:
         self,
         *,
         keyboard_capture: WindowsKeyboardCapture | None = None,
-        vk: int,
+        usage: int,
     ) -> None:
         self._keyboard_capture = keyboard_capture or WindowsKeyboardCapture()
         self._handler = None
-        self._vk = vk
+        self._usage = usage
 
     @property
     def running(self) -> bool:
@@ -159,7 +165,7 @@ class WindowsKeyPressHotkeyCapture:
         self._keyboard_capture.stop()
 
     def _handle_key_event(self, event) -> KeyEventDecision:
-        if event.vk != self._vk or not event.pressed:
+        if event.usage != self._usage or not event.pressed:
             return KeyEventDecision.PASS_THROUGH
         if self._handler is not None:
             self._handler()

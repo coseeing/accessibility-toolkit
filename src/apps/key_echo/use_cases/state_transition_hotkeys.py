@@ -1,6 +1,6 @@
 from enum import StrEnum
 
-from interop.key.key_event import KeyEvent
+from interop.key import HID, KeyEvent
 
 
 class KeyEchoHotkeyAction(StrEnum):
@@ -16,12 +16,12 @@ class KeyEchoStateTransitionHotkeyUseCase:
     def default(cls) -> "KeyEchoStateTransitionHotkeyUseCase":
         return cls(
             mapping={
-                0x0D: KeyEchoHotkeyAction.START_ECHO,
-                0x1B: KeyEchoHotkeyAction.STOP_ECHO,
+                HID.ENTER: KeyEchoHotkeyAction.START_ECHO,
+                HID.ESCAPE: KeyEchoHotkeyAction.STOP_ECHO,
             }
         )
 
     def match(self, event: KeyEvent) -> KeyEchoHotkeyAction | None:
         if not event.pressed:
             return None
-        return self._mapping.get(event.vk)
+        return self._mapping.get(event.usage)
