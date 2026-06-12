@@ -133,6 +133,9 @@ class NvdaRemoteAppFacade(KeyEventHandler):
         self.session.disconnect()
 
     def start_control(self) -> None:
+        if self.state.connection_state == ConnectionState.IDLE:
+            self._notify_error("Not connected")
+            return
         if not self._activation.enter_active():
             return
         self._control_mode.start_control()

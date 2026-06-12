@@ -1,6 +1,6 @@
 from collections.abc import Callable
 
-from application.state import ConnectionState, ControlState, RuntimeState
+from application.state import ControlState, RuntimeState
 
 
 class NvdaRemoteControlModeUseCase:
@@ -16,9 +16,6 @@ class NvdaRemoteControlModeUseCase:
         self._notify_status = notify_status
 
     def start_control(self) -> None:
-        if self._state.connection_state == ConnectionState.IDLE:
-            self._notify_error("Not connected")
-            return
         self._state.control_state = ControlState.CONTROLLING
         self._notify_status({"kind": "control", "state": ControlState.CONTROLLING.value})
 
