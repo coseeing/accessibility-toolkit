@@ -23,6 +23,14 @@ _MacOSKeyboardCapture: Any = None
 _MacOSHotkeyCapture: Any = None
 _macos_event_tap_manager_instance: Any = None
 
+_DEFAULT_HOTKEY_VK = 0x7A
+
+_MACOS_HOTKEY_KEY_CODES: dict[int, int] = {
+    0x7A: 103,
+    0x79: 109,
+    0x0D: 36,
+}
+
 
 # --- null / fallback implementations ---
 
@@ -180,12 +188,17 @@ def create_input_capture() -> InputCapture:
     return _NullInputCapture()
 
 
-def create_hotkey_capture() -> HotkeyCapture:
+def create_hotkey_capture(vk: int = _DEFAULT_HOTKEY_VK) -> HotkeyCapture:
     if sys.platform == "darwin":
         manager = _ensure_macos_event_tap_manager()
-        return _MacOSHotkeyCapture(manager=manager)
+        key_code = _MACOS_HOTKEY_KEY_CODES.get(vk)
+        if key_code is None:
+            raise ValueError(f"Unsupported macOS hotkey vk: 0x{vk:02X}")
+        return _MacOSHotkeyCapture(manager=manager, key_code=key_code)
     if sys.platform == "win32":
-        return _get_windows_hotkey_capture_class()()
+        if vk <= 0:
+            raise ValueError(f"Unsupported Windows hotkey vk: 0x{vk:02X}")
+        return _get_windows_hotkey_capture_class()(vk=vk, label=f"VK_{vk:02X}")
     return _NullHotkeyCapture()
 
 

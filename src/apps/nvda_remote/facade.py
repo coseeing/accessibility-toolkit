@@ -24,8 +24,8 @@ from apps.shared.speech_settings_controller import SpeechSettingsController
 
 class RemoteControlMode:
     mode_id = "remote_control"
-    enter_hotkey = "f11"
-    exit_hotkey = 0x7A
+    enter_vk = 0x7A
+    exit_vk = 0x7A
 
     def __init__(self, control_mode, input_forwarding):
         self._control_mode = control_mode
@@ -49,6 +49,7 @@ class RemoteControlMode:
 
 class NvdaRemoteAppFacade(KeyEventHandler):
     _LOCAL_STOP_VK = 0x7A
+    enter_vk = RemoteControlMode.enter_vk
 
     def __init__(
         self,
@@ -283,5 +284,3 @@ class NvdaRemoteAppFacade(KeyEventHandler):
     def _stop_hotkey(self) -> None:
         if self.hotkey_capture.running:
             self.hotkey_capture.stop()
-
-

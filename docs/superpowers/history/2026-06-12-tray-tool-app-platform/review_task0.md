@@ -1,39 +1,52 @@
-# Review Findings
+# Review Task 0
 
-## High
+Reviewed in commit order from oldest to newest, using:
 
-1. `key_echo` 的公開 controller surface 已失去與 input lifecycle 的一致性，UI 的 `Start` / `Stop` 按鈕不再真正切換 capture 擁有權。`KeyEchoAppFacade.start_echo()` / `stop_echo()` 只改 `KeyEchoControlUseCase` 的狀態，完全不呼叫 `InputActivationUseCase.enter_active()` / `exit_active()`。因此 UI 點擊 `Start` 時，只會把 `is_echo_running()` 設成 `True`，但 `InputCapture` 仍是停止狀態、`HotkeyCapture` 仍保持執行；反過來，若先用 `Enter` 進入 active，再點 UI 的 `Stop`，也只會把 echo state 清掉，`InputCapture` 仍持續執行、`HotkeyCapture` 也不會恢復。這直接違反 spec 對「保留目前 UI-facing controller behavior」與 `idle hotkey / active keyboard` lifecycle 的要求。  
-   References: [facade.py](/workspace/nvda-remote-client/src/apps/key_echo/facade.py:67), [facade.py](/workspace/nvda-remote-client/src/apps/key_echo/facade.py:72), [main_frame.py](/workspace/nvda-remote-client/src/ui/echo/main_frame.py:36), [2026-06-11-input-architecture-unification-design.md](/workspace/nvda-remote-client/docs/superpowers/specs/2026-06-11-input-architecture-unification-design.md:20)
+- `docs/superpowers/finish_task0.md`
+- `docs/superpowers/plans/2026-06-12-tray-tool-app-platform-implementation.md`
+- `docs/superpowers/specs/2026-06-12-tray-tool-app-platform-design.md`
 
-2. `nvda_remote` 有相同的 controller-surface 回歸：公開的 `start_control()` / `stop_control()` 已不再驅動 capture lifecycle。重構後只有 idle `F11` 會經過 `_handle_idle_hotkey()` 進入 `InputActivationUseCase.enter_active()`，但 UI 按鈕仍直接呼叫 `start_control()` / `stop_control()`。結果是 UI 點 `Start Control` 時，只會把 `control_state` 改成 `CONTROLLING`，但 `InputCapture` 沒有啟動、`HotkeyCapture` 也沒有停掉；若先用 `F11` 進入 active，再點 UI 的 `Stop Control`，則只會改回 `CONNECTED`，`InputCapture` 仍繼續執行且 `HotkeyCapture` 不會恢復。這同樣破壞了 spec 要求的既有 UI 行為相容性。  
-   References: [facade.py](/workspace/nvda-remote-client/src/apps/nvda_remote/facade.py:110), [facade.py](/workspace/nvda-remote-client/src/apps/nvda_remote/facade.py:137), [facade.py](/workspace/nvda-remote-client/src/apps/nvda_remote/facade.py:140), [main_frame.py](/workspace/nvda-remote-client/src/ui/nvda_remote/main_frame.py:79), [2026-06-11-input-architecture-unification-design.md](/workspace/nvda-remote-client/docs/superpowers/specs/2026-06-11-input-architecture-unification-design.md:20)
+## Findings
 
-## Verification
+1. **High:** The tray/menu-bar `Exit` action does not actually terminate the wx application. In `ToolAppShell`, the exit callback only destroys the tray icon and calls `controller.shutdown()`; it never closes the hidden frames, destroys the app shell windows, or exits the main loop. That means the primary shutdown path introduced by the tray-shell work can leave a background process alive with hidden frames still owning the wx app. This directly contradicts the spec requirement that full exit must happen through the icon menu. Affected commit: `b73917a` (introduced), still present after `9e8dbcb`.  
+   Refs: [src/apps/shared/tool_app_shell.py](/workspace/nvda-remote-client/src/apps/shared/tool_app_shell.py:20), [src/apps/shared/tool_app_shell.py](/workspace/nvda-remote-client/src/apps/shared/tool_app_shell.py:26), [tests/unit/test_tool_app_shell.py](/workspace/nvda-remote-client/tests/unit/test_tool_app_shell.py:141)
 
-- Reviewed the listed commits from `docs/superpowers/finish_task0.md` in chronological order:
-  - `76cff16`
-  - `6b5feec`
-  - `797c165`
-  - `5552dc4`
-  - `4e9b338`
-  - `93edac4`
-  - `4260c4b`
-  - `d4bddff`
-  - `ee8a783`
-  - `9c8cb9d`
-  - `b22ea8f`
-- Cross-checked behavior against:
-  - [2026-06-11-input-architecture-unification-design.md](/workspace/nvda-remote-client/docs/superpowers/specs/2026-06-11-input-architecture-unification-design.md)
-  - [2026-06-11-input-architecture-unification-implementation.md](/workspace/nvda-remote-client/docs/superpowers/plans/2026-06-11-input-architecture-unification-implementation.md)
-- Ran full test suite:
-  - `PYTHONPATH=src python3 -m pytest tests/unit tests/integration -v`
-  - Result: `248 passed`
-- Ran focused reproductions and confirmed:
-  - `key_echo` UI-style `start_echo()` leaves `InputCapture` stopped and `HotkeyCapture` running
-  - `key_echo` hotkey-entered active state followed by UI-style `stop_echo()` leaves `InputCapture` running
-  - `nvda_remote` UI-style `start_control()` leaves `InputCapture` stopped and `HotkeyCapture` running
-  - `nvda_remote` hotkey-entered active state followed by UI-style `stop_control()` leaves `InputCapture` running
+2. **Medium:** If the app does exit through some other route, shutdown is wired twice: once from `ToolAppShell.shutdown()` and again from each wx app’s `OnExit()`. For both apps, `OnExit()` still calls `controller.shutdown()` directly after the shell has already used the same callback for the tray `Exit` action. Double-disconnecting transports and double-shutting down speech backends is risky, especially for native resources and external TTS integrations. Affected commit: `b73917a` (introduced), still present after `9e8dbcb`.  
+   Refs: [src/apps/shared/tool_app_shell.py](/workspace/nvda-remote-client/src/apps/shared/tool_app_shell.py:26), [src/ui/echo/app.py](/workspace/nvda-remote-client/src/ui/echo/app.py:24), [src/ui/nvda_remote/app.py](/workspace/nvda-remote-client/src/ui/nvda_remote/app.py:24)
 
-## Testing Gap
+3. **Medium:** `ModeManager.exit_active_mode()` ignores whether `InputActivationUseCase.exit_active()` actually succeeded, but still runs `mode.exit()`, clears `active_mode_id`, and emits an `"idle"` status. If restarting `HotkeyCapture` fails during active-to-idle transition, the manager will report the mode as fully exited even though capture ownership may still be broken. That creates a silent state mismatch between UI state and actual input lifecycle. Affected commit: `579ed76` (introduced), consumed by `1607d6e` and `4c02c8d`.  
+   Refs: [src/apps/shared/mode_manager.py](/workspace/nvda-remote-client/src/apps/shared/mode_manager.py:42), [src/application/input/activation.py](/workspace/nvda-remote-client/src/application/input/activation.py:37)
 
-- The current wx tests still pass because they exercise `FakeController` / `FakeEchoController` surfaces rather than the real app facades wired through the runtime. That leaves the UI-controller compatibility contract unverified for the actual implementations.
+4. **Low:** The shared tray icon is hard-coded to the tooltip `"NVDA Remote"` for every app. After `key_echo` was migrated onto the shared shell, its resident icon still identifies itself as the NVDA Remote app. This is a user-visible regression and also shows that the promised app-metadata registration boundary has not actually been implemented in the shell. Affected commit: `b73917a` (introduced), still present after `9e8dbcb`.  
+   Refs: [src/apps/shared/tray_icon.py](/workspace/nvda-remote-client/src/apps/shared/tray_icon.py:11)
+
+## Commit-by-Commit Notes
+
+- `6511122` `refactor: extract shared speech settings controller`
+  - No findings. The extraction is straightforward and remains aligned with the spec.
+
+- `72ff04f` `feat: add shared panel hide-on-close controller`
+  - No findings. The close-to-hide behavior matches the documented direction.
+
+- `aca588a` `feat: move speech settings into standalone frame`
+  - No findings. The standalone frame aligns with the plan and keeps behavior localized.
+
+- `b73917a` `feat: add shared tray app shell`
+  - Findings 1, 2, and 4 originate here.
+
+- `579ed76` `feat: add shared mode manager`
+  - Finding 3 originates here.
+
+- `1607d6e` `feat: migrate key echo to shared mode platform`
+  - No new findings beyond the inherited `ModeManager` issue above.
+
+- `4c02c8d` `feat: connect nvda remote to shared mode lifecycle`
+  - No new findings beyond the inherited `ModeManager` and tray-shell issues above.
+
+- `9e8dbcb` `refactor: complete tray tool app platform migration`
+  - No additional runtime findings from the cleanup commit; the earlier issues remain unresolved.
+
+## Residual Risk
+
+- The current test suite covers tray construction and controller-callback wiring, but it does not assert that the tray `Exit` action actually ends the app process or leaves `wx` in a terminated state.
+- There is also no negative-path coverage for `ModeManager` when `exit_active()` fails during capture restoration.

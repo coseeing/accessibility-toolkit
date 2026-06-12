@@ -2,48 +2,48 @@
 
 ## Overview
 
-本設計將 `nvda-remote-client` 的共通底層鍵盤輸入模型全面改為 USB HID-first。平台層負責把各自截到的原生鍵盤事件正規化為中立的 HID 鍵盤事件；應用層與各 app 的邏輯只依賴 HID，不再直接依賴 Windows `vk`、`scan`、`extended` 或 macOS `key_code`。
+This design changes the shared low-level keyboard input model in `nvda-remote-client` to USB HID-first. Platform layers are responsible for normalizing captured native keyboard events into a neutral HID keyboard event; the application layer and each app then depend only on HID, not directly on Windows `vk`, `scan`, `extended`, or macOS `key_code`.
 
-第一階段僅支援標準鍵盤 usage page `0x07`，目標是先跑通穩定的跨平台實體鍵事件模型，並維持現有 NVDA Remote relay protocol 相容性。
+The first phase supports only standard keyboard `usage page` `0x07`. The goal is to get a stable cross-platform physical key event model running end-to-end while preserving compatibility with the existing NVDA Remote relay protocol.
 
 ## Goals
 
-- 將專案核心鍵盤事件模型改為 HID-first。
-- 讓 Windows 與 macOS 的鍵盤 capture 都輸出相同的中立事件格式。
-- 讓 `application`、`key_echo`、hotkey/mode 管理與本地控制邏輯全面改用 HID 判斷。
-- 維持現有 NVDA Remote wire protocol 相容性，不修改 relay 上的 `key` 訊息格式。
-- 將舊有 Windows-style `vk/scan/extended` 語意限制在 protocol 邊界 adapter。
+- Change the project's core keyboard event model to HID-first.
+- Make both Windows and macOS keyboard capture produce the same neutral event shape.
+- Move `application`, `key_echo`, hotkey and mode management, and local control logic to HID-based decisions.
+- Preserve compatibility with the existing NVDA Remote wire protocol without changing the relay `key` message format.
+- Restrict legacy Windows-style `vk/scan/extended` semantics to a protocol-boundary adapter.
 
 ## Non-Goals
 
-- 不在本輪支援 consumer/media keys，例如 usage page `0x0C`。
-- 不在本輪處理 IME、文字輸入、字元輸出或鍵盤配置推導。
-- 不在本輪重新設計 relay server 或更改網路協定格式。
-- 不保證一次覆蓋所有區域鍵盤配置與所有特殊鍵。
-- 不把 HID 事件直接暴露為新的對外網路協定。
+- Do not support consumer/media keys such as `usage page` `0x0C` in this round.
+- Do not handle IME, text input, character output, or keyboard layout derivation in this round.
+- Do not redesign the relay server or change the network protocol format in this round.
+- Do not guarantee full coverage for every regional keyboard layout or every special key in one pass.
+- Do not expose HID events directly as a new external network protocol.
 
 ## Problem Statement
 
-目前專案內部共通模型為 Windows-style `KeyEvent(vk, scan, extended, pressed)`。Windows 平台直接產生這種事件，macOS 平台則透過查表把 `key_code` 轉成 Windows `vk/scan` 再送入上層。這造成：
+The project currently uses a Windows-style shared model: `KeyEvent(vk, scan, extended, pressed)`. Windows produces that event shape directly. macOS translates `key_code` into Windows `vk/scan` through a lookup table before sending it upward. This creates several problems:
 
-- 核心層被 Windows 語意主導。
-- 跨平台邏輯實際上依賴 Windows 表示法，而不是中立的實體鍵模型。
-- `key_echo` 與 mode/hotkey 邏輯無法自然共用真正的平台中立判斷。
-- 未來若要擴充更多平台或更多輸入來源，會持續把平台碼滲入核心。
+- The core layer is driven by Windows semantics.
+- Cross-platform logic depends on Windows representation rather than a neutral physical key model.
+- `key_echo` and mode/hotkey logic cannot naturally share a truly platform-neutral input model.
+- As more platforms or input sources are added, platform codes will continue leaking into the core.
 
-需要將平台正規化目標從「轉成 Windows」改為「轉成 HID」。
+The normalization target needs to change from "convert to Windows" to "convert to HID".
 
 ## HID Model
 
 ### Definitions
 
-- `usage_page`: HID 使用頁。第一階段固定使用 `0x07`，代表 Keyboard/Keypad。
-- `usage`: 該使用頁中的具體鍵值，例如 `A=0x04`、`Enter=0x28`、`Escape=0x29`、`F11=0x44`。
-- `pressed`: `True` 表示 key down，`False` 表示 key up。
+- `usage_page`: HID usage page. In phase 1 this is fixed to `0x07`, which means Keyboard/Keypad.
+- `usage`: The specific key within that usage page, for example `A=0x04`, `Enter=0x28`, `Escape=0x29`, `F11=0x44`.
+- `pressed`: `True` means key down, `False` means key up.
 
 ### Core Event Shape
 
-新的共通鍵盤事件定義如下：
+The new shared keyboard event is:
 
 ```python
 @dataclass(frozen=True, slots=True)
@@ -53,7 +53,7 @@ class KeyEvent:
     pressed: bool
 ```
 
-此模型只表達實體鍵事件，不承擔字元、layout、修飾後文字或平台碼等高階語意。
+This model represents only physical key events. It does not carry higher-level semantics such as characters, layout-derived meaning, modified text, or platform codes.
 
 ## Architecture
 
@@ -61,93 +61,93 @@ class KeyEvent:
 
 #### `adapters/*`
 
-平台專屬輸入擷取與映射層。
+Platform-specific input capture and mapping.
 
-- Windows: 原生事件 -> HID `KeyEvent`
-- macOS: 原生事件 -> HID `KeyEvent`
-- 不得向上暴露 `vk`、`scan`、`extended` 或 `key_code` 作為共通模型
+- Windows: native event -> HID `KeyEvent`
+- macOS: native event -> HID `KeyEvent`
+- Must not expose `vk`, `scan`, `extended`, or `key_code` upward as the shared model
 
 #### `application/*`
 
-只處理 HID `KeyEvent`。
+Consumes only HID `KeyEvent`.
 
 - hotkey policy
 - mode manager
 - activation
 - key echo
-- app facade 對鍵盤事件的應用邏輯
+- app facade keyboard-event behavior
 
 #### `apps/nvda_remote/*`
 
-依賴 HID `KeyEvent` 作為 app 內部事件模型，但在送出現有 relay protocol 前，透過單一 adapter 轉成舊的 `vk_code/scan_code/extended/pressed` payload。
+Uses HID `KeyEvent` as the internal app event model, but converts it to the legacy `vk_code/scan_code/extended/pressed` payload through a single adapter before sending the existing relay protocol.
 
 #### `interop/protocol/*`
 
-第一階段保持現有 wire format，不內建 HID network message。
+Keeps the existing wire format in phase 1 and does not introduce a HID-native network message.
 
 ## Platform Mapping Strategy
 
 ### Windows
 
-Windows low-level keyboard hook 仍負責截取原始事件，但正規化目標改為 HID。
+The Windows low-level keyboard hook still captures raw events, but its normalization target becomes HID.
 
-映射原則：
+Mapping rules:
 
-- 以 `scanCode + extended flag` 為主要依據。
-- 只有在必要時才輔助參考 `vkCode`。
-- 對左右修飾鍵、方向鍵、功能鍵與 keypad 相關鍵保持明確區分。
+- Use `scanCode + extended flag` as the primary source of truth.
+- Use `vkCode` only when necessary as a secondary aid.
+- Preserve clear distinctions for left/right modifiers, arrow keys, function keys, and keypad-related keys.
 
-原因：
+Reasoning:
 
-- `vkCode` 偏向 Windows 邏輯鍵語意，不足以穩定表示實體鍵位置。
-- 實體鍵正規化更應依賴 scan code 與 extended flag。
+- `vkCode` reflects Windows logical key semantics and is not sufficient for stable physical key identity.
+- Physical-key normalization should primarily depend on scan code and extended flag.
 
-Windows mapping 應集中在單一模組，例如 `adapters/windows/hid_map.py`，由 hook adapter 呼叫。
+Windows mapping should be centralized in a single module such as `adapters/windows/hid_map.py`, called by the hook adapter.
 
 ### macOS
 
-macOS event tap 仍負責截取 `key_code` 與按下/放開事件，但不再轉成 Windows `vk/scan`，而是直接查表轉成 HID usage。
+The macOS event tap still captures `key_code` and key down/up state, but it no longer converts those values into Windows `vk/scan`. Instead it maps directly to HID usage.
 
-映射原則：
+Mapping rules:
 
-- 以 macOS virtual key code 對應 HID usage。
-- 維持現有對一般鍵、功能鍵、方向鍵、左右修飾鍵的可識別性。
-- 查表集中在單一模組，例如 `adapters/macos/hid_map.py`。
+- Map macOS virtual key codes to HID usage.
+- Preserve current distinguishability for regular keys, function keys, arrow keys, and left/right modifiers.
+- Centralize the lookup table in a single module such as `adapters/macos/hid_map.py`.
 
-現有 `adapters/macos/keymap.py` 的角色將從「macOS -> Windows-style」改為「macOS -> HID」。
+The role of `adapters/macos/keymap.py` changes from "macOS -> Windows-style" to "macOS -> HID".
 
 ## Application Model Changes
 
-所有上層鍵盤邏輯都改成 HID-first：
+All upper-layer keyboard logic becomes HID-first:
 
 - `ModeManager`
 - `InputActivationUseCase`
 - `active_key_policy`
 - `state_transition_hotkeys`
 - `key_echo`
-- `nvda_remote` 本地 start/stop control 熱鍵判斷
+- `nvda_remote` local start/stop control hotkey decisions
 
-原本以 `event.vk == 0x7A`、`event.vk == 0x1B` 等方式判斷的地方，改為比對固定的 HID usage 常數。
+Places that currently check values such as `event.vk == 0x7A` or `event.vk == 0x1B` will instead compare against fixed HID usage constants.
 
-建議建立共通 HID constants 或 enum，至少先覆蓋：
+A shared set of HID constants or an enum should be introduced, covering at least:
 
-- 字母 A-Z
-- 數字 0-9
+- letters A-Z
+- digits 0-9
 - `Enter`
 - `Escape`
 - `Tab`
 - `Space`
 - `Backspace`
-- 方向鍵
+- arrow keys
 - `F1-F12`
-- 左右 `Shift`
-- 左右 `Control`
-- 左右 `Alt/Option`
-- 左右 `Meta/Command`
+- left/right `Shift`
+- left/right `Control`
+- left/right `Alt/Option`
+- left/right `Meta/Command`
 
 ## Legacy Relay Protocol Compatibility
 
-現有 NVDA Remote wire protocol 保持不變，`type="key"` payload 仍為：
+The existing NVDA Remote wire protocol remains unchanged. The `type="key"` payload stays:
 
 ```json
 {
@@ -161,114 +161,114 @@ macOS event tap 仍負責截取 `key_code` 與按下/放開事件，但不再轉
 
 ### Boundary Adapter
 
-新增單一 protocol adapter，負責：
+Add a single protocol adapter responsible for:
 
 - HID `KeyEvent` -> legacy remote payload
 
-此 adapter 是專案中唯一允許處理 `vk_code/scan_code/extended` 的位置。核心層與 app 邏輯不得直接依賴這些欄位。
+This adapter is the only place in the project that is allowed to deal with `vk_code/scan_code/extended`. The core layer and app logic must not depend on those fields directly.
 
 ### Adapter Behavior
 
-- 僅保證第一階段支援的 `usage_page=0x07` 標準鍵盤鍵。
-- 若某個 HID usage 無法可靠映射到舊 payload，應拒絕送出並產生明確的狀態通知或記錄，而不是猜測映射值。
-- protocol adapter 不反向主導核心模型；它只是相容層。
+- Only guarantee support for phase-1 standard keyboard keys under `usage_page=0x07`.
+- If a HID usage cannot be mapped reliably to the legacy payload, reject sending it and produce a clear status signal or log entry rather than guessing.
+- The protocol adapter must not drive the core model backward; it is a compatibility layer only.
 
 ## Data Flow
 
 ### Local Input Flow
 
-1. 平台 adapter 截取原生鍵盤事件。
-2. 平台 adapter 將原生事件轉成 HID `KeyEvent`。
-3. `application`/app use cases 只接收 HID `KeyEvent`。
-4. 若目前 app 是 `key_echo`，直接使用 HID 做本地輸出或控制判斷。
-5. 若目前 app 是 `nvda_remote` 且需要轉送，則在送網路前由 legacy protocol adapter 轉成舊 payload。
+1. A platform adapter captures a native keyboard event.
+2. The platform adapter converts the native event into HID `KeyEvent`.
+3. `application` and app use cases consume only HID `KeyEvent`.
+4. If the current app is `key_echo`, it uses HID directly for local output or control decisions.
+5. If the current app is `nvda_remote` and the event must be forwarded, the legacy protocol adapter converts it to the existing payload before network transmission.
 
 ### Remote Forwarding Flow
 
-1. `nvda_remote` 收到本地 HID `KeyEvent`。
-2. app 邏輯以 HID 判斷 mode/hotkey。
-3. 若事件需要送往 relay，呼叫 legacy protocol adapter。
-4. adapter 產生現有 `key` 訊息 payload。
-5. transport/serializer 以既有流程送出。
+1. `nvda_remote` receives a local HID `KeyEvent`.
+2. App logic uses HID to decide mode and hotkey behavior.
+3. If the event should be sent to the relay, app logic calls the legacy protocol adapter.
+4. The adapter produces the existing `key` message payload.
+5. Transport and serializer send it through the existing path.
 
 ## Migration Plan
 
 ### Step 1: Introduce HID Core Model
 
-- 重新定義共通 `interop.key.KeyEvent`
-- 建立 HID constants/enums
-- 刪除或淘汰核心層對 `vk/scan/extended` 的依賴
+- Redefine the shared `interop.key.KeyEvent`
+- Introduce HID constants/enums
+- Remove or phase out core-layer dependencies on `vk/scan/extended`
 
 ### Step 2: Convert Platform Capture Output
 
-- Windows hook 輸出 HID `KeyEvent`
-- macOS event tap 輸出 HID `KeyEvent`
-- 單元測試改驗證 HID 映射
+- Make the Windows hook emit HID `KeyEvent`
+- Make the macOS event tap emit HID `KeyEvent`
+- Update unit tests to validate HID mappings
 
 ### Step 3: Convert Application and App Logic
 
-- 將所有 hotkey/mode/use case 判斷改成 HID usage
-- 更新 `key_echo` 相關行為與測試
-- 更新 `nvda_remote` 本地控制流程與測試
+- Convert all hotkey/mode/use-case decisions to HID usage
+- Update `key_echo` behavior and tests
+- Update `nvda_remote` local control flow and tests
 
 ### Step 4: Add Legacy Protocol Adapter
 
-- 在 `apps/nvda_remote` 或 `interop/protocol` 合適邊界新增 HID -> legacy payload 轉換器
-- 更新 protocol 與 app service 測試
-- 驗證與既有 relay protocol 的互通
+- Add a HID -> legacy payload converter at the right boundary in `apps/nvda_remote` or `interop/protocol`
+- Update protocol and app-service tests
+- Validate interoperability with the existing relay protocol
 
 ## Testing Strategy
 
 ### Unit Tests
 
-- Windows 原生事件到 HID usage 的映射測試
-- macOS `key_code` 到 HID usage 的映射測試
-- HID hotkey 判斷測試
-- HID -> legacy remote payload 轉換測試
+- Mapping tests from Windows native events to HID usage
+- Mapping tests from macOS `key_code` to HID usage
+- HID hotkey decision tests
+- HID -> legacy remote payload conversion tests
 
 ### Integration Tests
 
-- 保持現有 relay session 測試，確認 wire format 不變
-- 補一條從 HID `KeyEvent` 到傳輸 payload 的整體路徑測試
+- Keep existing relay session tests to confirm the wire format remains unchanged
+- Add an end-to-end path test from HID `KeyEvent` to transmitted payload
 
 ### Regression Coverage
 
-至少覆蓋：
+At minimum, cover:
 
-- `F11` 進入/退出控制
-- `Escape` 與既有本地控制相關邏輯
-- 一般字母鍵 press/release
-- 左右修飾鍵
-- 方向鍵
-- keypad 與非 keypad 的差異鍵
+- `F11` entering and exiting control
+- `Escape` and related existing local-control behavior
+- regular letter key press/release
+- left/right modifiers
+- arrow keys
+- keypad vs. non-keypad distinction
 
 ## Risks
 
 ### Mapping Accuracy
 
-Windows 的 HID 正規化若錯用 `vkCode` 當主要依據，容易在左右修飾鍵、方向鍵與 keypad 上失真。必須以 `scanCode + extended` 為主要映射基礎。
+If Windows HID normalization uses `vkCode` as the primary source, left/right modifiers, arrow keys, and keypad-related keys can be distorted. The mapping must primarily use `scanCode + extended`.
 
 ### Legacy Compatibility Gaps
 
-維持舊 relay protocol 時，某些 HID 鍵可能無法 1:1 回投為 legacy `vk/scan/extended`。第一階段需要明確限制支援範圍，只保證標準 `0x07` 鍵盤鍵跑通。
+While keeping the old relay protocol, some HID keys may not map 1:1 back into legacy `vk/scan/extended`. Phase 1 must explicitly limit the supported scope and only guarantee that standard `0x07` keyboard keys work end-to-end.
 
-### Transition Scope
+### Migration Scope
 
-全面替換會觸及：
+Full replacement touches:
 
 - adapters
 - application
 - shared mode logic
 - key echo
 - nvda remote forwarding
-- 測試基礎假設
+- core testing assumptions
 
-因此實作需按步驟切分，避免在同一提交中同時混合模型改造與無關重構。
+Implementation should therefore be split into clear steps and must avoid mixing model migration with unrelated refactors in the same commit.
 
-## Open Decisions Resolved by This Design
+## Decisions Finalized By This Design
 
-- 核心模型使用 HID-first，而非保留 Windows-style model。
-- 第一階段只支援 usage page `0x07`。
-- `KeyEvent` 保留完整 `usage_page + usage + pressed` 形狀。
-- hotkey 與 mode 判斷全面改用 HID。
-- relay wire protocol 維持相容，由單一 boundary adapter 做 HID -> legacy 轉換。
+- The core model is HID-first rather than a retained Windows-style model.
+- Phase 1 supports only `usage page` `0x07`.
+- `KeyEvent` keeps the full `usage_page + usage + pressed` shape.
+- Hotkey and mode decisions move fully to HID.
+- The relay wire protocol remains compatible, with a single boundary adapter performing HID -> legacy conversion.

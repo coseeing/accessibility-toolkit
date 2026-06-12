@@ -4,6 +4,9 @@ import threading
 from ctypes import wintypes
 from typing import Any
 
+from adapters.inputs.base import KeyEventDecision
+from adapters.windows.keyboard_hook import WindowsKeyboardCapture
+
 
 WM_HOTKEY = 0x0312
 WM_QUIT = 0x0012
@@ -19,6 +22,7 @@ class WindowsHotkeyCapture:
         kernel32: Any | None = None,
         is_windows: bool | None = None,
         vk: int = F11_VK,
+        label: str = "F11",
     ) -> None:
         self._handler = None
         self._running = False
@@ -29,6 +33,7 @@ class WindowsHotkeyCapture:
         self._ready: threading.Event | None = None
         self._thread_id: int | None = None
         self._vk = vk
+        self._label = label
 
     @property
     def running(self) -> bool:
@@ -48,7 +53,7 @@ class WindowsHotkeyCapture:
         ready.wait()
         if not self._running:
             raise RuntimeError(
-                "Failed to register F11 hotkey — may already be in use by another app"
+                f"Failed to register {self._label} hotkey — may already be in use by another app"
             )
 
     def stop(self) -> None:
@@ -126,3 +131,36 @@ class WindowsHotkeyCapture:
     def _emit_for_tests(self) -> None:
         if self._handler is not None:
             self._handler()
+
+
+class WindowsKeyPressHotkeyCapture:
+    def __init__(
+        self,
+        *,
+        keyboard_capture: WindowsKeyboardCapture | None = None,
+        vk: int,
+    ) -> None:
+        self._keyboard_capture = keyboard_capture or WindowsKeyboardCapture()
+        self._handler = None
+        self._vk = vk
+
+    @property
+    def running(self) -> bool:
+        return self._keyboard_capture.running
+
+    def set_handler(self, handler) -> None:
+        self._handler = handler
+        self._keyboard_capture.set_listener(self._handle_key_event)
+
+    def start(self) -> None:
+        self._keyboard_capture.start()
+
+    def stop(self) -> None:
+        self._keyboard_capture.stop()
+
+    def _handle_key_event(self, event) -> KeyEventDecision:
+        if event.vk != self._vk or not event.pressed:
+            return KeyEventDecision.PASS_THROUGH
+        if self._handler is not None:
+            self._handler()
+        return KeyEventDecision.SUPPRESS

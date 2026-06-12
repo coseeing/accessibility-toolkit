@@ -14,8 +14,8 @@ from apps.shared.speech_settings_controller import SpeechSettingsController
 
 class EchoKeysMode:
     mode_id = "echo_keys"
-    enter_hotkey = "enter"
-    exit_hotkey = 0x1B
+    enter_vk = 0x79
+    exit_vk = 0x1B
 
     def __init__(self, control, echo_input):
         self._control = control
@@ -37,12 +37,15 @@ class EchoKeysMode:
 
 
 class KeyEchoAppFacade(KeyEventHandler):
+    enter_vk = EchoKeysMode.enter_vk
+
     def __init__(
         self,
         *,
         hotkey_capture: HotkeyCapture,
         input_capture: InputCapture,
         outputs: OutputCapabilities,
+        main_thread_dispatch=None,
     ) -> None:
         self.hotkey_capture = hotkey_capture
         self.input_capture = input_capture
@@ -50,6 +53,9 @@ class KeyEchoAppFacade(KeyEventHandler):
         self._input_service: KeyboardInputService | None = None
         self._status_listener = None
         self._echo_control: KeyEchoControlUseCase | None = None
+        self._main_thread_dispatch = main_thread_dispatch or (
+            lambda callback: callback()
+        )
 
         self._echo_input = KeyEchoInputUseCase(
             cancel=lambda: self._outputs.speech.cancel(),
@@ -167,6 +173,4 @@ class KeyEchoAppFacade(KeyEventHandler):
     def _handle_idle_hotkey(self) -> None:
         if self.is_echo_running():
             return
-        self.start_echo()
-
-
+        self._main_thread_dispatch(self.start_echo)

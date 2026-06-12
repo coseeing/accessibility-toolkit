@@ -71,6 +71,51 @@ class TestCreateHotkeyCapture:
         assert not capture.running
         capture.stop()
 
+    def test_windows_enter_vk_uses_enter_vk(self, monkeypatch):
+        monkeypatch.setattr(sys, "platform", "win32")
+
+        class FakeWindowsHotkeyCapture:
+            def __init__(self, *, vk, label):
+                self.vk = vk
+                self.label = label
+
+        monkeypatch.setattr(_bp, "_WindowsHotkeyCapture", FakeWindowsHotkeyCapture)
+
+        capture = create_hotkey_capture(0x0D)
+
+        assert capture.vk == 0x0D
+        assert capture.label == "VK_0D"
+
+    def test_macos_enter_vk_uses_return_key_code(self, monkeypatch):
+        monkeypatch.setattr(sys, "platform", "darwin")
+
+        class FakeMacHotkeyCapture:
+            def __init__(self, *, manager, key_code):
+                self.manager = manager
+                self.key_code = key_code
+
+        monkeypatch.setattr(_bp, "_MacOSHotkeyCapture", FakeMacHotkeyCapture)
+        monkeypatch.setattr(_bp, "_macos_event_tap_manager_instance", object())
+
+        capture = create_hotkey_capture(0x0D)
+
+        assert capture.key_code == 36
+
+    def test_macos_f10_vk_uses_f10_key_code(self, monkeypatch):
+        monkeypatch.setattr(sys, "platform", "darwin")
+
+        class FakeMacHotkeyCapture:
+            def __init__(self, *, manager, key_code):
+                self.manager = manager
+                self.key_code = key_code
+
+        monkeypatch.setattr(_bp, "_MacOSHotkeyCapture", FakeMacHotkeyCapture)
+        monkeypatch.setattr(_bp, "_macos_event_tap_manager_instance", object())
+
+        capture = create_hotkey_capture(0x79)
+
+        assert capture.key_code == 109
+
 
 class TestCreateClipboardService:
     def test_unsupported_platform_returns_fallback(self, monkeypatch):
@@ -153,7 +198,7 @@ class TestMacOSFactoriesWithColdGlobals:
 
         fake_hotkey = ModuleType("adapters.macos.hotkey")
         fake_hotkey.MacOSHotkeyCapture = type(
-            "FakeMacHotkeyCapture", (), {"__init__": lambda self, manager: None}
+            "FakeMacHotkeyCapture", (), {"__init__": lambda self, manager, key_code=103: None}
         )
         monkeypatch.setitem(sys.modules, "adapters.macos.hotkey", fake_hotkey)
 

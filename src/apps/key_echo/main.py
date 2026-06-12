@@ -31,7 +31,7 @@ def build_runtime() -> KeyEchoRuntime:
     from ui.echo.app import EchoApp
 
     input_capture = create_input_capture()
-    hotkey_capture = create_hotkey_capture()
+    hotkey_capture = create_hotkey_capture(KeyEchoAppFacade.enter_vk)
     output_scheduler = OutputScheduler()
     speech_service = SpeechService(
         backend_options=default_speech_backend_options(output_scheduler),
@@ -45,6 +45,7 @@ def build_runtime() -> KeyEchoRuntime:
         hotkey_capture=hotkey_capture,
         input_capture=input_capture,
         outputs=OutputCapabilities(speech=output_service),
+        main_thread_dispatch=getattr(EchoApp, "dispatch", None),
     )
     input_service = KeyboardInputService(input_capture, app_service)
     app_service.attach_input_service(input_service)

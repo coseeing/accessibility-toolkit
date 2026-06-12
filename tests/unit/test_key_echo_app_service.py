@@ -276,7 +276,11 @@ def test_build_runtime_composes_local_keyboard_and_speech(monkeypatch) -> None:
 
     from application.speech_backends import SpeechBackendOption
     monkeypatch.setattr(main_module, "create_input_capture", lambda: capture)
-    monkeypatch.setattr(main_module, "create_hotkey_capture", lambda: hotkey)
+    monkeypatch.setattr(
+        main_module,
+        "create_hotkey_capture",
+        lambda vk=0x7A: hotkey,
+    )
     monkeypatch.setattr(
         main_module,
         "default_speech_backend_options",
@@ -391,7 +395,11 @@ def test_build_runtime_macos_path_composes_capture(monkeypatch) -> None:
             manager=FakeManager(permissions=FakePermissions(), backend=object()),
         ),
     )
-    monkeypatch.setattr(main_module, "create_hotkey_capture", lambda: FakeHotkeyCapture())
+    monkeypatch.setattr(
+        main_module,
+        "create_hotkey_capture",
+        lambda vk=0x7A: FakeHotkeyCapture(),
+    )
     monkeypatch.setattr(
         main_module,
         "default_speech_backend_options",
@@ -530,6 +538,34 @@ def test_key_echo_app_service_idle_enter_uses_hotkey_path() -> None:
     assert capture.start_calls == 1
 
 
+def test_key_echo_app_service_idle_hotkey_dispatches_start_to_main_thread() -> None:
+    capture = FakeCapture()
+    hotkey = FakeHotkeyCapture()
+    speech_output = FakeSpeechOutput()
+    pending = []
+    service = KeyEchoAppService(
+        hotkey_capture=hotkey,
+        input_capture=capture,
+        outputs=OutputCapabilities(speech=SpeechService.single_backend(speech_output)),
+        main_thread_dispatch=pending.append,
+    )
+    input_service = KeyboardInputService(capture, service)
+    service.attach_input_service(input_service)
+    service.bind()
+    hotkey.start()
+
+    hotkey.handler()
+
+    assert service.is_echo_running() is False
+    assert len(pending) == 1
+
+    pending.pop()()
+
+    assert service.is_echo_running() is True
+    assert hotkey.stop_calls == 1
+    assert capture.start_calls == 1
+
+
 def test_key_echo_app_service_active_escape_exits_through_keyboard_pipeline() -> None:
     capture = FakeCapture()
     hotkey = FakeHotkeyCapture()
@@ -557,10 +593,15 @@ def test_build_runtime_starts_with_hotkey_running_and_keyboard_stopped(monkeypat
     capture = FakeCapture()
     hotkey = FakeHotkeyCapture()
     speech_output = FakeSpeechOutput()
+    requested_hotkeys: list[int] = []
 
     from application.speech_backends import SpeechBackendOption
     monkeypatch.setattr(main_module, "create_input_capture", lambda: capture)
-    monkeypatch.setattr(main_module, "create_hotkey_capture", lambda: hotkey)
+    monkeypatch.setattr(
+        main_module,
+        "create_hotkey_capture",
+        lambda vk=0x7A: requested_hotkeys.append(vk) or hotkey,
+    )
     monkeypatch.setattr(
         main_module,
         "default_speech_backend_options",
@@ -581,18 +622,66 @@ def test_build_runtime_starts_with_hotkey_running_and_keyboard_stopped(monkeypat
 
     runtime = main_module.build_runtime()
 
+    assert requested_hotkeys == [0x79]
     assert hotkey.running is True
     assert capture.running is False
+
+
+def test_build_runtime_uses_echo_mode_enter_hotkey_as_single_source_of_truth(monkeypatch) -> None:
+    capture = FakeCapture()
+    hotkey = FakeHotkeyCapture()
+    speech_output = FakeSpeechOutput()
+    requested_hotkeys: list[int] = []
+
+    from application.speech_backends import SpeechBackendOption
+    monkeypatch.setattr(main_module, "create_input_capture", lambda: capture)
+    monkeypatch.setattr(
+        main_module,
+        "create_hotkey_capture",
+        lambda vk=0x7A: requested_hotkeys.append(vk) or hotkey,
+    )
+    monkeypatch.setattr(
+        main_module,
+        "default_speech_backend_options",
+        lambda scheduler: (
+            SpeechBackendOption(
+                backend_id="pyttsx3",
+                label="pyttsx3",
+                factory=lambda: speech_output,
+            ),
+        ),
+    )
+
+    original = main_module.KeyEchoAppFacade.enter_vk
+    monkeypatch.setattr(main_module.KeyEchoAppFacade, "enter_vk", 0x7A)
+
+    import sys as _sys
+    import types
+    fake_echo_app_module = types.ModuleType("ui.echo.app")
+    fake_echo_app_module.EchoApp = lambda controller: None
+    monkeypatch.setitem(_sys.modules, "ui.echo.app", fake_echo_app_module)
+
+    try:
+        main_module.build_runtime()
+    finally:
+        monkeypatch.setattr(main_module.KeyEchoAppFacade, "enter_vk", original)
+
+    assert requested_hotkeys == [0x7A]
 
 
 def test_build_runtime_shutdown_stops_both_captures(monkeypatch) -> None:
     capture = FakeCapture()
     hotkey = FakeHotkeyCapture()
     speech_output = FakeSpeechOutput()
+    requested_hotkeys: list[int] = []
 
     from application.speech_backends import SpeechBackendOption
     monkeypatch.setattr(main_module, "create_input_capture", lambda: capture)
-    monkeypatch.setattr(main_module, "create_hotkey_capture", lambda: hotkey)
+    monkeypatch.setattr(
+        main_module,
+        "create_hotkey_capture",
+        lambda vk=0x7A: requested_hotkeys.append(vk) or hotkey,
+    )
     monkeypatch.setattr(
         main_module,
         "default_speech_backend_options",
@@ -615,5 +704,6 @@ def test_build_runtime_shutdown_stops_both_captures(monkeypatch) -> None:
     runtime.app_service.start_echo()
     runtime.app_service.shutdown()
 
+    assert requested_hotkeys == [0x79]
     assert hotkey.running is False
     assert capture.running is False

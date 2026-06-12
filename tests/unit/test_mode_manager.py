@@ -35,8 +35,8 @@ class FakeMode:
         self.events = []
 
     mode_id = "echo"
-    enter_hotkey = "enter"
-    exit_hotkey = 27
+    enter_vk = 0x0D
+    exit_vk = 27
 
     def can_enter(self):
         return True

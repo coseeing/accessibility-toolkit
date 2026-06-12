@@ -1,75 +1,87 @@
-# Input Architecture Unification — 完成報告
+# Tray Tool App Platform - Implementation Summary
 
-## 概述
+## Status: COMPLETE (261/261 tests passing)
 
-依據 [spec](specs/2026-06-11-input-architecture-unification-design.md) 與 [plan](plans/2026-06-11-input-architecture-unification-implementation.md)，完成 `nvda_remote` 與 `key_echo` 的 input lifecycle 統一化重構。
+## Commits
 
-兩個 app 現已採用相同的 `idle hotkey / active keyboard` 輸入生命週期模型。
+| # | SHA | Message |
+|---|-----|---------|
+| 1 | `6511122` | refactor: extract shared speech settings controller |
+| 2 | `72ff04f` | feat: add shared panel hide-on-close controller |
+| 3 | `aca588a` | feat: move speech settings into standalone frame |
+| 4 | `b73917a` | feat: add shared tray app shell |
+| 5 | `579ed76` | feat: add shared mode manager |
+| 6 | `1607d6e` | feat: migrate key echo to shared mode platform |
+| 7 | `4c02c8d` | feat: connect nvda remote to shared mode lifecycle |
+| 8 | `9e8dbcb` | refactor: complete tray tool app platform migration |
 
-## 完成準則驗證
+## What Was Built
 
-| # | 準則 | 狀態 |
-|---|------|------|
-| 1 | `nvda_remote` 與 `key_echo` 皆使用 `idle hotkey / active keyboard` lifecycle | ✅ |
-| 2 | `key_echo` 擁有正確的 `HotkeyCapture` idle 啟用路徑 | ✅ |
-| 3 | Active 狀態的退出鍵在 active keyboard pipeline 內處理 | ✅ |
-| 4 | 共享的 input lifecycle 與 transition policy 元件已提取 | ✅ |
-| 5 | App facades 不再包含主要的 capture-switching state machine | ✅ |
-| 6 | Shutdown/teardown 正確停止所有 captures | ✅ |
-| 7 | 現有 UI controller 介面保持相容 | ✅ |
-| 8 | 測試直接覆蓋共享 lifecycle rollback 與 app-level hotkey 行為 | ✅ |
+### New Files (12)
 
-## 新增/修改的共享元件
+**Shared app platform (`src/apps/shared/`):**
+- `__init__.py` - exports `SpeechSettingsController`
+- `speech_settings_controller.py` - unified speech backend/voice/rate/pitch/volume controller
+- `panel_controller.py` - show/hide/focus panel lifecycle with close-to-hide support
+- `tray_icon.py` - cross-platform `ToolTrayIcon` (wx.adv.TaskBarIcon wrapper)
+- `tool_app_shell.py` - resident app shell composing tray icon, panels, and shutdown
+- `mode_types.py` - `ActivationMode` protocol (enter/exit hotkeys, key routing)
+- `mode_manager.py` - mode registration, single-active-mode guarantee, capture switching
 
-### `src/application/input/` (新增)
+**UI:**
+- `src/ui/shared/speech_settings_frame.py` - standalone speech settings panel
 
-| 檔案 | 用途 |
-|------|------|
-| `activation.py` | `InputActivationUseCase` — capture lifecycle transitions，含 rollback 邏輯 |
-| `state_transition_hotkeys.py` | `StateTransitionHotkeyPolicy` — idle 熱鍵對映 |
-| `active_key_policy.py` | `ActiveKeyEventPolicy` — active 鍵盤路由，含退出鍵偵測 |
-| `__init__.py` | 公開 exports |
+**Tests (4):**
+- `tests/unit/test_speech_settings_controller.py` - 2 tests
+- `tests/unit/test_panel_controller.py` - 2 tests
+- `tests/unit/test_tray_icon.py` - 1 test
+- `tests/unit/test_tool_app_shell.py` - 3 tests
+- `tests/unit/test_mode_manager.py` - 8 tests
 
-### App Facade 改寫
+### Modified Files (10+)
 
-- **`src/apps/nvda_remote/facade.py`**: 組合 `InputActivationUseCase` + `ActiveKeyEventPolicy` 取代自有的 state machine
-- **`src/apps/key_echo/facade.py`**: 新增 `HotkeyCapture` 支援，組合共享元件
-- **`src/apps/key_echo/main.py`**: 啟動時以 `hotkey_capture.start()` 取代 `input_service.start()`
+**Facades:**
+- `src/apps/key_echo/facade.py` - added `EchoKeysMode`, wired `ModeManager`
+- `src/apps/nvda_remote/facade.py` - added `RemoteControlMode`, wired `ModeManager`
 
-### Use Case 簡化
+**Use cases:**
+- `src/apps/key_echo/use_cases/speech_settings.py` - compatibility alias
+- `src/apps/nvda_remote/use_cases/speech_settings.py` - compatibility alias
 
-- **`src/apps/nvda_remote/use_cases/control_mode.py`**: 移除 capture start/stop，僅保留 business state 與 status
-- **`src/apps/key_echo/use_cases/echo_control.py`**: 移除 `KeyboardInputService` 依賴，僅保留 echo state
+**UI:**
+- `src/ui/echo/app.py` - uses `ToolAppShell` for resident tray-icon startup
+- `src/ui/nvda_remote/app.py` - uses `ToolAppShell` for resident tray-icon startup
+- `src/ui/echo/main_frame.py` - removed embedded speech controls, added hide-on-close
+- `src/ui/nvda_remote/main_frame.py` - removed embedded speech controls, added hide-on-close
 
-## 測試覆蓋
+**Tests:**
+- `tests/unit/test_app_wx.py` - extended fake wx with `Menu`, `TaskBarIcon`, `ArtProvider`, `Hide`/`Raise`/`Bind`
+- `tests/unit/test_key_echo_app_service.py` - updated for ModeManager
+- `tests/unit/test_nvda_remote_app_service.py` - updated for ModeManager
 
-**248 tests passed, 0 failed**
+## Spec Coverage
 
-| 測試檔案 | 新增內容 |
-|----------|---------|
-| `tests/unit/test_input_activation.py` | 2 測試 (enter_active 成功/rollback) |
-| `tests/unit/test_input_policies.py` | 2 測試 (hotkey match, exit key routing) |
-| `tests/unit/test_key_echo_app_service.py` | 4 新測試 (hotkey path, escape exit, idle mode, shutdown) |
-| `tests/unit/test_nvda_remote_app_service.py` | 1 新測試 (F11 hotkey capture path) |
+| Requirement | Status |
+|---|---|
+| Shared speech settings controller | Task 1 |
+| Shared hide-on-close panel lifecycle | Task 2 |
+| Standalone speech settings panel | Task 3 |
+| Resident cross-platform tray/status-icon shell | Task 4 |
+| Shared mode model with per-mode enter/exit hotkeys | Task 5 |
+| key_echo as first full mode-platform validation app | Task 6 |
+| nvda_remote as second more complex mode-lifecycle app | Task 7 |
+| Two-app staged validation + regression | Task 8 |
 
-## Commit 列表
+## Architecture
 
 ```
-b22ea8f test: verify unified input runtime wiring
-9c8cb9d fix: wire input capture listener, implement set_active callback for key_echo
-ee8a783 refactor: unify key echo input lifecycle
-d4bddff fix: remove dead code, fix test for public API, remove duplicate test
-4260c4b refactor: route nvda remote through shared input lifecycle
-93edac4 fix: add is_active guard, track hotkey stop, rollback in exit_active
-4e9b338 feat: add shared input lifecycle components
-5552dc4 chore: remove unused import, follow naming convention
-797c165 fix: correct hotkey capture path test setup
-6b5feec fix: remove broken assertion in idle f11 hotkey test
-76cff16 test: add input lifecycle regression coverage
-```
-
-## 變更統計
-
-```
-15 files changed, 1274 insertions(+), 173 deletions(-)
+wx.App
+  -> ToolAppShell
+       -> ToolTrayIcon (tray icon + popup menu: Main Panel / Speech Settings / Exit)
+       -> PanelController (show/hide lifecycle)
+       -> ModeManager
+            -> EchoKeysMode (key_echo)
+            -> RemoteControlMode (nvda_remote)
+       -> App-specific facade
+            -> SpeechSettingsController (shared)
 ```

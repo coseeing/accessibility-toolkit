@@ -11,7 +11,9 @@ from adapters.windows.nvda_controller import (
     VENDORED_X64_DLL,
     NvdaControllerSpeechOutput,
 )
+from adapters.windows.hotkey import WindowsKeyPressHotkeyCapture
 from interop.key.key_event import KeyEvent
+from adapters.inputs.base import KeyEventDecision
 
 
 WM_KEYDOWN = 0x0100
@@ -333,3 +335,59 @@ def test_windows_hotkey_capture_stop_does_not_double_stop():
 
     assert capture.running is False
     assert len(user32.unregistered) == 1
+
+
+class FakeKeyboardCaptureForHotkey:
+    def __init__(self):
+        self.listener = None
+        self.start_calls = 0
+        self.stop_calls = 0
+
+    @property
+    def running(self):
+        return self.start_calls > self.stop_calls
+
+    def set_listener(self, listener):
+        self.listener = listener
+
+    def start(self):
+        self.start_calls += 1
+
+    def stop(self):
+        self.stop_calls += 1
+
+
+def test_windows_keypress_hotkey_capture_triggers_handler_on_matching_keydown():
+    keyboard = FakeKeyboardCaptureForHotkey()
+    seen = []
+    capture = WindowsKeyPressHotkeyCapture(
+        keyboard_capture=keyboard,
+        vk=0x0D,
+    )
+    capture.set_handler(lambda: seen.append("enter"))
+
+    capture.start()
+    decision = keyboard.listener(
+        KeyEvent(vk=0x0D, scan=28, extended=False, pressed=True)
+    )
+
+    assert decision == KeyEventDecision.SUPPRESS
+    assert seen == ["enter"]
+
+
+def test_windows_keypress_hotkey_capture_ignores_non_matching_keys():
+    keyboard = FakeKeyboardCaptureForHotkey()
+    seen = []
+    capture = WindowsKeyPressHotkeyCapture(
+        keyboard_capture=keyboard,
+        vk=0x0D,
+    )
+    capture.set_handler(lambda: seen.append("enter"))
+
+    capture.start()
+    decision = keyboard.listener(
+        KeyEvent(vk=0x41, scan=30, extended=False, pressed=True)
+    )
+
+    assert decision == KeyEventDecision.PASS_THROUGH
+    assert seen == []

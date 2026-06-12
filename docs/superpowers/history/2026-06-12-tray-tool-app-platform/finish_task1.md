@@ -1,67 +1,54 @@
-# Review Task 0 修正報告
+# Review Task 0 - Fix Summary
 
-## 審查來源
+## Review Source
 
-`docs/superpowers/review_task0.md`
+`docs/superpowers/review_task0.md` — 4 findings verified against codebase and spec, all confirmed correct.
 
-## 審查結果確認
+## Fixes Applied (commit `735d9a6`)
 
-審查者指出兩個 **High** 優先級問題，經確認均為正確：
+### 1. High: Exit action does not terminate wx application
 
-### Issue 1: key_echo 的公開 controller surface 與 input lifecycle 不一致
+**Problem:** `ToolAppShell.shutdown()` destroyed the tray icon and called `controller.shutdown()`, but never called `wx.ExitMainLoop()`. This left the app process running with hidden frames.
 
-**問題**: `KeyEchoAppFacade.start_echo()` / `stop_echo()` 只改變 `KeyEchoControlUseCase` 的內部狀態，完全不呼叫 `InputActivationUseCase.enter_active()` / `exit_active()`。UI 按鈕點擊時，capture 擁有權不會切換：
-- UI `Start` → `is_echo_running()` = True，但 `InputCapture` 仍停止、`HotkeyCapture` 仍執行
-- 先用 `Enter` 熱鍵進入 active，再點 UI `Stop` → echo flag 清除，但 `InputCapture` 仍執行、`HotkeyCapture` 未恢復
+**Fix:** `tool_app_shell.py:29` — Added `wx.GetApp().ExitMainLoop()` at the end of `shutdown()`. This imports `wx` and triggers proper app termination.
 
-**驗證**: `src/apps/key_echo/facade.py:67-70` — `start_echo()` 僅呼叫 `self._echo_control.start_echo()`，未觸及 `_activation`。  
-UI 呼叫路徑: `src/ui/echo/main_frame.py:40` → `controller.start_echo()`
+**Ref:** `src/apps/shared/tool_app_shell.py:29`
 
-### Issue 2: nvda_remote 的公開 controller surface 與 input lifecycle 不一致
+### 2. Medium: Double shutdown wiring
 
-**問題**: `NvdaRemoteAppFacade.start_control()` / `stop_control()` 只改變 `control_state`，完全不呼叫 `InputActivationUseCase.enter_active()` / `exit_active()`。UI 按鈕點擊時，capture 擁有權不會切換：
-- UI `Start Control` → `control_state` = CONTROLLING，但 `InputCapture` 未啟動、`HotkeyCapture` 未停止
-- 先用 `F11` 熱鍵進入 active，再點 UI `Stop Control` → `control_state` = CONNECTED，但 `InputCapture` 仍執行、`HotkeyCapture` 未恢復
+**Problem:** Both `ToolAppShell.shutdown()` and each `wx.App.OnExit()` called `controller.shutdown()`. When Exit was triggered via tray menu, the controller was shut down twice.
 
-**驗證**: `src/apps/nvda_remote/facade.py:137-138` — `start_control()` 僅呼叫 `self._control_mode.start_control()`，未觸及 `_activation`。  
-UI 呼叫路徑: `src/ui/nvda_remote/main_frame.py:83` → `controller.start_control()`
+**Fix:** Removed `controller.shutdown()` from both `EchoApp.OnExit()` and `NvdaRemoteApp.OnExit()`. The shell's `shutdown()` is the single shutdown path.
 
-## 修正內容
+**Ref:** `src/ui/echo/app.py:21-22`, `src/ui/nvda_remote/app.py:21-22`
 
-### `src/apps/key_echo/facade.py`
+### 3. Medium: ModeManager ignores exit_active() failure
 
-| 方法 | 修正前 | 修正後 |
-|------|--------|--------|
-| `start_echo()` | 只呼叫 `_echo_control.start_echo()` | 先呼叫 `_activation.enter_active()`，失敗則 return，再呼叫 `_echo_control.start_echo()` |
-| `stop_echo()` | 只呼叫 `_echo_control.stop_echo()` | 先呼叫 `_activation.exit_active()`，再呼叫 `_echo_control.stop_echo()` |
-| `_handle_idle_hotkey()` | 自管 `enter_active()` + `start_echo()` | 簡化為只呼叫 `self.start_echo()`（capture 由 `start_echo()` 管理） |
-| `_exit_active_from_keyboard()` | 自管 `exit_active()` + `stop_echo()` | 簡化為只呼叫 `self.stop_echo()`（capture 由 `stop_echo()` 管理） |
+**Problem:** `exit_active_mode()` ignored the return value of `InputActivationUseCase.exit_active()`. When hotkey capture restart failed, the mode was still marked as exited, creating silent state mismatch between UI state and actual capture state.
 
-### `src/apps/nvda_remote/facade.py`
+**Fix:** `mode_manager.py:46-48` — `exit_active_mode()` now checks the return value. If `exit_active()` returns `False`, the mode is NOT exited, `active_mode_id` is NOT cleared, and `mode.exit()` is NOT called. The error was already reported by `InputActivationUseCase` (no redundant notification).
 
-| 方法 | 修正前 | 修正後 |
-|------|--------|--------|
-| `start_control()` | 只呼叫 `_control_mode.start_control()` | 先呼叫 `_activation.enter_active()`，失敗則 return，再呼叫 `_control_mode.start_control()` |
-| `stop_control()` | 只呼叫 `_control_mode.stop_control()` | 先呼叫 `_activation.exit_active()`，失敗則 return，再呼叫 `_control_mode.stop_control()` |
-| `_handle_idle_hotkey()` | 自管 `enter_active()` + dispatch `start_control` | 簡化為只 dispatch `self.start_control`（capture 由 `start_control()` 管理） |
-| `_exit_active_from_keyboard()` | 自管 `exit_active()` + 條件式 `stop_control()` | 簡化為只呼叫 `self.stop_control()`（capture 由 `stop_control()` 管理） |
+**Ref:** `src/apps/shared/mode_manager.py:46-48`
 
-## 安全考量
+### 4. Low: Hard-coded tray tooltip
 
-所有 `enter_active()` / `exit_active()` 呼叫均受 `InputActivationUseCase` 內部的 `_is_active()` guard 保護，不會重複進入/退出。熱鍵路徑與 UI 路徑可安全共存：
-- 熱鍵進入 active → `_handle_idle_hotkey()` → `start_control()` → `enter_active()` (guard: no-op if already active)
-- UI 進入 active → `start_control()` → `enter_active()` (same guard)
-- 同理適用於退出路徑
+**Problem:** `ToolTrayIcon` had `"NVDA Remote"` hard-coded as the tooltip for all apps, including `key_echo`.
 
-## 測試結果
+**Fix:** `tray_icon.py:6` — Added `app_name` parameter (default `"NVDA Remote"`). `ToolAppShell` passes `app_name` through. `EchoApp` passes `app_name="Key Echo"`, `NvdaRemoteApp` uses the default.
+
+**Ref:** `src/apps/shared/tray_icon.py:6`, `src/ui/echo/app.py:20`
+
+## Test Updates
+
+| File | Change |
+|------|--------|
+| `test_tool_app_shell.py` | Added `FakeApp.ExitMainLoop()` and `fake_wx.GetApp()` |
+| `test_app_wx.py` | Added `ExitMainLoop()` to fake `App`, added `GetApp()` returning fallback |
+| `test_nvda_remote_app_service.py` | Updated `test_nvda_remote_service_stop_control_handles_hotkey_start_failure`: control_state now stays `CONTROLLING` (not `CONNECTED`) when exit fails; only one error event expected |
+| `test_mode_manager.py` | Added `FakeActivation.fail_exit` flag; added `test_mode_manager_preserves_active_mode_when_exit_active_fails` |
+
+## Result
 
 ```
-PYTHONPATH=src python3 -m pytest tests/unit tests/integration -v
-248 passed in 0.56s
-```
-
-## Commit
-
-```
-1f47ceb fix: restore UI-controller capture lifecycle consistency
+262 passed (257 unit + 5 integration)
 ```

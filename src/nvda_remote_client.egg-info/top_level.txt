@@ -1,0 +1,6 @@
+adapters
+application
+apps
+bootstrap
+interop
+ui

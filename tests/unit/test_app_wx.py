@@ -819,6 +819,8 @@ def test_nvda_remote_main_build_runtime_composes_app_service_and_gui(monkeypatch
             self.bind_calls += 1
 
     class FakeAppService:
+        enter_vk = 0x7A
+
         def __init__(
             self,
             *,
@@ -857,11 +859,19 @@ def test_nvda_remote_main_build_runtime_composes_app_service_and_gui(monkeypatch
     monkeypatch.setattr(nvda_remote_main, "QueuedOutputService", FakeQueuedOutputService)
     monkeypatch.setattr(nvda_remote_main, "RelayTransport", FakeTransport)
     monkeypatch.setattr(bootstrap.platform, "create_input_capture", lambda: FakeKeyboardCapture())
-    monkeypatch.setattr(bootstrap.platform, "create_hotkey_capture", lambda: FakeHotkeyCapture())
+    monkeypatch.setattr(
+        bootstrap.platform,
+        "create_hotkey_capture",
+        lambda vk=0x7A: FakeHotkeyCapture(),
+    )
     monkeypatch.setattr(bootstrap.platform.sys, "platform", "win32")
     monkeypatch.setattr(bootstrap.platform, "create_clipboard_service", lambda: FakeClipboard())
     monkeypatch.setattr(nvda_remote_main, "create_input_capture", lambda: FakeKeyboardCapture())
-    monkeypatch.setattr(nvda_remote_main, "create_hotkey_capture", lambda: FakeHotkeyCapture())
+    monkeypatch.setattr(
+        nvda_remote_main,
+        "create_hotkey_capture",
+        lambda vk=0x7A: FakeHotkeyCapture(),
+    )
     monkeypatch.setattr(nvda_remote_main, "create_clipboard_service", lambda: FakeClipboard())
     monkeypatch.setattr(nvda_remote_main, "KeyboardInputService", FakeKeyboardInputService)
     monkeypatch.setattr(nvda_remote_main, "NvdaRemoteAppFacade", FakeAppService)
@@ -889,6 +899,98 @@ def test_nvda_remote_main_build_runtime_composes_app_service_and_gui(monkeypatch
     assert runtime.input_service.handler is runtime.app_service
     assert runtime.input_service.bind_calls == 1
     assert runtime.app.controller is runtime.app_service
+
+
+def test_nvda_remote_build_runtime_uses_mode_enter_hotkey_as_single_source_of_truth(
+    monkeypatch,
+):
+    install_fake_wx(monkeypatch)
+    nvda_remote_main = importlib.import_module("apps.nvda_remote.main")
+
+    requested_hotkeys: list[int] = []
+
+    class FakeConfigStore:
+        def __init__(self, path):
+            self.path = path
+
+        def load_backend_id(self, *, default_backend_id):
+            return "pyttsx3"
+
+        def save_backend_id(self, backend_id):
+            return None
+
+    class FakeSpeechService:
+        def __init__(self, *, backend_options, selected_backend_id):
+            self.backend_options = backend_options
+            self.selected_backend_id = selected_backend_id
+
+    class FakeOutputScheduler:
+        pass
+
+    class FakeQueuedOutputService:
+        def __init__(self, *, speech, scheduler):
+            self.speech = speech
+            self.scheduler = scheduler
+
+    class FakeTransport:
+        def __init__(self, serializer):
+            self.serializer = serializer
+
+    class FakeKeyboardCapture:
+        pass
+
+    class FakeHotkeyCapture:
+        pass
+
+    class FakeClipboard:
+        pass
+
+    class FakeKeyboardInputService:
+        def __init__(self, capture, handler):
+            self.capture = capture
+            self.handler = handler
+
+        def bind(self):
+            return None
+
+    class FakeAppService:
+        enter_vk = 0x7B
+
+        def __init__(self, **kwargs):
+            self.__dict__.update(kwargs)
+
+        def bind(self):
+            return None
+
+    class FakeApp:
+        dispatch = staticmethod(lambda callback: callback())
+
+        def __init__(self, controller):
+            self.controller = controller
+
+        def MainLoop(self):
+            return 0
+
+    monkeypatch.setattr(nvda_remote_main, "SpeechBackendConfigStore", FakeConfigStore)
+    monkeypatch.setattr(nvda_remote_main, "OutputScheduler", FakeOutputScheduler)
+    monkeypatch.setattr(nvda_remote_main, "SpeechService", FakeSpeechService)
+    monkeypatch.setattr(nvda_remote_main, "QueuedOutputService", FakeQueuedOutputService)
+    monkeypatch.setattr(nvda_remote_main, "RelayTransport", FakeTransport)
+    monkeypatch.setattr(nvda_remote_main, "create_input_capture", lambda: FakeKeyboardCapture())
+    monkeypatch.setattr(
+        nvda_remote_main,
+        "create_hotkey_capture",
+        lambda vk=0x7A: requested_hotkeys.append(vk) or FakeHotkeyCapture(),
+    )
+    monkeypatch.setattr(nvda_remote_main, "create_clipboard_service", lambda: FakeClipboard())
+    monkeypatch.setattr(nvda_remote_main, "KeyboardInputService", FakeKeyboardInputService)
+    monkeypatch.setattr(nvda_remote_main, "NvdaRemoteAppFacade", FakeAppService)
+    monkeypatch.setattr(nvda_remote_main, "NvdaRemoteApp", FakeApp)
+    monkeypatch.setattr(nvda_remote_main, "default_config_path", lambda: "config.json")
+
+    nvda_remote_main.build_runtime()
+
+    assert requested_hotkeys == [0x7B]
 
 
 def test_build_runtime_uses_macos_input_and_hotkey_on_darwin(monkeypatch):
@@ -932,8 +1034,9 @@ def test_build_runtime_uses_macos_input_and_hotkey_on_darwin(monkeypatch):
             self.manager = manager
 
     class FakeMacHotkeyCapture:
-        def __init__(self, *, manager):
+        def __init__(self, *, manager, key_code=103):
             self.manager = manager
+            self.key_code = key_code
 
     class FakeManager:
         def __init__(self, *, permissions, backend):
@@ -952,6 +1055,8 @@ def test_build_runtime_uses_macos_input_and_hotkey_on_darwin(monkeypatch):
             return None
 
     class FakeAppService:
+        enter_vk = 0x7A
+
         def __init__(self, **kwargs):
             self.__dict__.update(kwargs)
 
@@ -1040,8 +1145,9 @@ def test_build_runtime_uses_safe_clipboard_on_darwin(monkeypatch):
             self.manager = manager
 
     class FakeMacHotkeyCapture:
-        def __init__(self, *, manager):
+        def __init__(self, *, manager, key_code=103):
             self.manager = manager
+            self.key_code = key_code
 
     class FakeManager:
         def __init__(self, *, permissions, backend):
@@ -1057,6 +1163,8 @@ def test_build_runtime_uses_safe_clipboard_on_darwin(monkeypatch):
             return None
 
     class FakeAppService:
+        enter_vk = 0x7A
+
         def __init__(self, **kwargs):
             self.__dict__.update(kwargs)
 
@@ -1169,6 +1277,8 @@ def test_nvda_remote_main_build_runtime_falls_back_for_unknown_backend(monkeypat
             return None
 
     class FakeAppService:
+        enter_vk = 0x7A
+
         def __init__(self, **kwargs):
             self.__dict__.update(kwargs)
 
@@ -1190,11 +1300,19 @@ def test_nvda_remote_main_build_runtime_falls_back_for_unknown_backend(monkeypat
     monkeypatch.setattr(nvda_remote_main, "QueuedOutputService", FakeQueuedOutputService)
     monkeypatch.setattr(nvda_remote_main, "RelayTransport", FakeTransport)
     monkeypatch.setattr(bootstrap.platform, "create_input_capture", lambda: FakeKeyboardCapture())
-    monkeypatch.setattr(bootstrap.platform, "create_hotkey_capture", lambda: FakeHotkeyCapture())
+    monkeypatch.setattr(
+        bootstrap.platform,
+        "create_hotkey_capture",
+        lambda vk=0x7A: FakeHotkeyCapture(),
+    )
     monkeypatch.setattr(bootstrap.platform, "create_clipboard_service", lambda: FakeClipboard())
     monkeypatch.setattr(bootstrap.platform.sys, "platform", "win32")
     monkeypatch.setattr(nvda_remote_main, "create_input_capture", lambda: FakeKeyboardCapture())
-    monkeypatch.setattr(nvda_remote_main, "create_hotkey_capture", lambda: FakeHotkeyCapture())
+    monkeypatch.setattr(
+        nvda_remote_main,
+        "create_hotkey_capture",
+        lambda vk=0x7A: FakeHotkeyCapture(),
+    )
     monkeypatch.setattr(nvda_remote_main, "create_clipboard_service", lambda: FakeClipboard())
     monkeypatch.setattr(nvda_remote_main, "KeyboardInputService", FakeKeyboardInputService)
     monkeypatch.setattr(nvda_remote_main, "NvdaRemoteAppFacade", FakeAppService)
