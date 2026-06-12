@@ -1,5 +1,5 @@
 from adapters.inputs.base import KeyEventDecision
-from interop.key.key_event import KeyEvent
+from interop.key import HID, KeyEvent
 
 from apps.shared.mode_manager import ModeManager
 
@@ -35,8 +35,8 @@ class FakeMode:
         self.events = []
 
     mode_id = "echo"
-    enter_vk = 0x0D
-    exit_vk = 27
+    enter_usage = HID.ENTER
+    exit_usage = HID.ESCAPE
 
     def can_enter(self):
         return True
@@ -50,7 +50,7 @@ class FakeMode:
         return True
 
     def handle_key_event(self, event):
-        self.events.append(event.vk)
+        self.events.append(event.usage)
         return KeyEventDecision.SUPPRESS
 
 
@@ -83,11 +83,11 @@ def test_mode_manager_routes_non_exit_keys_to_active_mode():
     manager.activate_mode("echo")
 
     decision = manager.handle_key_event(
-        KeyEvent(vk=65, scan=0, extended=False, pressed=True)
+        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.A, pressed=True)
     )
 
     assert decision == KeyEventDecision.SUPPRESS
-    assert mode.events == [65]
+    assert mode.events == [HID.A]
 
 
 def test_mode_manager_exit_key_deactivates_mode():
@@ -102,7 +102,7 @@ def test_mode_manager_exit_key_deactivates_mode():
     manager.activate_mode("echo")
 
     decision = manager.handle_key_event(
-        KeyEvent(vk=27, scan=1, extended=False, pressed=True)
+        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.ESCAPE, pressed=True)
     )
 
     assert decision == KeyEventDecision.SUPPRESS
@@ -122,7 +122,7 @@ def test_mode_manager_passes_through_when_no_mode_active():
     )
 
     decision = manager.handle_key_event(
-        KeyEvent(vk=65, scan=0, extended=False, pressed=True)
+        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.A, pressed=True)
     )
 
     assert decision == KeyEventDecision.PASS_THROUGH
@@ -176,11 +176,11 @@ def test_mode_manager_ignores_exit_key_release():
     manager.activate_mode("echo")
 
     decision = manager.handle_key_event(
-        KeyEvent(vk=27, scan=1, extended=False, pressed=False)
+        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.ESCAPE, pressed=False)
     )
 
     assert decision == KeyEventDecision.SUPPRESS
-    assert mode.events == [27]
+    assert mode.events == [HID.ESCAPE]
     assert manager.active_mode_id == "echo"
 
 
@@ -214,7 +214,7 @@ def test_mode_manager_preserves_active_mode_when_exit_active_fails():
     manager.activate_mode("echo")
 
     decision = manager.handle_key_event(
-        KeyEvent(vk=27, scan=1, extended=False, pressed=True)
+        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.ESCAPE, pressed=True)
     )
 
     assert decision == KeyEventDecision.SUPPRESS

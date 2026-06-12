@@ -57,6 +57,6 @@ class ModeManager:
         if self.active_mode_id is None:
             return KeyEventDecision.PASS_THROUGH
         mode = self._modes[self.active_mode_id]
-        if event.pressed and event.vk == mode.exit_vk:
+        if event.pressed and event.usage == mode.exit_usage:
             return self.exit_active_mode()
         return mode.handle_key_event(event)

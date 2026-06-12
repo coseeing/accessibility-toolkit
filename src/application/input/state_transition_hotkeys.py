@@ -8,4 +8,4 @@ class StateTransitionHotkeyPolicy:
     def match(self, event: KeyEvent) -> str | None:
         if not event.pressed:
             return None
-        return self._mapping.get(event.vk)
+        return self._mapping.get(event.usage)
