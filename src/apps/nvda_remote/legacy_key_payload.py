@@ -101,14 +101,29 @@ _USAGE_TO_LEGACY: dict[int, tuple[int, int, bool]] = {
     HID.KEYPAD_0: (96, 82, False),
     HID.KEYPAD_DECIMAL: (110, 83, False),
     HID.KEYPAD_EQUALS: (187, 13, False),
+    HID.PRINT_SCREEN: (44, 55, True),
+    HID.SCROLL_LOCK: (145, 70, False),
+    HID.NUM_LOCK: (144, 69, True),
+    HID.APPLICATION: (93, 93, True),
+}
+
+_EXPLICIT_UNSUPPORTED: dict[int, str] = {
+    HID.NON_US_BACKSLASH: "NON_US_BACKSLASH",
+    HID.PAUSE: "PAUSE",
+    HID.NON_US_HASH: "NON_US_HASH",
+    HID.INTERNATIONAL1: "INTERNATIONAL1",
+    HID.INTERNATIONAL3: "INTERNATIONAL3",
+    HID.INTERNATIONAL4: "INTERNATIONAL4",
+    HID.INTERNATIONAL5: "INTERNATIONAL5",
 }
 
 
 def key_event_to_legacy_remote_payload(event: KeyEvent) -> dict[str, int | bool]:
     if event.usage_page != HID.KEYBOARD_PAGE:
         raise ValueError(f"Unsupported HID usage page: 0x{event.usage_page:02X}")
-    if event.usage == HID.NON_US_BACKSLASH:
-        raise ValueError("Unsupported HID usage for legacy relay: NON_US_BACKSLASH")
+    unsupported_name = _EXPLICIT_UNSUPPORTED.get(event.usage)
+    if unsupported_name is not None:
+        raise ValueError(f"Unsupported HID usage for legacy relay: {unsupported_name}")
     mapping = _USAGE_TO_LEGACY.get(event.usage)
     if mapping is None:
         raise ValueError(f"Unsupported HID usage for remote payload: 0x{event.usage:02X}")

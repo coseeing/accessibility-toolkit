@@ -216,3 +216,31 @@ def test_forwarding_suppresses_unsupported_non_us_backslash_in_control_mode(capl
     assert sent == []
     assert "0x64" in caplog.text
     assert "unsupported usage" in caplog.text
+
+
+def test_forwarding_suppresses_unsupported_jis_key_in_control_mode(caplog):
+    import logging
+    from apps.nvda_remote.use_cases.input_forwarding import NvdaRemoteInputForwardingUseCase
+
+    logging.getLogger("apps.nvda_remote.use_cases.input_forwarding").setLevel(logging.DEBUG)
+
+    sent = []
+    use_case = NvdaRemoteInputForwardingUseCase(
+        is_connected=lambda: True,
+        is_controlling=lambda: True,
+        send_key=lambda payload: sent.append(payload),
+        on_local_stop=lambda: None,
+    )
+
+    decision = use_case.handle(
+        KeyEvent(
+            usage_page=HID.KEYBOARD_PAGE,
+            usage=HID.INTERNATIONAL3,
+            pressed=True,
+        )
+    )
+
+    assert decision == KeyEventDecision.SUPPRESS
+    assert sent == []
+    assert "0x89" in caplog.text
+    assert "unsupported usage" in caplog.text

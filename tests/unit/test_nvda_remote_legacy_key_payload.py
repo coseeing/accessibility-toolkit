@@ -181,3 +181,69 @@ def test_non_us_backslash_is_explicitly_unsupported_for_legacy_remote_payload():
         assert False, "Expected ValueError"
     except ValueError as exc:
         assert "NON_US_BACKSLASH" in str(exc)
+
+
+def test_print_screen_maps_to_legacy_remote_payload():
+    event = KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.PRINT_SCREEN, pressed=True)
+    assert key_event_to_legacy_remote_payload(event) == {
+        "vk_code": 44,
+        "scan_code": 55,
+        "extended": True,
+        "pressed": True,
+    }
+
+
+def test_scroll_lock_maps_to_legacy_remote_payload():
+    event = KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.SCROLL_LOCK, pressed=False)
+    assert key_event_to_legacy_remote_payload(event) == {
+        "vk_code": 145,
+        "scan_code": 70,
+        "extended": False,
+        "pressed": False,
+    }
+
+
+def test_num_lock_maps_to_legacy_remote_payload():
+    event = KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.NUM_LOCK, pressed=True)
+    assert key_event_to_legacy_remote_payload(event) == {
+        "vk_code": 144,
+        "scan_code": 69,
+        "extended": True,
+        "pressed": True,
+    }
+
+
+def test_application_maps_to_legacy_remote_payload():
+    event = KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.APPLICATION, pressed=True)
+    assert key_event_to_legacy_remote_payload(event) == {
+        "vk_code": 93,
+        "scan_code": 93,
+        "extended": True,
+        "pressed": True,
+    }
+
+
+def test_pause_is_explicitly_unsupported_for_legacy_remote_payload():
+    event = KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.PAUSE, pressed=True)
+    try:
+        key_event_to_legacy_remote_payload(event)
+        assert False, "Expected ValueError"
+    except ValueError as exc:
+        assert "PAUSE" in str(exc)
+
+
+def test_jis_keys_are_explicitly_unsupported_for_legacy_remote_payload():
+    for usage_name, usage in [
+        ("NON_US_HASH", HID.NON_US_HASH),
+        ("INTERNATIONAL1", HID.INTERNATIONAL1),
+        ("INTERNATIONAL3", HID.INTERNATIONAL3),
+        ("INTERNATIONAL4", HID.INTERNATIONAL4),
+        ("INTERNATIONAL5", HID.INTERNATIONAL5),
+    ]:
+        try:
+            key_event_to_legacy_remote_payload(
+                KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=usage, pressed=True)
+            )
+            assert False, f"Expected ValueError for {usage_name}"
+        except ValueError as exc:
+            assert usage_name in str(exc)
