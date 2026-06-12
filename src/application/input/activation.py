@@ -20,13 +20,16 @@ class InputActivationUseCase:
         self._notify_error = notify_error
 
     def enter_active(self) -> bool:
-        if self._hotkey_capture.running:
+        if self._is_active():
+            return True
+        hotkey_was_running = self._hotkey_capture.running
+        if hotkey_was_running:
             self._hotkey_capture.stop()
         try:
             if not self._input_capture.running:
                 self._input_capture.start()
         except Exception as error:
-            if not self._hotkey_capture.running:
+            if hotkey_was_running and not self._hotkey_capture.running:
                 try:
                     self._hotkey_capture.start()
                 except Exception:
@@ -37,12 +40,20 @@ class InputActivationUseCase:
         return True
 
     def exit_active(self) -> bool:
+        if not self._is_active():
+            return True
         if self._input_capture.running:
             self._input_capture.stop()
         try:
             if not self._hotkey_capture.running:
                 self._hotkey_capture.start()
         except Exception as error:
+            try:
+                if not self._input_capture.running:
+                    self._input_capture.start()
+            except Exception:
+                self._notify_error(str(error))
+                return False
             self._notify_error(str(error))
             return False
         self._set_active(False)
