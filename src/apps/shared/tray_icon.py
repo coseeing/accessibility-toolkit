@@ -8,6 +8,12 @@ class ToolTrayIcon(wx.adv.TaskBarIcon):
         self._on_open_main = on_open_main
         self._on_open_speech = on_open_speech
         self._on_exit = on_exit
+        self.SetIcon(
+            wx.ArtProvider.GetIcon(
+                wx.ART_INFORMATION, wx.ART_OTHER, (16, 16)
+            ),
+            "NVDA Remote",
+        )
 
     def CreatePopupMenu(self):
         menu = wx.Menu()

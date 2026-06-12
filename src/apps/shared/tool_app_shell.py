@@ -11,6 +11,8 @@ class ToolAppShell:
         self.tray_icon = None
 
     def initialize(self):
+        if self.tray_icon is not None:
+            return
         main_frame = self.main_frame_factory(self.controller)
         speech_frame = self.speech_frame_factory(self.controller)
         self.panel_controller.register("main", main_frame)

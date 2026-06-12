@@ -53,6 +53,16 @@ def install_fake_wx(monkeypatch):
     fake_wx.EVT_MENU = object()
     fake_wx.OK = 16
     fake_wx.ICON_ERROR = 32
+    fake_wx.ART_INFORMATION = 1
+    fake_wx.ART_OTHER = 2
+
+    class ArtProvider:
+        @staticmethod
+        def GetIcon(art_id, client, size):
+            return "fake_icon"
+
+    fake_wx.ArtProvider = ArtProvider
+
     fake_wx.message_box_calls = []
     fake_wx.call_after_calls = []
 

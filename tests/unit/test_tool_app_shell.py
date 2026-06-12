@@ -29,6 +29,15 @@ def install_fake_wx(monkeypatch):
     fake_wx.ID_ANY = -1
     fake_wx.ID_EXIT = 5000
     fake_wx.EVT_MENU = object()
+    fake_wx.ART_INFORMATION = 1
+    fake_wx.ART_OTHER = 2
+
+    class ArtProvider:
+        @staticmethod
+        def GetIcon(art_id, client, size):
+            return "fake_icon"
+
+    fake_wx.ArtProvider = ArtProvider
 
     class Menu:
         def __init__(self):

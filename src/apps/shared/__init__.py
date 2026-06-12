@@ -1,1 +1,1 @@
-# shared app platform
+from apps.shared.speech_settings_controller import SpeechSettingsController
