@@ -368,7 +368,7 @@ def test_nvda_remote_service_f11_toggles_control_on_keydown_only():
 
 
 def test_nvda_remote_service_idle_f11_uses_hotkey_capture_path():
-    service, transport, capture, hotkey, dispatch_calls = build_service()
+    service, _transport, capture, hotkey, dispatch_calls = build_service()
     service.bind()
     service.state.connection_state = service.state.connection_state.CONNECTED
     service.state.control_state = service.state.control_state.CONNECTED

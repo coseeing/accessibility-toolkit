@@ -1,5 +1,3 @@
-import pytest
-
 from application.input.activation import InputActivationUseCase
 
 
