@@ -471,3 +471,89 @@ def test_windows_keypress_hotkey_capture_ignores_non_matching_keys():
 
     assert decision == KeyEventDecision.PASS_THROUGH
     assert seen == []
+
+
+def test_windows_keyboard_hook_emits_hid_for_semicolon_and_quote():
+    user32 = FakeKeyboardUser32()
+    capture = WindowsKeyboardCapture(
+        user32=user32,
+        kernel32=FakeKeyboardKernel32(),
+        is_windows=True,
+    )
+    seen = []
+    capture.set_listener(seen.append)
+    capture.start()
+    callback = user32.installed[0][1]
+
+    callback(0, WM_KEYDOWN, ctypes.addressof(FakeKbdLlHookStruct(vkCode=0xBA, scanCode=39, flags=0)))
+    callback(0, WM_KEYDOWN, ctypes.addressof(FakeKbdLlHookStruct(vkCode=0xDE, scanCode=40, flags=0)))
+
+    assert seen == [
+        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.SEMICOLON, pressed=True),
+        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.QUOTE, pressed=True),
+    ]
+
+
+def test_windows_keyboard_hook_emits_hid_for_insert_delete_and_page_down():
+    user32 = FakeKeyboardUser32()
+    capture = WindowsKeyboardCapture(
+        user32=user32,
+        kernel32=FakeKeyboardKernel32(),
+        is_windows=True,
+    )
+    seen = []
+    capture.set_listener(seen.append)
+    capture.start()
+    callback = user32.installed[0][1]
+
+    callback(0, WM_KEYDOWN, ctypes.addressof(FakeKbdLlHookStruct(vkCode=0x2D, scanCode=82, flags=LLKHF_EXTENDED)))
+    callback(0, WM_KEYDOWN, ctypes.addressof(FakeKbdLlHookStruct(vkCode=0x2E, scanCode=83, flags=LLKHF_EXTENDED)))
+    callback(0, WM_KEYDOWN, ctypes.addressof(FakeKbdLlHookStruct(vkCode=0x22, scanCode=81, flags=LLKHF_EXTENDED)))
+
+    assert seen == [
+        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.INSERT, pressed=True),
+        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.DELETE, pressed=True),
+        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.PAGE_DOWN, pressed=True),
+    ]
+
+
+def test_windows_keyboard_hook_distinguishes_numpad_from_main_cluster_keys():
+    user32 = FakeKeyboardUser32()
+    capture = WindowsKeyboardCapture(
+        user32=user32,
+        kernel32=FakeKeyboardKernel32(),
+        is_windows=True,
+    )
+    seen = []
+    capture.set_listener(seen.append)
+    capture.start()
+    callback = user32.installed[0][1]
+
+    callback(0, WM_KEYDOWN, ctypes.addressof(FakeKbdLlHookStruct(vkCode=0x61, scanCode=79, flags=0)))
+    callback(0, WM_KEYDOWN, ctypes.addressof(FakeKbdLlHookStruct(vkCode=0x6F, scanCode=53, flags=LLKHF_EXTENDED)))
+    callback(0, WM_KEYDOWN, ctypes.addressof(FakeKbdLlHookStruct(vkCode=0x6E, scanCode=83, flags=0)))
+
+    assert seen == [
+        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.KEYPAD_1, pressed=True),
+        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.KEYPAD_DIVIDE, pressed=True),
+        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.KEYPAD_DECIMAL, pressed=True),
+    ]
+
+
+def test_windows_keyboard_hook_emits_hid_for_non_us_backslash_when_available():
+    user32 = FakeKeyboardUser32()
+    capture = WindowsKeyboardCapture(
+        user32=user32,
+        kernel32=FakeKeyboardKernel32(),
+        is_windows=True,
+    )
+    seen = []
+    capture.set_listener(seen.append)
+    capture.start()
+    callback = user32.installed[0][1]
+
+    callback(0, WM_KEYDOWN, ctypes.addressof(FakeKbdLlHookStruct(vkCode=0xE2, scanCode=86, flags=0)))
+
+    assert seen == [
+        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.NON_US_BACKSLASH, pressed=True),
+    ]
