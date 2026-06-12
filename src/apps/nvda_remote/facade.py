@@ -20,8 +20,8 @@ from interop.protocol.transport.base import Transport
 from apps.nvda_remote.use_cases import (
     NvdaRemoteControlModeUseCase,
     NvdaRemoteInputForwardingUseCase,
-    NvdaRemoteSpeechSettingsUseCase,
 )
+from apps.shared.speech_settings_controller import SpeechSettingsController
 
 
 class NvdaRemoteAppFacade(KeyEventHandler):
@@ -78,7 +78,7 @@ class NvdaRemoteAppFacade(KeyEventHandler):
             if self._on_speech_backend_changed is not None:
                 self._on_speech_backend_changed(backend_id)
 
-        self._speech_settings = NvdaRemoteSpeechSettingsUseCase(
+        self._speech_settings = SpeechSettingsController(
             speech=speech,
             on_backend_changed=_on_backend_changed_wrapper,
         )

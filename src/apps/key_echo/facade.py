@@ -10,8 +10,8 @@ from interop.key.key_event import KeyEvent
 from apps.key_echo.use_cases import (
     KeyEchoControlUseCase,
     KeyEchoInputUseCase,
-    KeyEchoSpeechSettingsUseCase,
 )
+from apps.shared.speech_settings_controller import SpeechSettingsController
 
 
 class KeyEchoAppFacade(KeyEventHandler):
@@ -33,7 +33,7 @@ class KeyEchoAppFacade(KeyEventHandler):
             cancel=lambda: self._outputs.speech.cancel(),
             speak=lambda sequence: self._outputs.speech.speak(sequence),
         )
-        self._speech_settings = KeyEchoSpeechSettingsUseCase(
+        self._speech_settings = SpeechSettingsController(
             speech=outputs.speech,
         )
         self._active_keys = ActiveKeyEventPolicy(
