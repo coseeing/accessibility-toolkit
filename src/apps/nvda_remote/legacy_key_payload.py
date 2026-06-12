@@ -69,12 +69,46 @@ _USAGE_TO_LEGACY: dict[int, tuple[int, int, bool]] = {
     HID.RIGHT_ALT: (18, 56, True),
     HID.LEFT_META: (91, 91, True),
     HID.RIGHT_META: (92, 92, True),
+    HID.LEFT_BRACKET: (219, 26, False),
+    HID.RIGHT_BRACKET: (221, 27, False),
+    HID.BACKSLASH: (220, 43, False),
+    HID.SEMICOLON: (186, 39, False),
+    HID.QUOTE: (222, 40, False),
+    HID.GRAVE: (192, 41, False),
+    HID.COMMA: (188, 51, False),
+    HID.PERIOD: (190, 52, False),
+    HID.SLASH: (191, 53, False),
+    HID.CAPS_LOCK: (20, 58, False),
+    HID.INSERT: (45, 82, True),
+    HID.DELETE: (46, 83, True),
+    HID.HOME: (36, 71, True),
+    HID.END: (35, 79, True),
+    HID.PAGE_UP: (33, 73, True),
+    HID.PAGE_DOWN: (34, 81, True),
+    HID.KEYPAD_DIVIDE: (111, 53, True),
+    HID.KEYPAD_MULTIPLY: (106, 55, False),
+    HID.KEYPAD_SUBTRACT: (109, 74, False),
+    HID.KEYPAD_ADD: (107, 78, False),
+    HID.KEYPAD_1: (97, 79, False),
+    HID.KEYPAD_2: (98, 80, False),
+    HID.KEYPAD_3: (99, 81, False),
+    HID.KEYPAD_4: (100, 75, False),
+    HID.KEYPAD_5: (101, 76, False),
+    HID.KEYPAD_6: (102, 77, False),
+    HID.KEYPAD_7: (103, 71, False),
+    HID.KEYPAD_8: (104, 72, False),
+    HID.KEYPAD_9: (105, 73, False),
+    HID.KEYPAD_0: (96, 82, False),
+    HID.KEYPAD_DECIMAL: (110, 83, False),
+    HID.KEYPAD_EQUALS: (187, 13, False),
 }
 
 
 def key_event_to_legacy_remote_payload(event: KeyEvent) -> dict[str, int | bool]:
     if event.usage_page != HID.KEYBOARD_PAGE:
         raise ValueError(f"Unsupported HID usage page: 0x{event.usage_page:02X}")
+    if event.usage == HID.NON_US_BACKSLASH:
+        raise ValueError("Unsupported HID usage for legacy relay: NON_US_BACKSLASH")
     mapping = _USAGE_TO_LEGACY.get(event.usage)
     if mapping is None:
         raise ValueError(f"Unsupported HID usage for remote payload: 0x{event.usage:02X}")

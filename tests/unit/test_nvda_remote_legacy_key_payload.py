@@ -128,3 +128,56 @@ def test_hid_equals_maps_to_legacy_remote_payload():
         "extended": False,
         "pressed": True,
     }
+
+
+def test_hid_semicolon_maps_to_legacy_remote_payload():
+    event = KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.SEMICOLON, pressed=True)
+    assert key_event_to_legacy_remote_payload(event) == {
+        "vk_code": 186,
+        "scan_code": 39,
+        "extended": False,
+        "pressed": True,
+    }
+
+
+def test_hid_page_down_maps_to_legacy_remote_payload():
+    event = KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.PAGE_DOWN, pressed=False)
+    assert key_event_to_legacy_remote_payload(event) == {
+        "vk_code": 34,
+        "scan_code": 81,
+        "extended": True,
+        "pressed": False,
+    }
+
+
+def test_hid_keypad_1_maps_to_legacy_remote_payload():
+    event = KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.KEYPAD_1, pressed=True)
+    assert key_event_to_legacy_remote_payload(event) == {
+        "vk_code": 97,
+        "scan_code": 79,
+        "extended": False,
+        "pressed": True,
+    }
+
+
+def test_hid_keypad_divide_maps_to_legacy_remote_payload():
+    event = KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.KEYPAD_DIVIDE, pressed=True)
+    assert key_event_to_legacy_remote_payload(event) == {
+        "vk_code": 111,
+        "scan_code": 53,
+        "extended": True,
+        "pressed": True,
+    }
+
+
+def test_non_us_backslash_is_explicitly_unsupported_for_legacy_remote_payload():
+    event = KeyEvent(
+        usage_page=HID.KEYBOARD_PAGE,
+        usage=HID.NON_US_BACKSLASH,
+        pressed=True,
+    )
+    try:
+        key_event_to_legacy_remote_payload(event)
+        assert False, "Expected ValueError"
+    except ValueError as exc:
+        assert "NON_US_BACKSLASH" in str(exc)
