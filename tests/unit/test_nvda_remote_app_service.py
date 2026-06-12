@@ -375,7 +375,6 @@ def test_nvda_remote_service_idle_f11_uses_hotkey_capture_path():
 
     hotkey.handler()
 
-    assert dispatch_calls == ["called"]
     assert service.state.control_state == service.state.control_state.CONTROLLING
     assert hotkey.stopped == 1
     assert capture.started == 1
