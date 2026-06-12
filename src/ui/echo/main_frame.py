@@ -1,9 +1,7 @@
 import wx
 
-from ui.shared.speech_controls import SpeechControlsMixin
 
-
-class EchoMainFrame(wx.Frame, SpeechControlsMixin):
+class EchoMainFrame(wx.Frame):
     def __init__(self, controller):
         super().__init__(parent=None, title="Key Echo Demo")
         self.controller = controller
@@ -20,14 +18,10 @@ class EchoMainFrame(wx.Frame, SpeechControlsMixin):
         sizer.Add(self.status_label, 0, wx.EXPAND | wx.ALL, 4)
         sizer.Add(self.control_button, 0, wx.EXPAND | wx.ALL, 4)
 
-        self._build_speech_controls(panel, sizer, wx)
         panel.SetSizer(sizer)
 
         self.control_button.Bind(wx.EVT_BUTTON, self._on_toggle_echo)
-        self._bind_speech_control_events(wx)
         self._sync_echo_controls()
-        self._sync_speech_backend_choice()
-        self._sync_speech_controls()
 
     def _show_error(self, message: str, caption: str) -> None:
         wx.MessageBox(message, caption, wx.OK | wx.ICON_ERROR)
@@ -58,8 +52,6 @@ class EchoMainFrame(wx.Frame, SpeechControlsMixin):
 
     def _on_controller_status(self, _status) -> None:
         self._sync_echo_controls()
-        self._sync_speech_backend_choice()
-        self._sync_speech_controls()
 
     def _on_close(self, event) -> None:
         self.Hide()

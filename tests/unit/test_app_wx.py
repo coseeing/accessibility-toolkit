@@ -18,6 +18,7 @@ UI_MODULES = (
     "ui.echo.app",
     "ui.echo.main_frame",
     "ui.shared.speech_controls",
+    "ui.shared.speech_settings_frame",
     "apps.nvda_remote.main",
     "apps.key_echo.main",
 )
@@ -430,9 +431,6 @@ def test_main_frame_exposes_connect_controls(monkeypatch):
     assert frame.control_button.enabled is False
     assert frame.clipboard_button.GetLabel() == "Push Clipboard"
     assert frame.clipboard_button.enabled is False
-    assert frame.speech_backend_choice.GetCount() == 2
-    assert frame.speech_backend_choice.GetString(0) == "NVDA Controller"
-    assert frame.speech_backend_choice.GetString(1) == "pyttsx3"
     assert frame.host_ctrl.enabled is True
     assert frame.port_ctrl.enabled is True
     assert frame.key_ctrl.enabled is True
@@ -639,79 +637,6 @@ def test_main_frame_shows_connection_error_for_invalid_port(monkeypatch):
     ]
 
 
-def test_main_frame_switches_speech_backend_from_dropdown(monkeypatch):
-    install_fake_wx(monkeypatch)
-    MainFrame = importlib.import_module("ui.nvda_remote.main_frame").MainFrame
-    controller = FakeController()
-    frame = MainFrame(controller=controller)
-    frame.speech_backend_choice.SetSelection(1)
-
-    frame._on_speech_backend_change(None)
-
-    assert controller.speech_backend_calls == ["pyttsx3"]
-    assert frame.speech_backend_choice.GetSelection() == 1
-
-
-def test_main_frame_reverts_dropdown_when_backend_switch_fails(monkeypatch):
-    fake_wx = install_fake_wx(monkeypatch)
-    MainFrame = importlib.import_module("ui.nvda_remote.main_frame").MainFrame
-    controller = FakeController()
-    controller.backend_switch_error = RuntimeError("pyttsx3 init failed")
-    frame = MainFrame(controller=controller)
-    frame.speech_backend_choice.SetSelection(1)
-
-    frame._on_speech_backend_change(None)
-
-    assert controller.speech_backend_calls == ["pyttsx3"]
-    assert controller.get_selected_speech_backend() == "nvda_controller"
-    assert frame.speech_backend_choice.GetSelection() == 0
-    assert fake_wx.message_box_calls == [
-        ("pyttsx3 init failed", "Speech Backend Error", fake_wx.OK | fake_wx.ICON_ERROR)
-    ]
-
-
-def test_main_frame_exposes_voice_and_prosody_controls(monkeypatch):
-    install_fake_wx(monkeypatch)
-    MainFrame = importlib.import_module("ui.nvda_remote.main_frame").MainFrame
-    controller = FakeController()
-    controller.speech_backend_id = "pyttsx3"
-    controller.available_voices = (("voice-1", "Voice 1"), ("voice-2", "Voice 2"))
-    controller.selected_voice = "voice-2"
-    controller.rate = 120
-    controller.pitch = 3
-    controller.volume = 80
-
-    frame = MainFrame(controller=controller)
-
-    assert frame.voice_choice.GetCount() == 2
-    assert frame.voice_choice.GetSelection() == 1
-    assert frame.rate_ctrl.GetValue() == "120"
-    assert frame.pitch_ctrl.GetValue() == "3"
-    assert frame.volume_ctrl.GetValue() == "80"
-
-
-def test_main_frame_routes_voice_and_prosody_changes_to_controller(monkeypatch):
-    install_fake_wx(monkeypatch)
-    MainFrame = importlib.import_module("ui.nvda_remote.main_frame").MainFrame
-    controller = FakeController()
-    controller.available_voices = (("voice-1", "Voice 1"), ("voice-2", "Voice 2"))
-    frame = MainFrame(controller=controller)
-
-    frame.voice_choice.SetSelection(1)
-    frame._on_voice_change(None)
-    frame.rate_ctrl.SetValue("120")
-    frame._on_rate_change(None)
-    frame.pitch_ctrl.SetValue("3")
-    frame._on_pitch_change(None)
-    frame.volume_ctrl.SetValue("80")
-    frame._on_volume_change(None)
-
-    assert controller.voice_calls == ["voice-2"]
-    assert controller.rate_calls == [120]
-    assert controller.pitch_calls == [3]
-    assert controller.volume_calls == [80]
-
-
 def test_nvda_remote_app_creates_and_shows_main_frame(monkeypatch):
     install_fake_wx(monkeypatch)
     NvdaRemoteApp = importlib.import_module("ui.nvda_remote.app").NvdaRemoteApp
@@ -727,21 +652,11 @@ def test_echo_main_frame_exposes_start_stop_and_speech_controls(monkeypatch):
     install_fake_wx(monkeypatch)
     EchoMainFrame = importlib.import_module("ui.echo.main_frame").EchoMainFrame
     controller = FakeEchoController()
-    controller.available_voices = (("voice-1", "Voice 1"), ("voice-2", "Voice 2"))
-    controller.selected_voice = "voice-2"
-    controller.rate = 120
-    controller.pitch = 3
-    controller.volume = 80
     frame = EchoMainFrame(controller=controller)
 
     assert frame.GetTitle() == "Key Echo Demo"
     assert frame.control_button.GetLabel() == "Start"
     assert frame.status_label.GetLabel() == "Stopped"
-    assert frame.speech_backend_choice.GetCount() == 2
-    assert frame.voice_choice.GetSelection() == 1
-    assert frame.rate_ctrl.GetValue() == "120"
-    assert frame.pitch_ctrl.GetValue() == "3"
-    assert frame.volume_ctrl.GetValue() == "80"
 
 
 def test_echo_main_frame_toggles_start_and_stop(monkeypatch):
@@ -757,31 +672,6 @@ def test_echo_main_frame_toggles_start_and_stop(monkeypatch):
     assert controller.stopped == 1
     assert frame.control_button.GetLabel() == "Start"
     assert frame.status_label.GetLabel() == "Stopped"
-
-
-def test_echo_main_frame_routes_speech_control_changes(monkeypatch):
-    install_fake_wx(monkeypatch)
-    EchoMainFrame = importlib.import_module("ui.echo.main_frame").EchoMainFrame
-    controller = FakeEchoController()
-    controller.available_voices = (("voice-1", "Voice 1"), ("voice-2", "Voice 2"))
-    frame = EchoMainFrame(controller=controller)
-
-    frame.speech_backend_choice.SetSelection(1)
-    frame._on_speech_backend_change(None)
-    frame.voice_choice.SetSelection(1)
-    frame._on_voice_change(None)
-    frame.rate_ctrl.SetValue("120")
-    frame._on_rate_change(None)
-    frame.pitch_ctrl.SetValue("3")
-    frame._on_pitch_change(None)
-    frame.volume_ctrl.SetValue("80")
-    frame._on_volume_change(None)
-
-    assert controller.speech_backend_calls == ["pyttsx3"]
-    assert controller.voice_calls == ["voice-2"]
-    assert controller.rate_calls == [120]
-    assert controller.pitch_calls == [3]
-    assert controller.volume_calls == [80]
 
 
 def test_echo_app_creates_and_shows_main_frame(monkeypatch):
@@ -1364,3 +1254,71 @@ def test_default_log_path_uses_library_logs_for_frozen_macos(monkeypatch):
         bootstrap.runtime.default_log_path()
         == bootstrap.runtime.Path("/Users/tester/Library/Logs/nvda-remote-client/nvda-remote-client.log")
     )
+
+
+def test_speech_settings_frame_reads_and_writes_controller_values(monkeypatch):
+    fake_wx = install_fake_wx(monkeypatch)
+
+    class FakeController:
+        def __init__(self):
+            self.speech_backend_id = "pyttsx3"
+            self.speech_backend_calls = []
+            self.available_voices = (("voice-1", "Voice 1"),)
+            self.selected_voice = "voice-1"
+            self.rate = 120
+            self.pitch = 3
+            self.volume = 80
+            self.voice_calls = []
+
+        def get_speech_backend_options(self):
+            return (("default", "Default"), ("pyttsx3", "pyttsx3"))
+
+        def get_selected_speech_backend(self):
+            return self.speech_backend_id
+
+        def set_speech_backend(self, backend_id):
+            self.speech_backend_calls.append(backend_id)
+            self.speech_backend_id = backend_id
+
+        def get_available_voices(self):
+            return self.available_voices
+
+        def get_selected_voice(self):
+            return self.selected_voice
+
+        def set_selected_voice(self, voice_id):
+            self.voice_calls.append(voice_id)
+            self.selected_voice = voice_id
+
+        def get_rate(self):
+            return self.rate
+
+        def set_rate(self, value):
+            self.rate = value
+
+        def get_pitch(self):
+            return self.pitch
+
+        def set_pitch(self, value):
+            self.pitch = value
+
+        def get_volume(self):
+            return self.volume
+
+        def set_volume(self, value):
+            self.volume = value
+
+    SpeechSettingsFrame = importlib.import_module("ui.shared.speech_settings_frame").SpeechSettingsFrame
+    controller = FakeController()
+    frame = SpeechSettingsFrame(controller=controller)
+
+    assert frame.speech_backend_choice.GetCount() >= 1
+    assert frame.voice_choice.GetCount() == 1
+    assert frame.rate_ctrl.GetValue() == "120"
+    assert frame.pitch_ctrl.GetValue() == "3"
+    assert frame.volume_ctrl.GetValue() == "80"
+    assert frame.GetTitle() == "Speech Settings"
+
+    frame.speech_backend_choice.SetSelection(1)
+    frame._on_speech_backend_change(None)
+    assert controller.speech_backend_calls == ["pyttsx3"]

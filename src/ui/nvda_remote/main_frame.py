@@ -2,10 +2,8 @@ import ssl
 
 import wx
 
-from ui.shared.speech_controls import SpeechControlsMixin
 
-
-class MainFrame(wx.Frame, SpeechControlsMixin):
+class MainFrame(wx.Frame):
     def __init__(self, controller):
         super().__init__(parent=None, title="NVDA Remote Client")
         self.controller = controller
@@ -34,19 +32,15 @@ class MainFrame(wx.Frame, SpeechControlsMixin):
         ):
             sizer.Add(widget, 0, wx.EXPAND | wx.ALL, 4)
 
-        self._build_speech_controls(panel, sizer, wx)
         panel.SetSizer(sizer)
 
         self.connect_button.Bind(wx.EVT_BUTTON, self._on_connect)
         self.control_button.Bind(wx.EVT_BUTTON, self._on_start_control)
         self.clipboard_button.Bind(wx.EVT_BUTTON, self._on_push_clipboard)
-        self._bind_speech_control_events(wx)
         self._sync_connect_button_label()
         self._sync_control_button()
         self._sync_connection_fields()
         self._sync_clipboard_button()
-        self._sync_speech_backend_choice()
-        self._sync_speech_controls()
 
     def _show_error(self, message: str, caption: str) -> None:
         wx.MessageBox(message, caption, wx.OK | wx.ICON_ERROR)
@@ -138,8 +132,6 @@ class MainFrame(wx.Frame, SpeechControlsMixin):
         self._sync_control_button()
         self._sync_connection_fields()
         self._sync_clipboard_button()
-        self._sync_speech_backend_choice()
-        self._sync_speech_controls()
 
     def _on_close(self, event) -> None:
         self.Hide()
