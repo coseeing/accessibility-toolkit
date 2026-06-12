@@ -10,6 +10,8 @@ class EchoMainFrame(wx.Frame, SpeechControlsMixin):
         if self.controller is not None and hasattr(self.controller, "set_status_listener"):
             self.controller.set_status_listener(self._on_controller_status)
 
+        self.Bind(wx.EVT_CLOSE, self._on_close)
+
         panel = wx.Panel(self)
         sizer = wx.BoxSizer(wx.VERTICAL)
 
@@ -58,3 +60,8 @@ class EchoMainFrame(wx.Frame, SpeechControlsMixin):
         self._sync_echo_controls()
         self._sync_speech_backend_choice()
         self._sync_speech_controls()
+
+    def _on_close(self, event) -> None:
+        self.Hide()
+        if hasattr(event, "Veto"):
+            event.Veto()

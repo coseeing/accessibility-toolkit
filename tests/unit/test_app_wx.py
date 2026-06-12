@@ -54,12 +54,23 @@ def install_fake_wx(monkeypatch):
             self.parent = parent
             self._title = title
             self.shown = False
+            self.bindings = {}
+            self.raised = False
 
         def GetTitle(self):
             return self._title
 
         def Show(self):
             self.shown = True
+
+        def Hide(self):
+            self.shown = False
+
+        def Raise(self):
+            self.raised = True
+
+        def Bind(self, event, handler):
+            self.bindings[event] = handler
 
     class Panel:
         def __init__(self, parent):
