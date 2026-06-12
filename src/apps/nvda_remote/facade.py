@@ -102,8 +102,7 @@ class NvdaRemoteAppFacade(KeyEventHandler):
         )
 
     def _exit_active_from_keyboard(self) -> KeyEventDecision:
-        if self._activation.exit_active():
-            self.stop_control()
+        self.stop_control()
         self._suppressed_keyups.add(self._LOCAL_STOP_VK)
         return KeyEventDecision.SUPPRESS
 
@@ -112,8 +111,7 @@ class NvdaRemoteAppFacade(KeyEventHandler):
             return
         if self.state.control_state == ControlState.CONTROLLING:
             return
-        if self._activation.enter_active():
-            self._main_thread_dispatch(self.start_control)
+        self._main_thread_dispatch(self.start_control)
 
     def bind(self) -> None:
         self.input_capture.set_listener(self.handle_key_event)
@@ -135,9 +133,13 @@ class NvdaRemoteAppFacade(KeyEventHandler):
         self.session.disconnect()
 
     def start_control(self) -> None:
+        if not self._activation.enter_active():
+            return
         self._control_mode.start_control()
 
     def stop_control(self) -> None:
+        if not self._activation.exit_active():
+            return
         self._control_mode.stop_control()
         self._suppressed_keyups.clear()
         self._input_forwarding.clear()

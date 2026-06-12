@@ -67,11 +67,14 @@ class KeyEchoAppFacade(KeyEventHandler):
     def start_echo(self) -> None:
         if self._echo_control is None:
             raise RuntimeError("Keyboard input service is not attached")
+        if not self._activation.enter_active():
+            return
         self._echo_control.start_echo()
 
     def stop_echo(self) -> None:
         if self._echo_control is None:
             return
+        self._activation.exit_active()
         self._echo_control.stop_echo()
 
     def _set_echo_active(self, active: bool) -> None:
@@ -143,10 +146,8 @@ class KeyEchoAppFacade(KeyEventHandler):
     def _handle_idle_hotkey(self) -> None:
         if self.is_echo_running():
             return
-        if self._activation.enter_active():
-            self.start_echo()
+        self.start_echo()
 
     def _exit_active_from_keyboard(self) -> KeyEventDecision:
-        self._activation.exit_active()
         self.stop_echo()
         return KeyEventDecision.SUPPRESS
