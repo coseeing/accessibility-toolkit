@@ -79,8 +79,9 @@ def build_service() -> tuple[QueuedOutputService, list[FakeSpeechOutput], Output
             ),
         ),
         selected_backend_id="nvda_controller",
+        scheduler=scheduler,
     )
-    return QueuedOutputService(speech=speech, scheduler=scheduler), created, scheduler
+    return QueuedOutputService(speech=speech), created, scheduler
 
 
 def test_queued_output_service_proxies_speech_calls() -> None:
@@ -123,4 +124,92 @@ def test_queued_output_service_proxies_configuration_calls() -> None:
     assert service.get_pitch() == 4
     assert service.get_volume() == 80
     assert created[0].voice == "voice-1"
+    service.shutdown()
+
+
+import threading
+
+from application.output_service import OutputMode
+
+
+def test_output_mode_enum_values() -> None:
+    assert OutputMode.SEQUENTIAL.value == "sequential"
+    assert OutputMode.PARALLEL.value == "parallel"
+
+
+def test_default_mode_is_parallel() -> None:
+    service, _created, _scheduler = build_service()
+    assert service.get_mode() == OutputMode.PARALLEL
+
+
+def test_set_and_get_mode() -> None:
+    service, _created, _scheduler = build_service()
+
+    service.set_mode(OutputMode.SEQUENTIAL)
+    assert service.get_mode() == OutputMode.SEQUENTIAL
+
+    service.set_mode(OutputMode.PARALLEL)
+    assert service.get_mode() == OutputMode.PARALLEL
+
+
+def test_sequential_orders_consecutive_speak_calls() -> None:
+    service, created, _scheduler = build_service()
+    service.set_mode(OutputMode.SEQUENTIAL)
+
+    seq_a = SpeechSequence(items=("a",))
+    seq_b = SpeechSequence(items=("b",))
+    service.speak(seq_a)
+    service.speak(seq_b)
+
+    sentinel = service._shared_scheduler.schedule(service, lambda: None)
+    sentinel.result(timeout=2)
+
+    assert created[0].spoken == [seq_a, seq_b]
+
+
+def test_cancel_in_sequential_clears_shared_queue() -> None:
+    service, created, _scheduler = build_service()
+    service.set_mode(OutputMode.SEQUENTIAL)
+
+    seq_a = SpeechSequence(items=("a",))
+    seq_b = SpeechSequence(items=("b",))
+
+    service.speak(seq_a)
+    sentinel = service._shared_scheduler.schedule(service, lambda: None)
+    sentinel.result(timeout=2)
+
+    service.speak(seq_b)
+    service.cancel()
+
+    sentinel2 = service._shared_scheduler.schedule(service, lambda: None)
+    sentinel2.result(timeout=2)
+
+    assert created[0].spoken == [seq_a]
+
+
+def test_shutdown_stops_shared_scheduler() -> None:
+    service, _created, _scheduler = build_service()
+    service.set_mode(OutputMode.SEQUENTIAL)
+
+    seq = SpeechSequence(items=("x",))
+    service.speak(seq)
+    sentinel = service._shared_scheduler.schedule(service, lambda: None)
+    sentinel.result(timeout=2)
+
+    service.shutdown()
+
+    assert not service._shared_scheduler._thread.is_alive()
+
+
+def test_parallel_mode_is_backward_compatible() -> None:
+    service, created, _scheduler = build_service()
+
+    speech = SpeechSequence(items=("hello",))
+    service.speak(speech)
+    service.pause(True)
+    service.cancel()
+
+    assert created[0].spoken == [speech]
+    assert created[0].paused == [True]
+    assert created[0].cancelled == 1
     service.shutdown()
