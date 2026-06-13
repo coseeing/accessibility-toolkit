@@ -126,6 +126,31 @@ def test_key_echo_app_service_speaks_vk_on_keydown() -> None:
     assert speech_output.spoken == [SpeechSequence(items=("HID 0x07:0x04",))]
 
 
+def test_key_echo_app_service_speaks_right_shift_on_keydown() -> None:
+    speech_output = FakeSpeechOutput()
+    capture = FakeCapture()
+    service = KeyEchoAppService(
+        hotkey_capture=FakeHotkeyCapture(),
+        input_capture=capture,
+        outputs=OutputCapabilities(speech=SpeechService.single_backend(speech_output)),
+    )
+
+    input_service = KeyboardInputService(capture, service)
+    service.attach_input_service(input_service)
+    service.start_echo()
+
+    event = KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.RIGHT_SHIFT, pressed=True)
+    decision = service.handle_key_event(event)
+
+    assert decision == KeyEventDecision.SUPPRESS
+    assert speech_output.cancel_calls == 1
+    assert speech_output.calls == [
+        ("cancel", None),
+        ("speak", SpeechSequence(items=("HID 0x07:0xE5",))),
+    ]
+    assert speech_output.spoken == [SpeechSequence(items=("HID 0x07:0xE5",))]
+
+
 def test_key_echo_app_service_ignores_keyup_for_speech() -> None:
     speech_output = FakeSpeechOutput()
     capture = FakeCapture()
@@ -214,9 +239,8 @@ def test_build_runtime_composes_local_keyboard_and_speech(monkeypatch) -> None:
     app_calls: list[object] = []
 
     class FakeQueuedOutputService:
-        def __init__(self, *, speech, scheduler) -> None:
+        def __init__(self, *, speech) -> None:
             self.speech = speech
-            self.scheduler = scheduler
 
         def speak(self, sequence) -> None:
             self.speech.speak(sequence)
@@ -310,7 +334,7 @@ def test_build_runtime_composes_local_keyboard_and_speech(monkeypatch) -> None:
     assert isinstance(runtime.app_service, KeyEchoAppService)
     assert runtime.input_capture is capture
     assert runtime.hotkey_capture is hotkey
-    assert isinstance(runtime.output_scheduler, FakeOutputScheduler)
+    assert isinstance(runtime.speech_scheduler, FakeOutputScheduler)
     assert runtime.speech_service.get_selected_backend() == "pyttsx3"
     assert runtime.output_service.speech is runtime.speech_service
     assert runtime.app is not None
@@ -379,9 +403,8 @@ def test_build_runtime_macos_path_composes_capture(monkeypatch) -> None:
             return True
 
     class FakeQueuedOutputService:
-        def __init__(self, *, speech, scheduler):
+        def __init__(self, *, speech):
             self.speech = speech
-            self.scheduler = scheduler
 
     class FakeApp:
         def __init__(self, controller):
@@ -439,7 +462,7 @@ def test_main_runs_echo_app_main_loop(monkeypatch) -> None:
     runtime = main_module.KeyEchoRuntime(
         input_capture=FakeCapture(),
         hotkey_capture=FakeHotkeyCapture(),
-        output_scheduler=object(),
+        speech_scheduler=object(),
         speech_service=SpeechService.single_backend(FakeSpeechOutput()),
         output_service=SpeechService.single_backend(FakeSpeechOutput()),
         input_service=KeyboardInputService(FakeCapture(), KeyEchoAppService(hotkey_capture=FakeHotkeyCapture(), input_capture=FakeCapture(), outputs=OutputCapabilities(speech=SpeechService.single_backend(FakeSpeechOutput())))),
@@ -515,6 +538,38 @@ def test_module_executes_main_when_run_as_script(monkeypatch) -> None:
 
     assert error.value.code == 654
     assert calls == ["main"]
+
+
+def test_key_echo_main_configures_logging_before_building_runtime(monkeypatch) -> None:
+    calls: list[tuple[str, object]] = []
+
+    class FakeApp:
+        def MainLoop(self) -> int:
+            calls.append(("mainloop", None))
+            return 321
+
+    class FakeRuntime:
+        app = FakeApp()
+
+    monkeypatch.setattr(
+        main_module,
+        "configure_logging",
+        lambda app_name="": calls.append(("configure_logging", app_name)),
+    )
+    monkeypatch.setattr(
+        main_module,
+        "build_runtime",
+        lambda: calls.append(("build_runtime", None)) or FakeRuntime(),
+    )
+
+    result = main_module.main()
+
+    assert result == 321
+    assert calls == [
+        ("configure_logging", "key_echo"),
+        ("build_runtime", None),
+        ("mainloop", None),
+    ]
 
 
 def test_key_echo_app_service_idle_enter_uses_hotkey_path() -> None:
@@ -652,8 +707,8 @@ def test_build_runtime_uses_echo_mode_enter_hotkey_as_single_source_of_truth(mon
         ),
     )
 
-    original = main_module.KeyEchoAppFacade.enter_usage
-    monkeypatch.setattr(main_module.KeyEchoAppFacade, "enter_usage", HID.F10)
+    original = main_module.KeyEchoAppService.enter_usage
+    monkeypatch.setattr(main_module.KeyEchoAppService, "enter_usage", HID.F10)
 
     import sys as _sys
     import types
@@ -664,7 +719,7 @@ def test_build_runtime_uses_echo_mode_enter_hotkey_as_single_source_of_truth(mon
     try:
         main_module.build_runtime()
     finally:
-        monkeypatch.setattr(main_module.KeyEchoAppFacade, "enter_usage", original)
+        monkeypatch.setattr(main_module.KeyEchoAppService, "enter_usage", original)
 
     assert requested_hotkeys == [HID.F10]
 

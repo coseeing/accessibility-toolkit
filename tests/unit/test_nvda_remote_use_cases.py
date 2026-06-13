@@ -1,31 +1,7 @@
-from adapters.inputs.base import KeyEventDecision
 from application.state import ConnectionState, ControlState, RuntimeState
 from interop.key import HID, KeyEvent
 
-from apps.nvda_remote.use_cases.state_transition_hotkeys import (
-    NvdaRemoteHotkeyAction,
-    NvdaRemoteStateTransitionHotkeyUseCase,
-)
-
-
-def test_nvda_hotkey_use_case_maps_f11_keydown_to_toggle_control():
-    use_case = NvdaRemoteStateTransitionHotkeyUseCase(
-        mapping={HID.F11: NvdaRemoteHotkeyAction.TOGGLE_CONTROL}
-    )
-
-    action = use_case.match(KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.F11, pressed=True))
-
-    assert action == NvdaRemoteHotkeyAction.TOGGLE_CONTROL
-
-
-def test_nvda_hotkey_use_case_ignores_f11_keyup():
-    use_case = NvdaRemoteStateTransitionHotkeyUseCase(
-        mapping={HID.F11: NvdaRemoteHotkeyAction.TOGGLE_CONTROL}
-    )
-
-    action = use_case.match(KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.F11, pressed=False))
-
-    assert action is None
+from adapters.inputs.base import KeyEventDecision
 
 
 class FakeSpeech:

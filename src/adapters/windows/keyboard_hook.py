@@ -1,5 +1,6 @@
 from collections.abc import Callable
 import ctypes
+import logging
 import sys
 from ctypes import wintypes
 from typing import Any
@@ -15,6 +16,8 @@ WM_KEYUP = 0x0101
 WM_SYSKEYDOWN = 0x0104
 WM_SYSKEYUP = 0x0105
 LLKHF_EXTENDED = 0x01
+
+_logger = logging.getLogger(__name__)
 
 
 class KBDLLHOOKSTRUCT(ctypes.Structure):
@@ -119,11 +122,27 @@ class WindowsKeyboardCapture:
     def _handle_keyboard_event(self, n_code: int, w_param: int, l_param: int) -> int:
         if n_code >= 0 and w_param in (WM_KEYDOWN, WM_KEYUP, WM_SYSKEYDOWN, WM_SYSKEYUP):
             data = ctypes.cast(l_param, ctypes.POINTER(KBDLLHOOKSTRUCT)).contents
+            vk_code = int(data.vkCode)
+            scan_code = int(data.scanCode)
+            extended = bool(data.flags & LLKHF_EXTENDED)
+            pressed = w_param in (WM_KEYDOWN, WM_SYSKEYDOWN)
             event = key_event_from_windows(
-                vk_code=int(data.vkCode),
-                scan_code=int(data.scanCode),
-                extended=bool(data.flags & LLKHF_EXTENDED),
-                pressed=w_param in (WM_KEYDOWN, WM_SYSKEYDOWN),
+                vk_code=vk_code,
+                scan_code=scan_code,
+                extended=extended,
+                pressed=pressed,
+            )
+            _logger.debug(
+                "Windows hook raw vk=0x%02X scan=%d extended=%s pressed=%s mapped=%s",
+                vk_code,
+                scan_code,
+                extended,
+                pressed,
+                (
+                    f"0x{event.usage_page:02X}:0x{event.usage:02X}"
+                    if event is not None
+                    else "None"
+                ),
             )
             decision = self._emit_for_tests(event)
             if decision == KeyEventDecision.SUPPRESS:

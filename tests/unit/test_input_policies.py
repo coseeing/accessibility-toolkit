@@ -2,14 +2,6 @@ from adapters.inputs.base import KeyEventDecision
 from interop.key import HID, KeyEvent
 
 from application.input.active_key_policy import ActiveKeyEventPolicy
-from application.input.state_transition_hotkeys import StateTransitionHotkeyPolicy
-
-
-def test_idle_hotkey_policy_matches_keydown_only():
-    policy = StateTransitionHotkeyPolicy(mapping={HID.F11: "enter_active"})
-
-    assert policy.match(KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.F11, pressed=True)) == "enter_active"
-    assert policy.match(KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.F11, pressed=False)) is None
 
 
 def test_active_key_policy_uses_exit_key_before_normal_handler():

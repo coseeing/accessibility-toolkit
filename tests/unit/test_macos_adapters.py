@@ -764,6 +764,30 @@ def test_quartz_backend_cg_callback_flagschanged_shift_released():
     ]
 
 
+def test_quartz_backend_cg_callback_flagschanged_right_shift_pressed_and_released():
+    fake_q = FakeQuartzModule()
+    backend = QuartzEventTapBackend(quartz=fake_q)
+    received = []
+    backend.create_event_tap(lambda e: received.append(e) or KeyEventDecision.PASS_THROUGH)
+    cg_callback = fake_q.taps_created[0][5]
+
+    press_event = {
+        fake_q.kCGKeyboardEventKeycode: 60,
+        "flags": fake_q.kCGEventFlagMaskShift,
+    }
+    release_event = {
+        fake_q.kCGKeyboardEventKeycode: 60,
+        "flags": 0,
+    }
+    cg_callback(None, fake_q.kCGEventFlagsChanged, press_event, None)
+    cg_callback(None, fake_q.kCGEventFlagsChanged, release_event, None)
+
+    assert received == [
+        RawMacKeyEvent(key_code=60, pressed=True, is_repeat=False),
+        RawMacKeyEvent(key_code=60, pressed=False, is_repeat=False),
+    ]
+
+
 def test_quartz_backend_cg_callback_flagschanged_command_pressed():
     fake_q = FakeQuartzModule()
     backend = QuartzEventTapBackend(quartz=fake_q)

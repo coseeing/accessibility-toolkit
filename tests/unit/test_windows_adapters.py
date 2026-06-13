@@ -177,6 +177,60 @@ def test_windows_keyboard_hook_emits_hid_for_left_meta_with_extended():
     ]
 
 
+def test_windows_keyboard_hook_emits_hid_for_right_shift():
+    user32 = FakeKeyboardUser32()
+    capture = WindowsKeyboardCapture(
+        user32=user32,
+        kernel32=FakeKeyboardKernel32(),
+        is_windows=True,
+    )
+    seen = []
+    capture.set_listener(seen.append)
+    capture.start()
+    callback = user32.installed[0][1]
+    key_data = FakeKbdLlHookStruct(vkCode=0xA1, scanCode=54, flags=0)
+
+    callback(0, WM_KEYDOWN, ctypes.addressof(key_data))
+
+    assert seen == [
+        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.RIGHT_SHIFT, pressed=True),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("vk_code", "scan_code", "flags", "usage"),
+    [
+        (0xA0, 42, 0, HID.LEFT_SHIFT),
+        (0xA0, 42, LLKHF_EXTENDED, HID.LEFT_SHIFT),
+        (0xA1, 54, 0, HID.RIGHT_SHIFT),
+        (0xA1, 54, LLKHF_EXTENDED, HID.RIGHT_SHIFT),
+    ],
+)
+def test_windows_keyboard_hook_accepts_shift_keys_with_and_without_extended_flag(
+    vk_code,
+    scan_code,
+    flags,
+    usage,
+):
+    user32 = FakeKeyboardUser32()
+    capture = WindowsKeyboardCapture(
+        user32=user32,
+        kernel32=FakeKeyboardKernel32(),
+        is_windows=True,
+    )
+    seen = []
+    capture.set_listener(seen.append)
+    capture.start()
+    callback = user32.installed[0][1]
+    key_data = FakeKbdLlHookStruct(vkCode=vk_code, scanCode=scan_code, flags=flags)
+
+    callback(0, WM_KEYDOWN, ctypes.addressof(key_data))
+
+    assert seen == [
+        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=usage, pressed=True),
+    ]
+
+
 def test_windows_keyboard_capture_start_failure_is_clear():
     user32 = FakeKeyboardUser32(hook_handle=0)
     capture = WindowsKeyboardCapture(

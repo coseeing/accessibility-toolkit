@@ -1,50 +1,6 @@
 from adapters.inputs.base import KeyEventDecision
 from interop.key import HID, KeyEvent
 
-from apps.key_echo.use_cases.state_transition_hotkeys import (
-    KeyEchoHotkeyAction,
-    KeyEchoStateTransitionHotkeyUseCase,
-)
-
-
-def test_key_echo_hotkey_use_case_maps_enter_to_start_echo():
-    use_case = KeyEchoStateTransitionHotkeyUseCase(
-        mapping={
-            HID.ENTER: KeyEchoHotkeyAction.START_ECHO,
-            HID.ESCAPE: KeyEchoHotkeyAction.STOP_ECHO,
-        }
-    )
-
-    action = use_case.match(KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.ENTER, pressed=True))
-
-    assert action == KeyEchoHotkeyAction.START_ECHO
-
-
-def test_key_echo_hotkey_use_case_maps_escape_to_stop_echo():
-    use_case = KeyEchoStateTransitionHotkeyUseCase(
-        mapping={
-            HID.ENTER: KeyEchoHotkeyAction.START_ECHO,
-            HID.ESCAPE: KeyEchoHotkeyAction.STOP_ECHO,
-        }
-    )
-
-    action = use_case.match(KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.ESCAPE, pressed=True))
-
-    assert action == KeyEchoHotkeyAction.STOP_ECHO
-
-
-def test_key_echo_hotkey_use_case_ignores_keyup():
-    use_case = KeyEchoStateTransitionHotkeyUseCase(
-        mapping={
-            HID.ENTER: KeyEchoHotkeyAction.START_ECHO,
-            HID.ESCAPE: KeyEchoHotkeyAction.STOP_ECHO,
-        }
-    )
-
-    action = use_case.match(KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.ESCAPE, pressed=False))
-
-    assert action is None
-
 
 class FakeSpeech:
     def __init__(self):

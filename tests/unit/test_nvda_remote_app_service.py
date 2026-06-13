@@ -1,4 +1,5 @@
 from adapters.inputs.base import KeyEventDecision
+from application.output_capabilities import OutputCapabilities
 from interop.key import HID, KeyEvent
 from interop.protocol.messages import RemoteMessageType
 
@@ -147,7 +148,7 @@ def build_service(*, dispatch=None):
         input_capture=capture,
         hotkey_capture=hotkey,
         clipboard=FakeClipboard(),
-        speech=FakeSpeechService(),
+        outputs=OutputCapabilities(speech=FakeSpeechService()),
         main_thread_dispatch=dispatch_wrapper,
     )
     return service, transport, capture, hotkey, dispatch_calls
@@ -207,9 +208,9 @@ def test_nvda_remote_service_routes_remote_speech_commands_into_speech_facade():
     transport.message_handler({"type": RemoteMessageType.CANCEL.value})
     transport.message_handler({"type": RemoteMessageType.PAUSE_SPEECH.value, "switch": True})
 
-    assert [speech.items for speech in service.speech.spoken] == [("hi",)]
-    assert service.speech.cancelled == 1
-    assert service.speech.paused == [True]
+    assert [speech.items for speech in service._outputs.speech.spoken] == [("hi",)]
+    assert service._outputs.speech.cancelled == 1
+    assert service._outputs.speech.paused == [True]
 
 
 def test_nvda_remote_service_registers_transport_message_handler():
@@ -334,7 +335,7 @@ def test_nvda_remote_service_dispatches_speech_backend_notifications():
 
     service.set_speech_backend("pyttsx3")
 
-    assert service.speech.backend_calls == ["pyttsx3"]
+    assert service._outputs.speech.backend_calls == ["pyttsx3"]
     assert saved_backend_ids == ["pyttsx3"]
     assert delivered == []
     assert len(dispatch_calls) == 1

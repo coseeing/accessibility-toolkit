@@ -1,4 +1,5 @@
 import logging
+import os
 from pathlib import Path
 import sys
 
@@ -37,6 +38,13 @@ def configure_logging(
 ) -> Path:
     if log_path is None:
         log_path = default_log_path(app_name)
+    if os.getenv("NVDA_REMOTE_CLIENT_LOGGING", "").strip().lower() not in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }:
+        return log_path
     log_format = "%(asctime)s %(levelname)s %(name)s: %(message)s"
     root_logger = logging.getLogger()
     try:

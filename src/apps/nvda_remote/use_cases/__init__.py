@@ -7,7 +7,3 @@ from apps.nvda_remote.use_cases.input_forwarding import (
 from apps.nvda_remote.use_cases.speech_settings import (
     NvdaRemoteSpeechSettingsUseCase,
 )
-from apps.nvda_remote.use_cases.state_transition_hotkeys import (
-    NvdaRemoteHotkeyAction,
-    NvdaRemoteStateTransitionHotkeyUseCase,
-)

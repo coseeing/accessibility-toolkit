@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import logging
 from typing import Any
 
 from adapters.inputs.base import HotkeyCapture, InputCapture
@@ -7,7 +8,8 @@ from application.output_capabilities import OutputCapabilities
 from application.output_scheduler import OutputScheduler
 from application.output_service import QueuedOutputService
 from application.speech_service import SpeechService
-from apps.key_echo.facade import KeyEchoAppFacade
+from apps.key_echo.service import KeyEchoAppService
+from bootstrap.runtime import configure_logging
 from bootstrap.platform import (
     create_hotkey_capture,
     create_input_capture,
@@ -19,11 +21,11 @@ from bootstrap.platform import (
 class KeyEchoRuntime:
     input_capture: InputCapture
     hotkey_capture: HotkeyCapture
-    output_scheduler: OutputScheduler
+    speech_scheduler: OutputScheduler
     speech_service: SpeechService
     output_service: QueuedOutputService
     input_service: KeyboardInputService
-    app_service: KeyEchoAppFacade
+    app_service: KeyEchoAppService
     app: Any
 
 
@@ -31,17 +33,17 @@ def build_runtime() -> KeyEchoRuntime:
     from ui.echo.app import EchoApp
 
     input_capture = create_input_capture()
-    hotkey_capture = create_hotkey_capture(KeyEchoAppFacade.enter_usage)
-    output_scheduler = OutputScheduler()
+    hotkey_capture = create_hotkey_capture(KeyEchoAppService.enter_usage)
+    speech_scheduler = OutputScheduler()
     speech_service = SpeechService(
-        backend_options=default_speech_backend_options(output_scheduler),
+        backend_options=default_speech_backend_options(speech_scheduler),
         selected_backend_id="pyttsx3",
+        scheduler=speech_scheduler,
     )
     output_service = QueuedOutputService(
         speech=speech_service,
-        scheduler=output_scheduler,
     )
-    app_service = KeyEchoAppFacade(
+    app_service = KeyEchoAppService(
         hotkey_capture=hotkey_capture,
         input_capture=input_capture,
         outputs=OutputCapabilities(speech=output_service),
@@ -55,7 +57,7 @@ def build_runtime() -> KeyEchoRuntime:
     return KeyEchoRuntime(
         input_capture=input_capture,
         hotkey_capture=hotkey_capture,
-        output_scheduler=output_scheduler,
+        speech_scheduler=speech_scheduler,
         speech_service=speech_service,
         output_service=output_service,
         input_service=input_service,
@@ -65,6 +67,18 @@ def build_runtime() -> KeyEchoRuntime:
 
 
 def main() -> int:
+    try:
+        configure_logging(app_name="key_echo")
+    except OSError:
+        if not logging.getLogger().handlers:
+            logging.basicConfig(
+                level=logging.DEBUG,
+                format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+            )
+        logging.getLogger(__name__).warning(
+            "Logging initialization failed; continuing without file logging",
+            exc_info=True,
+        )
     runtime = build_runtime()
     return runtime.app.MainLoop()
 
