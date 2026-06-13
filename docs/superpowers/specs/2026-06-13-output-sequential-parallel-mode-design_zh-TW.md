@@ -116,6 +116,7 @@ class QueuedOutputService:
 | shared queue 尚有任務時 `set_mode(PARALLEL)` | 已排隊項目仍依序執行；新呼叫直接送達 |
 | `shutdown()` | 先 cancel 兩個排程器的任務，然後關閉 speech，最後關閉 shared |
 | 只有 speech 輸出，尚無 tone/wave | `shared_scheduler` 作為跨 speak 序列的序列化器 — 實務上與序列內排序無功能差異，但建立了擴充點 |
+| 只有 speech 時的 PARALLEL 模式 | 因為 speech 是唯一的輸出類型，所有 `speak()` 呼叫都走同一個 `speech_scheduler`，結果為 FIFO 排序。「平行」行為（各類型獨立排程器）只會在 tone/wave 加入後才變得可觀察。 |
 
 ## 測試
 

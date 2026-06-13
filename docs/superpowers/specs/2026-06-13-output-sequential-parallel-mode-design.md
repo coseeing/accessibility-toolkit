@@ -116,6 +116,7 @@ Switching mode while items are already queued does **not** retroactively change 
 | `set_mode(PARALLEL)` while shared queue is non-empty | Queued items still execute in order; new calls go direct |
 | `shutdown()` | Cancels both schedulers, then shuts down speech, then shared |
 | Only speech output, no tone/wave yet | `shared_scheduler` acts as an inter-speak-sequence serializer — no functional difference from intra-sequence ordering in practice, but establishes the extension point |
+| PARALLEL mode with only speech | Since speech is the only output type, all `speak()` calls go through the same `speech_scheduler`, resulting in FIFO ordering. The "parallel" behavior (independent schedulers per type) becomes observable only when tone/wave are added. |
 
 ## Testing
 
