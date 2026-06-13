@@ -44,6 +44,11 @@ class QueuedOutputService:
         return self._mode
 
     def speak(self, sequence: SpeechSequence) -> None:
+        # SEQUENTIAL mode relies on speech.speak() being synchronous with
+        # respect to enqueuing: it must finish adding all chunks/SSML into
+        # the backend's own OutputScheduler before returning.  Both pyttsx3
+        # and nvda_controller backends satisfy this contract because their
+        # speak() implementations schedule into a local scheduler synchronously.
         if self._mode == OutputMode.SEQUENTIAL:
             self._shared_scheduler.schedule(self, lambda: self._speech.speak(sequence))
         else:

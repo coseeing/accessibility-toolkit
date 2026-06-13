@@ -53,12 +53,59 @@ class FakeSpeechOutput:
         self.volume = value
 
 
+class SchedulerBackedFakeOutput(FakeSpeechOutput):
+    """Mimics real backends (pyttsx3/nvda_controller) that schedule speak
+    work into their own OutputScheduler instead of recording synchronously."""
+
+    def __init__(self, name: str) -> None:
+        super().__init__(name)
+        self.scheduler = OutputScheduler()
+
+    def speak(self, sequence: SpeechSequence) -> None:
+        self.scheduler.schedule(self, lambda seq=sequence: self.spoken.append(seq))
+
+    def cancel(self) -> None:
+        self.scheduler.cancel_all()
+        super().cancel()
+
+
 def build_service() -> tuple[QueuedOutputService, list[FakeSpeechOutput], OutputScheduler]:
     created: list[FakeSpeechOutput] = []
 
     def factory(name: str):
         def create() -> FakeSpeechOutput:
             output = FakeSpeechOutput(name)
+            created.append(output)
+            return output
+
+        return create
+
+    scheduler = OutputScheduler()
+    speech = SpeechService(
+        backend_options=(
+            SpeechBackendOption(
+                backend_id="nvda_controller",
+                label="NVDA Controller",
+                factory=factory("nvda_controller"),
+            ),
+            SpeechBackendOption(
+                backend_id="pyttsx3",
+                label="pyttsx3",
+                factory=factory("pyttsx3"),
+            ),
+        ),
+        selected_backend_id="nvda_controller",
+        scheduler=scheduler,
+    )
+    return QueuedOutputService(speech=speech), created, scheduler
+
+
+def build_scheduler_backed_service() -> tuple[QueuedOutputService, list[SchedulerBackedFakeOutput], OutputScheduler]:
+    created: list[SchedulerBackedFakeOutput] = []
+
+    def factory(name: str):
+        def create() -> SchedulerBackedFakeOutput:
+            output = SchedulerBackedFakeOutput(name)
             created.append(output)
             return output
 
@@ -212,4 +259,29 @@ def test_parallel_mode_is_backward_compatible() -> None:
     assert created[0].spoken == [speech]
     assert created[0].paused == [True]
     assert created[0].cancelled == 1
+    service.shutdown()
+
+
+def test_sequential_orders_consecutive_speak_calls_with_async_backend() -> None:
+    """Sequential ordering holds when backend speak() schedules
+    asynchronously into its own OutputScheduler, matching the
+    real pyttsx3/nvda_controller pattern."""
+    service, created, _scheduler = build_scheduler_backed_service()
+    service.set_mode(OutputMode.SEQUENTIAL)
+
+    seq_a = SpeechSequence(items=("a",))
+    seq_b = SpeechSequence(items=("b",))
+    service.speak(seq_a)
+    service.speak(seq_b)
+
+    # Wait for shared_scheduler to drain
+    sentinel = service._shared_scheduler.schedule(service, lambda: None)
+    sentinel.result(timeout=2)
+
+    # Wait for backend scheduler to drain
+    backend_sentinel = created[0].scheduler.schedule(service, lambda: None)
+    backend_sentinel.result(timeout=2)
+
+    assert created[0].spoken == [seq_a, seq_b]
+    created[0].scheduler.shutdown()
     service.shutdown()
