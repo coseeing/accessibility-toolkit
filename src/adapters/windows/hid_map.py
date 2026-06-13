@@ -118,19 +118,10 @@ _SCAN_TO_USAGE: dict[tuple[int, bool], int] = {
 
 def key_event_from_windows(*, vk_code: int, scan_code: int, extended: bool, pressed: bool) -> KeyEvent | None:
     usage = _SCAN_TO_USAGE.get((scan_code, extended))
+    if usage is None:
+        usage = _SCAN_TO_USAGE.get((scan_code & 0xFF, extended))
     if usage is None and vk_code == 0xF2:
         usage = HID.INTERNATIONAL3
     if usage is None:
         return None
-    return KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=usage, pressed=pressed,
-                    vk=vk_code, scan=scan_code, extended=extended)
-
-
-def raw_key_event_from_windows(*, vk_code: int, scan_code: int, extended: bool, pressed: bool) -> KeyEvent:
-    usage = _SCAN_TO_USAGE.get((scan_code, extended))
-    if usage is None and vk_code == 0xF2:
-        usage = HID.INTERNATIONAL3
-    if usage is None:
-        usage = 0
-    return KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=usage, pressed=pressed,
-                    vk=vk_code, scan=scan_code, extended=extended)
+    return KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=usage, pressed=pressed)

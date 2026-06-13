@@ -119,13 +119,6 @@ _EXPLICIT_UNSUPPORTED: dict[int, str] = {
 
 
 def key_event_to_legacy_remote_payload(event: KeyEvent) -> dict[str, int | bool]:
-    if event.vk is not None and event.scan is not None:
-        return {
-            "vk_code": event.vk,
-            "scan_code": event.scan,
-            "extended": event.extended,
-            "pressed": event.pressed,
-        }
     if event.usage_page != HID.KEYBOARD_PAGE:
         raise ValueError(f"Unsupported HID usage page: 0x{event.usage_page:02X}")
     unsupported_name = _EXPLICIT_UNSUPPORTED.get(event.usage)
