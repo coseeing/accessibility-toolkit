@@ -1,8 +1,14 @@
+from enum import Enum
 from typing import Protocol, runtime_checkable
 
 from application.output_scheduler import OutputScheduler
 from application.speech_service import SpeechService
 from interop.speech.speech_sequence import SpeechSequence
+
+
+class OutputMode(Enum):
+    SEQUENTIAL = "sequential"
+    PARALLEL = "parallel"
 
 
 @runtime_checkable
@@ -26,14 +32,25 @@ class SpeechOutputService(Protocol):
 
 
 class QueuedOutputService:
-    def __init__(self, *, speech: SpeechService, scheduler: OutputScheduler) -> None:
+    def __init__(self, *, speech: SpeechService) -> None:
         self._speech = speech
-        self._scheduler = scheduler
+        self._mode = OutputMode.PARALLEL
+        self._shared_scheduler = OutputScheduler()
+
+    def set_mode(self, mode: OutputMode) -> None:
+        self._mode = mode
+
+    def get_mode(self) -> OutputMode:
+        return self._mode
 
     def speak(self, sequence: SpeechSequence) -> None:
-        self._speech.speak(sequence)
+        if self._mode == OutputMode.SEQUENTIAL:
+            self._shared_scheduler.schedule(self, lambda: self._speech.speak(sequence))
+        else:
+            self._speech.speak(sequence)
 
     def cancel(self) -> None:
+        self._shared_scheduler.cancel_all()
         self._speech.cancel()
 
     def pause(self, is_paused: bool) -> None:
@@ -77,4 +94,5 @@ class QueuedOutputService:
 
     def shutdown(self) -> None:
         self.cancel()
-        self._scheduler.shutdown()
+        self._speech.shutdown()
+        self._shared_scheduler.shutdown()
