@@ -49,54 +49,52 @@ _SCAN_TO_USAGE.get((57423, True))  # → None，查不到
 
 ## 修正方式
 
-核心思路：**在 `key_event_from_windows()` 中處理 E0 前綴**，將掃描碼遮罩到低位元組後重試查表。
+核心思路：**將原始 Windows 值（vk/scan/extended）保留在 KeyEvent 的可選欄位上**，`key_event_to_legacy_remote_payload()` 偵測到這些值時，直接使用原始值建構遠端 payload，不經過 HID → Legacy 靜態查表。
 
-### 修正內容
+### 變更的檔案
 
-只修改 `src/adapters/windows/hid_map.py` 中的一行邏輯：
-
-```python
-def key_event_from_windows(*, vk_code, scan_code, extended, pressed):
-    usage = _SCAN_TO_USAGE.get((scan_code, extended))
-    if usage is None:
-        # 部分硬體的 scanCode 包含 E0 前綴（如 0xE04F），
-        # 遮罩到低位元組（0x4F=79）後重試查表
-        usage = _SCAN_TO_USAGE.get((scan_code & 0xFF, extended))
-    ...
-```
-
-### 為何這樣就夠了
-
-掃描碼的低位元組就是真正的硬體掃描碼。例如：
-
-| 原始值 | 遮罩後 (`& 0xFF`) | 查表結果 |
-|--------|-------------------|---------|
-| `0xE04F` (57423) | `0x4F` (79) | `(79, True)` → `HID.END` ✓ |
-| `0x4F` (79) | `0x4F` (79) | 第一次查表就成功 |
-
-修正後 `KeyEvent` 保持純 HID 格式，沒有任何 Windows 特定欄位，平台中立性完整保留。
+| 檔案 | 變更內容 |
+|------|---------|
+| `src/interop/key/key_event.py` | `KeyEvent` 新增 `vk`（`int | None`）、`scan`（`int | None`）、`extended`（`bool`）三個可選欄位，預設值為 `None`。覆寫 `__eq__` / `__hash__` 僅比較 HID 核心欄位（`usage_page`、`usage`、`pressed`） |
+| `src/adapters/windows/hid_map.py` | `key_event_from_windows()` 將原始值一併傳入 `KeyEvent`；新增 `raw_key_event_from_windows()` 保證即使掃描碼無法映射 HID usage，也回傳 KeyEvent（usage=0），且保留原始值 |
+| `src/adapters/windows/keyboard_hook.py` | 改用 `raw_key_event_from_windows()` 取代 `key_event_from_windows()` |
+| `src/apps/nvda_remote/legacy_key_payload.py` | `key_event_to_legacy_remote_payload()` 檢查 `event.vk` 與 `event.scan` 是否都不為 `None`，若是則直接使用原始值；否則走原有的 HID → Legacy 查表（macOS 等平台） |
 
 ### 修正後的流程
 
 ```
 Windows 低階掛鉤
-  │ vk=35, scan=57423 (E0 prefix), extended=True, pressed=True
+  │ vk=35, scan=任意值（可能含 E0 前綴或不認識）, extended=True, pressed=True
   ▼
-key_event_from_windows()
-  │ 嘗試 (57423, True) → 無匹配
-  │ 嘗試 (57423 & 0xFF = 79, True) → HID.END ✓
-  │ KeyEvent(usage_page=7, usage=0x4D, pressed=True)
+raw_key_event_from_windows()
+  │ HID 查表可能失敗（usage=0），但原始 Windows 值完整保留
+  │ KeyEvent(usage=0, vk=35, scan=..., extended=True, pressed=True)
+  ▼
+NvdaRemoteInputForwardingUseCase.handle()
   ▼
 key_event_to_legacy_remote_payload()
-  │ HID.END → mapping = (35, 79, True)
+  │ 檢測到 vk != None 且 scan != None
+  │ → 直接使用原始值
   ▼
-遠端 payload: {vk_code: 35, scan_code: 79, extended: True, pressed: True}
-  │ VK_END (End 鍵)，遠端正確執行導航行為 ✓
+遠端 payload: {vk_code: 35, scan_code: ..., extended: True, pressed: True}
+  │ 無論 scan_code 為何，vk_code=35 (VK_END) 保證遠端正確行為 ✓
 ```
+
+### 平台中立性說明
+
+`vk` / `scan` / `extended` 為**可選欄位**，預設值為 `None`：
+
+- **Windows**：`raw_key_event_from_windows()` 會填入這些值
+- **macOS** 及其他平台：不填入（維持 `None`），`key_event_to_legacy_remote_payload()` 自動退回到 HID → Legacy 查表
+- **KeyEvent 比對**：`__eq__` / `__hash__` 僅比較 HID 核心欄位，不影響跨平台的事件比對
+
+### 嘗試過但無效的方案
+
+曾嘗試在 `key_event_from_windows()` 中將掃描碼遮罩到低位元組（`scan_code & 0xFF`）來處理 E0 前綴，但在真實硬體上測試無效。推測硬體回報的掃描碼格式變化不僅限於 E0 前綴，因此保留原始值是唯一可靠的方案。
 
 ## 相關 Commit
 
 ```
-5fc58c1 fix: mask E0 prefix from scan codes in key_event_from_windows
-         instead of leaking Windows fields into KeyEvent
+3d3f496 fix: restore raw Windows VK/scan/extended values on KeyEvent
+         for reliable legacy forwarding
 ```
