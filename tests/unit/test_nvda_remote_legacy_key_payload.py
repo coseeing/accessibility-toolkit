@@ -247,3 +247,44 @@ def test_jis_keys_are_explicitly_unsupported_for_legacy_remote_payload():
             assert False, f"Expected ValueError for {usage_name}"
         except ValueError as exc:
             assert usage_name in str(exc)
+
+
+def test_raw_windows_values_take_priority_over_hid_lookup():
+    # When raw vk/scan/extended are present, they are used directly
+    # even for keys with known HID mappings. This preserves exact
+    # pre-HID behavior where raw Windows values were forwarded as-is.
+    event = KeyEvent(
+        usage_page=HID.KEYBOARD_PAGE,
+        usage=HID.KEYPAD_1,
+        pressed=True,
+        vk=35,  # VK_END — num lock OFF produces End, not KEYPAD_1
+        scan=79,
+        extended=True,
+    )
+    payload = key_event_to_legacy_remote_payload(event)
+    assert payload == {
+        "vk_code": 35,
+        "scan_code": 79,
+        "extended": True,
+        "pressed": True,
+    }
+
+
+def test_raw_windows_values_preserve_exact_scan_code():
+    # When hardware reports E0-prefix scan codes, the exact value
+    # is preserved without going through the HID→Legacy lookup table.
+    event = KeyEvent(
+        usage_page=HID.KEYBOARD_PAGE,
+        usage=0,  # unmapped HID usage
+        pressed=True,
+        vk=35,
+        scan=57423,  # E0 prefix in scan code
+        extended=True,
+    )
+    payload = key_event_to_legacy_remote_payload(event)
+    assert payload == {
+        "vk_code": 35,
+        "scan_code": 57423,
+        "extended": True,
+        "pressed": True,
+    }

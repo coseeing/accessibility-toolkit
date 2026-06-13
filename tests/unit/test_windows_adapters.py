@@ -706,3 +706,24 @@ def test_windows_key_event_from_windows_maps_international3_via_vkcode_fallback(
         usage=HID.INTERNATIONAL3,
         pressed=True,
     )
+
+
+def test_raw_key_event_preserves_windows_values_for_legacy_forwarding():
+    from adapters.windows.hid_map import raw_key_event_from_windows
+
+    # Numpad 1 with num lock OFF — extended flag set, VK=END
+    event = raw_key_event_from_windows(vk_code=35, scan_code=79, extended=True, pressed=True)
+    assert event.vk == 35
+    assert event.scan == 79
+    assert event.extended is True
+    assert event == KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.END, pressed=True)
+
+
+def test_raw_key_event_preserves_values_even_with_unmapped_scan_code():
+    from adapters.windows.hid_map import raw_key_event_from_windows
+
+    # Hardware reporting E0 prefix in scan code: raw values are preserved
+    event = raw_key_event_from_windows(vk_code=35, scan_code=57423, extended=True, pressed=True)
+    assert event.vk == 35
+    assert event.scan == 57423
+    assert event.extended is True
