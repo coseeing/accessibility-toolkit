@@ -6,7 +6,7 @@ from ctypes import wintypes
 from typing import Any
 
 from adapters.inputs.base import KeyEventDecision
-from adapters.windows.hid_map import key_event_from_windows
+from adapters.windows.hid_map import key_event_from_windows, raw_key_event_from_windows
 from interop.key.key_event import KeyEvent
 
 
@@ -126,7 +126,7 @@ class WindowsKeyboardCapture:
             scan_code = int(data.scanCode)
             extended = bool(data.flags & LLKHF_EXTENDED)
             pressed = w_param in (WM_KEYDOWN, WM_SYSKEYDOWN)
-            event = key_event_from_windows(
+            event = raw_key_event_from_windows(
                 vk_code=vk_code,
                 scan_code=scan_code,
                 extended=extended,
