@@ -1,4 +1,5 @@
 from adapters.inputs.base import KeyEventDecision
+from adapters.inputs.captured_event import CapturedKeyEvent
 from application.keyboard import KeyboardInputService
 from interop.key import HID, KeyEvent
 
@@ -35,10 +36,10 @@ def test_keyboard_input_service_forwards_events_to_handler():
     service.bind()
 
     event = KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.A, pressed=True)
-    decision = capture.listener(event)
+    decision = capture.listener(CapturedKeyEvent(key_event=event, native_context=None))
 
     assert decision == KeyEventDecision.PASS_THROUGH
-    assert handler.events == [event]
+    assert handler.events == [CapturedKeyEvent(key_event=event, native_context=None)]
 
 
 def test_keyboard_input_service_controls_capture_lifecycle():
@@ -52,3 +53,40 @@ def test_keyboard_input_service_controls_capture_lifecycle():
 
     service.stop()
     assert capture.running is False
+
+
+def test_keyboard_input_service_binds_captured_key_event_listener():
+    events = []
+
+    class FakeCapture:
+        def __init__(self):
+            self.listener = None
+
+        def set_listener(self, listener):
+            self.listener = listener
+
+        @property
+        def running(self):
+            return False
+
+        def start(self):
+            return None
+
+        def stop(self):
+            return None
+
+    class FakeHandler:
+        def handle_key_event(self, event):
+            events.append(event)
+            return "pass_through"
+
+    capture = FakeCapture()
+    service = KeyboardInputService(capture, FakeHandler())
+    service.bind()
+
+    captured = CapturedKeyEvent(
+        key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.A, pressed=True),
+        native_context=None,
+    )
+    assert capture.listener(captured) == "pass_through"
+    assert events == [captured]

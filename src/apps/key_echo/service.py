@@ -1,8 +1,9 @@
 from adapters.inputs.base import HotkeyCapture, InputCapture, KeyEventDecision
+from adapters.inputs.captured_event import CapturedKeyEvent
 from application.input import InputActivationUseCase
 from application.keyboard import KeyEventHandler, KeyboardInputService
 from application.output_capabilities import OutputCapabilities
-from interop.key import HID, KeyEvent
+from interop.key import HID
 
 from apps.key_echo.use_cases import (
     KeyEchoControlUseCase,
@@ -163,8 +164,8 @@ class KeyEchoAppService(KeyEventHandler):
             self.hotkey_capture.stop()
         self._outputs.speech.shutdown()
 
-    def handle_key_event(self, event: KeyEvent) -> KeyEventDecision:
-        return self._mode_manager.handle_key_event(event)
+    def handle_key_event(self, event: CapturedKeyEvent) -> KeyEventDecision:
+        return self._mode_manager.handle_key_event(event.key_event)
 
     def _notify_status_listener(self, status: dict[str, str]) -> None:
         if self._status_listener is not None:

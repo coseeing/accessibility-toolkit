@@ -1,6 +1,7 @@
 import pytest
 
 from adapters.inputs.base import KeyEventDecision
+from adapters.inputs.captured_event import CapturedKeyEvent
 from application.keyboard import KeyboardInputService
 from application.output_capabilities import OutputCapabilities
 from application.speech_service import SpeechService
@@ -115,7 +116,7 @@ def test_key_echo_app_service_speaks_vk_on_keydown() -> None:
     service.start_echo()
 
     event = KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.A, pressed=True)
-    decision = service.handle_key_event(event)
+    decision = service.handle_key_event(CapturedKeyEvent(key_event=event, native_context=None))
 
     assert decision == KeyEventDecision.SUPPRESS
     assert speech_output.cancel_calls == 1
@@ -140,7 +141,7 @@ def test_key_echo_app_service_speaks_right_shift_on_keydown() -> None:
     service.start_echo()
 
     event = KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.RIGHT_SHIFT, pressed=True)
-    decision = service.handle_key_event(event)
+    decision = service.handle_key_event(CapturedKeyEvent(key_event=event, native_context=None))
 
     assert decision == KeyEventDecision.SUPPRESS
     assert speech_output.cancel_calls == 1
@@ -165,7 +166,7 @@ def test_key_echo_app_service_ignores_keyup_for_speech() -> None:
     service.start_echo()
 
     event = KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.A, pressed=False)
-    decision = service.handle_key_event(event)
+    decision = service.handle_key_event(CapturedKeyEvent(key_event=event, native_context=None))
 
     assert decision == KeyEventDecision.SUPPRESS
     assert speech_output.cancel_calls == 0
@@ -185,7 +186,7 @@ def test_key_echo_app_service_stops_echo_on_escape_keydown() -> None:
     service.start_echo()
 
     decision = service.handle_key_event(
-        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.ESCAPE, pressed=True)
+        CapturedKeyEvent(key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.ESCAPE, pressed=True), native_context=None)
     )
 
     assert decision == KeyEventDecision.SUPPRESS
@@ -328,7 +329,7 @@ def test_build_runtime_composes_local_keyboard_and_speech(monkeypatch) -> None:
     runtime = main_module.build_runtime()
     runtime.input_service.bind()
 
-    decision = capture.listener(KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.B, pressed=True))
+    decision = capture.listener(CapturedKeyEvent(key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.B, pressed=True), native_context=None))
 
     assert isinstance(runtime.input_service, KeyboardInputService)
     assert isinstance(runtime.app_service, KeyEchoAppService)
@@ -515,7 +516,7 @@ def test_key_echo_app_service_enter_keyup_does_not_duplicate_start() -> None:
     assert service.is_echo_running() is True
 
     decision = service.handle_key_event(
-        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.ENTER, pressed=False)
+        CapturedKeyEvent(key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.ENTER, pressed=False), native_context=None)
     )
 
     assert decision == KeyEventDecision.SUPPRESS
@@ -636,7 +637,7 @@ def test_key_echo_app_service_active_escape_exits_through_keyboard_pipeline() ->
     hotkey.start()
     hotkey.handler()
 
-    decision = service.handle_key_event(KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.ESCAPE, pressed=True))
+    decision = service.handle_key_event(CapturedKeyEvent(key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.ESCAPE, pressed=True), native_context=None))
 
     assert decision == KeyEventDecision.SUPPRESS
     assert service.is_echo_running() is False

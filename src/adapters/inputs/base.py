@@ -2,7 +2,7 @@ from collections.abc import Callable
 from enum import StrEnum
 from typing import Protocol
 
-from interop.key.key_event import KeyEvent
+from adapters.inputs.captured_event import CapturedKeyEvent
 
 
 class KeyEventDecision(StrEnum):
@@ -16,7 +16,7 @@ class InputCapture(Protocol):
 
     def set_listener(
         self,
-        listener: Callable[[KeyEvent], KeyEventDecision],
+        listener: Callable[[CapturedKeyEvent], KeyEventDecision],
     ) -> None: ...
 
     def start(self) -> None: ...

@@ -1,11 +1,11 @@
 from typing import Protocol
 
 from adapters.inputs.base import InputCapture, KeyEventDecision
-from interop.key.key_event import KeyEvent
+from adapters.inputs.captured_event import CapturedKeyEvent
 
 
 class KeyEventHandler(Protocol):
-    def handle_key_event(self, event: KeyEvent) -> KeyEventDecision: ...
+    def handle_key_event(self, event: CapturedKeyEvent) -> KeyEventDecision: ...
 
 
 class KeyboardInputService:
