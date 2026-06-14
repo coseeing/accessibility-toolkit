@@ -708,22 +708,18 @@ def test_windows_key_event_from_windows_maps_international3_via_vkcode_fallback(
     )
 
 
-def test_raw_key_event_preserves_windows_values_for_legacy_forwarding():
-    from adapters.windows.hid_map import raw_key_event_from_windows
+def test_key_event_from_windows_falls_back_to_vk_when_scan_unknown():
+    from adapters.windows.hid_map import key_event_from_windows
 
-    # Numpad 1 with num lock OFF — extended flag set, VK=END
-    event = raw_key_event_from_windows(vk_code=35, scan_code=79, extended=True, pressed=True)
-    assert event.vk == 35
-    assert event.scan == 79
-    assert event.extended is True
+    # Scan code unrecognised (hardware-specific) → VK fallback
+    event = key_event_from_windows(vk_code=0x23, scan_code=99999, extended=True, pressed=True)
+    assert event is not None
     assert event == KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.END, pressed=True)
 
+    # Standard scan code → scan code path takes priority
+    event2 = key_event_from_windows(vk_code=0x23, scan_code=79, extended=True, pressed=True)
+    assert event2 == KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.END, pressed=True)
 
-def test_raw_key_event_preserves_values_even_with_unmapped_scan_code():
-    from adapters.windows.hid_map import raw_key_event_from_windows
-
-    # Hardware reporting unrecognized scan code: raw values are preserved
-    event = raw_key_event_from_windows(vk_code=35, scan_code=99999, extended=True, pressed=True)
-    assert event.vk == 35
-    assert event.scan == 99999
-    assert event.extended is True
+    # Num lock ON numpad 1 via VK fallback
+    event3 = key_event_from_windows(vk_code=0x61, scan_code=99999, extended=False, pressed=True)
+    assert event3 == KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.KEYPAD_1, pressed=True)

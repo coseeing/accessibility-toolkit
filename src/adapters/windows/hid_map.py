@@ -115,26 +115,43 @@ _SCAN_TO_USAGE: dict[tuple[int, bool], int] = {
     (125, False): HID.NON_US_HASH,
 }
 
+_VK_TO_USAGE: dict[int, int] = {
+    0x21: HID.PAGE_UP,
+    0x22: HID.PAGE_DOWN,
+    0x23: HID.END,
+    0x24: HID.HOME,
+    0x25: HID.LEFT,
+    0x26: HID.UP,
+    0x27: HID.RIGHT,
+    0x28: HID.DOWN,
+    0x2D: HID.INSERT,
+    0x2E: HID.DELETE,
+    0x60: HID.KEYPAD_0,
+    0x61: HID.KEYPAD_1,
+    0x62: HID.KEYPAD_2,
+    0x63: HID.KEYPAD_3,
+    0x64: HID.KEYPAD_4,
+    0x65: HID.KEYPAD_5,
+    0x66: HID.KEYPAD_6,
+    0x67: HID.KEYPAD_7,
+    0x68: HID.KEYPAD_8,
+    0x69: HID.KEYPAD_9,
+    0x6A: HID.KEYPAD_MULTIPLY,
+    0x6B: HID.KEYPAD_ADD,
+    0x6D: HID.KEYPAD_SUBTRACT,
+    0x6E: HID.KEYPAD_DECIMAL,
+    0x6F: HID.KEYPAD_DIVIDE,
+    0x90: HID.NUM_LOCK,
+    0xF2: HID.INTERNATIONAL3,
+}
+
 
 def key_event_from_windows(*, vk_code: int, scan_code: int, extended: bool, pressed: bool) -> KeyEvent | None:
     usage = _SCAN_TO_USAGE.get((scan_code, extended))
-    if usage is None:
+    if usage is None and extended and scan_code > 0xFF:
         usage = _SCAN_TO_USAGE.get((scan_code & 0xFF, extended))
-    if usage is None and vk_code == 0xF2:
-        usage = HID.INTERNATIONAL3
+    if usage is None:
+        usage = _VK_TO_USAGE.get(vk_code)
     if usage is None:
         return None
-    return KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=usage, pressed=pressed,
-                    vk=vk_code, scan=scan_code, extended=extended)
-
-
-def raw_key_event_from_windows(*, vk_code: int, scan_code: int, extended: bool, pressed: bool) -> KeyEvent:
-    usage = _SCAN_TO_USAGE.get((scan_code, extended))
-    if usage is None:
-        usage = _SCAN_TO_USAGE.get((scan_code & 0xFF, extended))
-    if usage is None and vk_code == 0xF2:
-        usage = HID.INTERNATIONAL3
-    if usage is None:
-        usage = 0
-    return KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=usage, pressed=pressed,
-                    vk=vk_code, scan=scan_code, extended=extended)
+    return KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=usage, pressed=pressed)
