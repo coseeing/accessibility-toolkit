@@ -1,11 +1,12 @@
 from typing import Protocol
 
-from adapters.inputs.base import InputCapture, KeyEventDecision
+from adapters.inputs.base import InputCapture
 from adapters.inputs.captured_event import CapturedKeyEvent
+from application.input.results import KeyboardPipelineResult
 
 
 class KeyEventHandler(Protocol):
-    def handle_key_event(self, event: CapturedKeyEvent) -> KeyEventDecision: ...
+    def handle_key_event(self, event: CapturedKeyEvent) -> KeyboardPipelineResult: ...
 
 
 class KeyboardInputService:

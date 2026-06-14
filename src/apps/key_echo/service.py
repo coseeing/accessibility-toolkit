@@ -1,7 +1,11 @@
-from adapters.inputs.base import HotkeyCapture, InputCapture, KeyEventDecision
+from adapters.inputs.base import HotkeyCapture, InputCapture
 from adapters.inputs.captured_event import CapturedKeyEvent
-from application.input import InputActivationUseCase
-from application.input import should_pass_through_system_toggle
+from application.input import (
+    assemble_pipeline_result,
+    InputActivationUseCase,
+    KeyboardPipelineResult,
+    should_pass_through_system_toggle,
+)
 from application.keyboard import KeyEventHandler, KeyboardInputService
 from application.output_capabilities import OutputCapabilities
 from interop.key import HID
@@ -165,10 +169,12 @@ class KeyEchoAppService(KeyEventHandler):
             self.hotkey_capture.stop()
         self._outputs.speech.shutdown()
 
-    def handle_key_event(self, event: CapturedKeyEvent) -> KeyEventDecision:
-        if should_pass_through_system_toggle(event):
-            return KeyEventDecision.PASS_THROUGH
-        return self._mode_manager.handle_key_event(event.key_event)
+    def handle_key_event(self, event: CapturedKeyEvent) -> KeyboardPipelineResult:
+        send_to_system = should_pass_through_system_toggle(event)
+        app_result = self._mode_manager.handle_key_event(event.key_event)
+        return assemble_pipeline_result(
+            send_to_system=send_to_system, app_result=app_result
+        )
 
     def _notify_status_listener(self, status: dict[str, str]) -> None:
         if self._status_listener is not None:

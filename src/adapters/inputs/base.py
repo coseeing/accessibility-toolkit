@@ -1,9 +1,13 @@
+from __future__ import annotations
+
 from collections.abc import Callable
 from enum import StrEnum
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 
 from adapters.inputs.captured_event import CapturedKeyEvent
-from application.input.results import KeyboardPipelineResult
+
+if TYPE_CHECKING:
+    from application.input.results import KeyboardPipelineResult
 
 
 class KeyEventDecision(StrEnum):

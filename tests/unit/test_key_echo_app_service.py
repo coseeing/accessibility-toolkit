@@ -1,8 +1,8 @@
 import pytest
 
-from adapters.inputs.base import KeyEventDecision
 from adapters.inputs.captured_event import CapturedKeyEvent
 from adapters.windows.native_key_context import WindowsNativeKeyContext
+from application.input.results import AppKeyEventResult, KeyboardPipelineResult
 from application.keyboard import KeyboardInputService
 from application.output_capabilities import OutputCapabilities
 from application.speech_service import SpeechService
@@ -119,7 +119,7 @@ def test_key_echo_app_service_speaks_vk_on_keydown() -> None:
     event = KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.A, pressed=True)
     decision = service.handle_key_event(CapturedKeyEvent(key_event=event, native_context=None))
 
-    assert decision == KeyEventDecision.SUPPRESS
+    assert decision == KeyboardPipelineResult(send_to_system=False, app_result=AppKeyEventResult.HANDLED_STOP)
     assert speech_output.cancel_calls == 1
     assert speech_output.calls == [
         ("cancel", None),
@@ -144,7 +144,7 @@ def test_key_echo_app_service_speaks_right_shift_on_keydown() -> None:
     event = KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.RIGHT_SHIFT, pressed=True)
     decision = service.handle_key_event(CapturedKeyEvent(key_event=event, native_context=None))
 
-    assert decision == KeyEventDecision.SUPPRESS
+    assert decision == KeyboardPipelineResult(send_to_system=False, app_result=AppKeyEventResult.HANDLED_STOP)
     assert speech_output.cancel_calls == 1
     assert speech_output.calls == [
         ("cancel", None),
@@ -169,7 +169,7 @@ def test_key_echo_app_service_ignores_keyup_for_speech() -> None:
     event = KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.A, pressed=False)
     decision = service.handle_key_event(CapturedKeyEvent(key_event=event, native_context=None))
 
-    assert decision == KeyEventDecision.SUPPRESS
+    assert decision == KeyboardPipelineResult(send_to_system=False, app_result=AppKeyEventResult.HANDLED_STOP)
     assert speech_output.cancel_calls == 0
     assert speech_output.spoken == []
 
@@ -190,7 +190,7 @@ def test_key_echo_app_service_stops_echo_on_escape_keydown() -> None:
         CapturedKeyEvent(key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.ESCAPE, pressed=True), native_context=None)
     )
 
-    assert decision == KeyEventDecision.SUPPRESS
+    assert decision == KeyboardPipelineResult(send_to_system=False, app_result=AppKeyEventResult.HANDLED_STOP)
     assert service.is_echo_running() is False
     assert speech_output.cancel_calls == 0
     assert speech_output.spoken == []
@@ -219,9 +219,14 @@ def test_key_echo_app_service_passes_num_lock_through_for_windows_captured_event
         )
     )
 
-    assert decision == KeyEventDecision.PASS_THROUGH
-    assert speech_output.cancel_calls == 0
-    assert speech_output.spoken == []
+    assert decision == KeyboardPipelineResult(
+        send_to_system=True, app_result=AppKeyEventResult.HANDLED_CONTINUE
+    )
+    assert speech_output.cancel_calls == 1
+    assert speech_output.calls == [
+        ("cancel", None),
+        ("speak", SpeechSequence(items=("HID 0x07:0x53",))),
+    ]
 
 
 def test_key_echo_app_service_starts_and_stops_echo_capture() -> None:
@@ -369,7 +374,9 @@ def test_build_runtime_composes_local_keyboard_and_speech(monkeypatch) -> None:
     assert runtime.output_service.speech is runtime.speech_service
     assert runtime.app is not None
     assert app_calls == [runtime.app_service]
-    assert decision == KeyEventDecision.PASS_THROUGH
+    assert decision == KeyboardPipelineResult(
+        send_to_system=False, app_result=AppKeyEventResult.UNHANDLED
+    )
     assert speech_output.cancel_calls == 0
     assert speech_output.spoken == []
 
@@ -548,7 +555,7 @@ def test_key_echo_app_service_enter_keyup_does_not_duplicate_start() -> None:
         CapturedKeyEvent(key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.ENTER, pressed=False), native_context=None)
     )
 
-    assert decision == KeyEventDecision.SUPPRESS
+    assert decision == KeyboardPipelineResult(send_to_system=False, app_result=AppKeyEventResult.HANDLED_STOP)
 
 
 def test_module_executes_main_when_run_as_script(monkeypatch) -> None:
@@ -668,7 +675,7 @@ def test_key_echo_app_service_active_escape_exits_through_keyboard_pipeline() ->
 
     decision = service.handle_key_event(CapturedKeyEvent(key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.ESCAPE, pressed=True), native_context=None))
 
-    assert decision == KeyEventDecision.SUPPRESS
+    assert decision == KeyboardPipelineResult(send_to_system=False, app_result=AppKeyEventResult.HANDLED_STOP)
     assert service.is_echo_running() is False
     assert capture.stop_calls == 1
     assert hotkey.start_calls == 2
@@ -792,3 +799,57 @@ def test_build_runtime_shutdown_stops_both_captures(monkeypatch) -> None:
     assert requested_hotkeys == [HID.F10]
     assert hotkey.running is False
     assert capture.running is False
+
+
+def test_key_echo_app_service_returns_pipeline_result_for_regular_key():
+    speech_output = FakeSpeechOutput()
+    capture = FakeCapture()
+    service = KeyEchoAppService(
+        hotkey_capture=FakeHotkeyCapture(),
+        input_capture=capture,
+        outputs=OutputCapabilities(speech=SpeechService.single_backend(speech_output)),
+    )
+    input_service = KeyboardInputService(capture, service)
+    service.attach_input_service(input_service)
+    service.start_echo()
+
+    result = service.handle_key_event(
+        CapturedKeyEvent(
+            key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.A, pressed=True),
+            native_context=None,
+        )
+    )
+
+    assert result == KeyboardPipelineResult(
+        send_to_system=False,
+        app_result=AppKeyEventResult.HANDLED_STOP,
+    )
+
+
+def test_key_echo_app_service_returns_pipeline_result_for_windows_num_lock():
+    speech_output = FakeSpeechOutput()
+    capture = FakeCapture()
+    service = KeyEchoAppService(
+        hotkey_capture=FakeHotkeyCapture(),
+        input_capture=capture,
+        outputs=OutputCapabilities(speech=SpeechService.single_backend(speech_output)),
+    )
+    input_service = KeyboardInputService(capture, service)
+    service.attach_input_service(input_service)
+    service.start_echo()
+
+    result = service.handle_key_event(
+        CapturedKeyEvent(
+            key_event=KeyEvent(
+                usage_page=HID.KEYBOARD_PAGE,
+                usage=HID.NUM_LOCK,
+                pressed=True,
+            ),
+            native_context=WindowsNativeKeyContext(vk_code=0x90, scan_code=69, extended=True),
+        )
+    )
+
+    assert result == KeyboardPipelineResult(
+        send_to_system=True,
+        app_result=AppKeyEventResult.HANDLED_CONTINUE,
+    )
