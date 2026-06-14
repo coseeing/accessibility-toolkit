@@ -1,4 +1,4 @@
-from adapters.inputs.base import KeyEventDecision
+from application.input.results import AppKeyEventResult
 from interop.key import HID, KeyEvent
 
 
@@ -91,7 +91,7 @@ def test_echo_input_use_case_speaks_vk_text_on_keydown():
 
     decision = use_case.handle(KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.A, pressed=True))
 
-    assert decision == KeyEventDecision.SUPPRESS
+    assert decision is AppKeyEventResult.HANDLED_STOP
     assert calls[0] == ("cancel", None)
     assert calls[1][0] == "speak"
 
@@ -109,6 +109,30 @@ def test_echo_input_use_case_treats_num_lock_like_any_other_key():
         KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.NUM_LOCK, pressed=True)
     )
 
-    assert decision == KeyEventDecision.SUPPRESS
+    assert decision is AppKeyEventResult.HANDLED_CONTINUE
     assert calls[0] == ("cancel", None)
     assert calls[1][0] == "speak"
+
+
+def test_echo_input_use_case_returns_handled_stop_for_regular_keys():
+    from apps.key_echo.use_cases.echo_input import KeyEchoInputUseCase
+
+    use_case = KeyEchoInputUseCase(cancel=lambda: None, speak=lambda _sequence: None)
+
+    result = use_case.handle(
+        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.A, pressed=True)
+    )
+
+    assert result is AppKeyEventResult.HANDLED_STOP
+
+
+def test_echo_input_use_case_returns_handled_continue_for_num_lock():
+    from apps.key_echo.use_cases.echo_input import KeyEchoInputUseCase
+
+    use_case = KeyEchoInputUseCase(cancel=lambda: None, speak=lambda _sequence: None)
+
+    result = use_case.handle(
+        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.NUM_LOCK, pressed=True)
+    )
+
+    assert result is AppKeyEventResult.HANDLED_CONTINUE
