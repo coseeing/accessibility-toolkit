@@ -821,3 +821,47 @@ def test_key_event_from_windows_falls_back_to_vk_when_scan_unknown():
     # Num lock ON numpad 1 via VK fallback
     event3 = key_event_from_windows(vk_code=0x61, scan_code=99999, extended=False, pressed=True)
     assert event3 == KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.KEYPAD_1, pressed=True)
+
+
+@pytest.mark.parametrize(
+    ("vk_code", "expected_usage"),
+    [
+        (0x60, HID.KEYPAD_0),
+        (0x61, HID.KEYPAD_1),
+        (0x62, HID.KEYPAD_2),
+        (0x63, HID.KEYPAD_3),
+        (0x64, HID.KEYPAD_4),
+        (0x65, HID.KEYPAD_5),
+        (0x66, HID.KEYPAD_6),
+        (0x67, HID.KEYPAD_7),
+        (0x68, HID.KEYPAD_8),
+        (0x69, HID.KEYPAD_9),
+        (0x23, HID.END),
+        (0x24, HID.HOME),
+        (0x25, HID.LEFT),
+        (0x26, HID.UP),
+        (0x27, HID.RIGHT),
+        (0x28, HID.DOWN),
+        (0x2D, HID.INSERT),
+        (0x2E, HID.DELETE),
+    ],
+)
+def test_key_event_from_windows_uses_vk_fallback_for_keypad_and_navigation_group(vk_code, expected_usage):
+    from adapters.windows.hid_map import key_event_from_windows
+
+    event = key_event_from_windows(
+        vk_code=vk_code,
+        scan_code=99999,
+        extended=True,
+        pressed=True,
+    )
+
+    assert event == KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=expected_usage, pressed=True)
+
+
+def test_key_event_from_windows_prefers_standard_scan_code_over_vk_fallback():
+    from adapters.windows.hid_map import key_event_from_windows
+
+    event = key_event_from_windows(vk_code=0x23, scan_code=79, extended=True, pressed=True)
+
+    assert event == KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.END, pressed=True)

@@ -115,7 +115,7 @@ _SCAN_TO_USAGE: dict[tuple[int, bool], int] = {
     (125, False): HID.NON_US_HASH,
 }
 
-_VK_TO_USAGE: dict[int, int] = {
+_VK_TO_USAGE_KEYPAD_NAV: dict[int, int] = {
     0x21: HID.PAGE_UP,
     0x22: HID.PAGE_DOWN,
     0x23: HID.END,
@@ -142,7 +142,6 @@ _VK_TO_USAGE: dict[int, int] = {
     0x6E: HID.KEYPAD_DECIMAL,
     0x6F: HID.KEYPAD_DIVIDE,
     0x90: HID.NUM_LOCK,
-    0xF2: HID.INTERNATIONAL3,
 }
 
 
@@ -151,7 +150,9 @@ def key_event_from_windows(*, vk_code: int, scan_code: int, extended: bool, pres
     if usage is None and extended and scan_code > 0xFF:
         usage = _SCAN_TO_USAGE.get((scan_code & 0xFF, extended))
     if usage is None:
-        usage = _VK_TO_USAGE.get(vk_code)
+        usage = _VK_TO_USAGE_KEYPAD_NAV.get(vk_code)
+    if usage is None and vk_code == 0xF2:
+        usage = HID.INTERNATIONAL3
     if usage is None:
         return None
     return KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=usage, pressed=pressed)
