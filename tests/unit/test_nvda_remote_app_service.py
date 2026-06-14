@@ -1,6 +1,6 @@
-from adapters.inputs.base import KeyEventDecision
 from adapters.inputs.captured_event import CapturedKeyEvent
 from adapters.windows.native_key_context import WindowsNativeKeyContext
+from application.input.results import AppKeyEventResult, KeyboardPipelineResult
 from application.output_capabilities import OutputCapabilities
 from interop.key import HID, KeyEvent
 from interop.protocol.messages import RemoteMessageType
@@ -165,7 +165,7 @@ def test_nvda_remote_service_forwards_keys_when_controlling():
 
     decision = service.handle_key_event(CapturedKeyEvent(key_event=event, native_context=None))
 
-    assert decision == KeyEventDecision.SUPPRESS
+    assert decision == KeyboardPipelineResult(send_to_system=False, app_result=AppKeyEventResult.HANDLED_STOP)
     assert transport.sent == [(RemoteMessageType.KEY, {"vk_code": 65, "scan_code": 30, "extended": False, "pressed": True})]
 
 
@@ -186,7 +186,7 @@ def test_nvda_remote_service_passes_num_lock_through_when_controlling_on_windows
         )
     )
 
-    assert decision == KeyEventDecision.PASS_THROUGH
+    assert decision == KeyboardPipelineResult(send_to_system=True, app_result=AppKeyEventResult.UNHANDLED)
     assert transport.sent == []
 
 
@@ -198,7 +198,7 @@ def test_nvda_remote_service_passes_through_keys_before_control():
         CapturedKeyEvent(key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.A, pressed=True), native_context=None)
     )
 
-    assert decision == KeyEventDecision.PASS_THROUGH
+    assert decision == KeyboardPipelineResult(send_to_system=True, app_result=AppKeyEventResult.UNHANDLED)
     assert transport.sent == []
 
 
@@ -215,8 +215,8 @@ def test_nvda_remote_service_uses_f11_as_local_stop():
         CapturedKeyEvent(key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.F11, pressed=False), native_context=None)
     )
 
-    assert keydown_decision == KeyEventDecision.SUPPRESS
-    assert keyup_decision == KeyEventDecision.SUPPRESS
+    assert keydown_decision == KeyboardPipelineResult(send_to_system=False, app_result=AppKeyEventResult.HANDLED_STOP)
+    assert keyup_decision == KeyboardPipelineResult(send_to_system=False, app_result=AppKeyEventResult.HANDLED_STOP)
     assert service.state.control_state == service.state.control_state.CONNECTED
     assert transport.sent == []
     assert hotkey.started == 1
@@ -267,8 +267,8 @@ def test_nvda_remote_service_does_not_swallow_unmapped_key_when_not_controlling(
         CapturedKeyEvent(key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.A, pressed=False), native_context=None)
     )
 
-    assert keydown_decision == KeyEventDecision.PASS_THROUGH
-    assert keyup_decision == KeyEventDecision.PASS_THROUGH
+    assert keydown_decision == KeyboardPipelineResult(send_to_system=True, app_result=AppKeyEventResult.UNHANDLED)
+    assert keyup_decision == KeyboardPipelineResult(send_to_system=True, app_result=AppKeyEventResult.UNHANDLED)
     assert service.state.control_state == service.state.control_state.CONNECTED
     assert transport.sent == []
 
@@ -334,7 +334,7 @@ def test_nvda_remote_service_stop_control_handles_hotkey_start_failure():
         CapturedKeyEvent(key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.F11, pressed=True), native_context=None)
     )
 
-    assert decision == KeyEventDecision.SUPPRESS
+    assert decision == KeyboardPipelineResult(send_to_system=False, app_result=AppKeyEventResult.HANDLED_STOP)
     assert service.state.control_state == service.state.control_state.CONTROLLING
     assert capture.running is True
     assert status_events == [
@@ -399,3 +399,22 @@ def test_nvda_remote_service_stop_control_is_noop_when_not_controlling():
     assert capture.stopped == 0
     assert hotkey.started == 0
     assert hotkey.stopped == 0
+
+
+def test_nvda_remote_service_returns_pipeline_result_while_controlling():
+    service, transport, capture, hotkey, _dispatch_calls = build_service()
+    service.bind()
+    service.state.connection_state = service.state.connection_state.CONNECTED
+    service.start_control()
+
+    result = service.handle_key_event(
+        CapturedKeyEvent(
+            key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.A, pressed=True),
+            native_context=None,
+        )
+    )
+
+    assert result == KeyboardPipelineResult(
+        send_to_system=False,
+        app_result=AppKeyEventResult.HANDLED_STOP,
+    )

@@ -3,8 +3,13 @@ from typing import Any
 
 from adapters.inputs.base import HotkeyCapture, InputCapture, KeyEventDecision
 from adapters.inputs.captured_event import CapturedKeyEvent
-from application.input import InputActivationUseCase
-from application.input import should_pass_through_system_toggle
+from application.input import (
+    AppKeyEventResult,
+    InputActivationUseCase,
+    KeyboardPipelineResult,
+    assemble_pipeline_result,
+    should_pass_through_system_toggle,
+)
 from application.keyboard import KeyEventHandler
 from application.output_capabilities import OutputCapabilities
 from application.services import ClipboardService
@@ -227,20 +232,27 @@ class NvdaRemoteAppService(KeyEventHandler):
         self.disconnect()
         self._outputs.speech.shutdown()
 
-    def handle_key_event(self, event: CapturedKeyEvent) -> KeyEventDecision:
+    def handle_key_event(self, event: CapturedKeyEvent) -> KeyboardPipelineResult:
         if should_pass_through_system_toggle(event):
-            return KeyEventDecision.PASS_THROUGH
+            return assemble_pipeline_result(send_to_system=True, app_result=AppKeyEventResult.UNHANDLED)
         key_event = event.key_event
         if not key_event.pressed and key_event.usage in self._suppressed_keyups:
             self._suppressed_keyups.discard(key_event.usage)
-            return KeyEventDecision.SUPPRESS
+            return assemble_pipeline_result(send_to_system=False, app_result=AppKeyEventResult.HANDLED_STOP)
         if key_event.pressed and key_event.usage == self._LOCAL_STOP_USAGE and self._mode_manager.active_mode_id is not None:
             self._suppressed_keyups.add(self._LOCAL_STOP_USAGE)
         if key_event.pressed and key_event.usage == RemoteControlMode.exit_usage and self._mode_manager.active_mode_id is not None:
-            return self._mode_manager.handle_key_event(key_event)
+            mode_result = self._mode_manager.handle_key_event(key_event)
+            return assemble_pipeline_result(send_to_system=False, app_result=mode_result)
         if self.state.control_state == ControlState.CONTROLLING:
-            return self._input_forwarding.handle(event)
-        return self._mode_manager.handle_key_event(key_event)
+            decision = self._input_forwarding.handle(event)
+            if decision == KeyEventDecision.SUPPRESS:
+                return assemble_pipeline_result(send_to_system=False, app_result=AppKeyEventResult.HANDLED_STOP)
+            else:
+                return assemble_pipeline_result(send_to_system=True, app_result=AppKeyEventResult.HANDLED_STOP)
+        mode_result = self._mode_manager.handle_key_event(key_event)
+        send_to_system = mode_result == AppKeyEventResult.UNHANDLED
+        return assemble_pipeline_result(send_to_system=send_to_system, app_result=mode_result)
 
     def _handle_transport_message(self, payload: dict[str, Any]) -> None:
         if payload.get("type") == "transport_disconnected":
