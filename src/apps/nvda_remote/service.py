@@ -2,12 +2,13 @@ from collections.abc import Callable
 from typing import Any
 
 from adapters.inputs.base import HotkeyCapture, InputCapture, KeyEventDecision
+from adapters.inputs.captured_event import CapturedKeyEvent
 from application.input import InputActivationUseCase
 from application.keyboard import KeyEventHandler
 from application.output_capabilities import OutputCapabilities
 from application.services import ClipboardService
 from application.state import ConnectionState, ControlState, RuntimeState
-from interop.key import HID, KeyEvent
+from interop.key import HID
 from interop.protocol.connection_info import ConnectionInfo
 from interop.protocol.messages import RemoteMessageType
 from interop.protocol.routing.message_router import MessageRouter
@@ -44,7 +45,7 @@ class RemoteControlMode:
         return True
 
     def handle_key_event(self, event):
-        return self._input_forwarding.handle(event)
+        return self._input_forwarding.handle(CapturedKeyEvent(key_event=event, native_context=None))
 
 
 class NvdaRemoteAppService(KeyEventHandler):
@@ -225,13 +226,18 @@ class NvdaRemoteAppService(KeyEventHandler):
         self.disconnect()
         self._outputs.speech.shutdown()
 
-    def handle_key_event(self, event: KeyEvent) -> KeyEventDecision:
-        if not event.pressed and event.usage in self._suppressed_keyups:
-            self._suppressed_keyups.discard(event.usage)
+    def handle_key_event(self, event: CapturedKeyEvent) -> KeyEventDecision:
+        key_event = event.key_event
+        if not key_event.pressed and key_event.usage in self._suppressed_keyups:
+            self._suppressed_keyups.discard(key_event.usage)
             return KeyEventDecision.SUPPRESS
-        if event.pressed and event.usage == self._LOCAL_STOP_USAGE and self._mode_manager.active_mode_id is not None:
+        if key_event.pressed and key_event.usage == self._LOCAL_STOP_USAGE and self._mode_manager.active_mode_id is not None:
             self._suppressed_keyups.add(self._LOCAL_STOP_USAGE)
-        return self._mode_manager.handle_key_event(event)
+        if key_event.pressed and key_event.usage == RemoteControlMode.exit_usage and self._mode_manager.active_mode_id is not None:
+            return self._mode_manager.handle_key_event(key_event)
+        if self.state.control_state == ControlState.CONTROLLING:
+            return self._input_forwarding.handle(event)
+        return self._mode_manager.handle_key_event(key_event)
 
     def _handle_transport_message(self, payload: dict[str, Any]) -> None:
         if payload.get("type") == "transport_disconnected":

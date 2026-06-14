@@ -2,8 +2,8 @@ import logging
 from collections.abc import Callable
 
 from adapters.inputs.base import KeyEventDecision
-from apps.nvda_remote.legacy_key_payload import key_event_to_legacy_remote_payload
-from interop.key.key_event import KeyEvent
+from adapters.inputs.captured_event import CapturedKeyEvent
+from apps.nvda_remote.legacy_key_payload_bridge import legacy_payload_from_captured_event
 
 _logger = logging.getLogger(__name__)
 
@@ -25,26 +25,27 @@ class NvdaRemoteInputForwardingUseCase:
         self._local_stop_usage = local_stop_usage
         self._suppressed_keyups: set[int] = set()
 
-    def handle(self, event: KeyEvent) -> KeyEventDecision:
-        if not event.pressed and event.usage in self._suppressed_keyups:
-            self._suppressed_keyups.discard(event.usage)
+    def handle(self, event: CapturedKeyEvent) -> KeyEventDecision:
+        key_event = event.key_event
+        if not key_event.pressed and key_event.usage in self._suppressed_keyups:
+            self._suppressed_keyups.discard(key_event.usage)
             return KeyEventDecision.SUPPRESS
         if not self._is_connected():
             return KeyEventDecision.PASS_THROUGH
-        if event.usage == self._local_stop_usage and self._is_controlling():
-            if event.pressed:
+        if key_event.usage == self._local_stop_usage and self._is_controlling():
+            if key_event.pressed:
                 self._on_local_stop()
-                self._suppressed_keyups.add(event.usage)
+                self._suppressed_keyups.add(key_event.usage)
             return KeyEventDecision.SUPPRESS
         if not self._is_controlling():
             return KeyEventDecision.PASS_THROUGH
         try:
-            self._send_key(key_event_to_legacy_remote_payload(event))
+            self._send_key(legacy_payload_from_captured_event(event))
         except ValueError:
             _logger.debug(
                 "Cannot forward HID 0x%02X:0x%02X — unsupported usage",
-                event.usage_page,
-                event.usage,
+                key_event.usage_page,
+                key_event.usage,
             )
             return KeyEventDecision.SUPPRESS
         return KeyEventDecision.SUPPRESS

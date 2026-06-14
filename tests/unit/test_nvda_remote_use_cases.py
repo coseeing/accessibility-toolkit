@@ -2,6 +2,7 @@ from application.state import ConnectionState, ControlState, RuntimeState
 from interop.key import HID, KeyEvent
 
 from adapters.inputs.base import KeyEventDecision
+from adapters.inputs.captured_event import CapturedKeyEvent
 
 
 class FakeSpeech:
@@ -142,7 +143,7 @@ def test_input_forwarding_use_case_sends_remote_key_when_controlling():
     )
     event = KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.A, pressed=True)
 
-    decision = use_case.handle(event)
+    decision = use_case.handle(CapturedKeyEvent(key_event=event, native_context=None))
 
     assert decision == KeyEventDecision.SUPPRESS
     assert sent == [{"vk_code": 65, "scan_code": 30, "extended": False, "pressed": True}]
@@ -160,7 +161,7 @@ def test_input_forwarding_suppresses_unsupported_usage():
     )
     event = KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=0xFF, pressed=True)
 
-    decision = use_case.handle(event)
+    decision = use_case.handle(CapturedKeyEvent(key_event=event, native_context=None))
 
     assert decision == KeyEventDecision.SUPPRESS
     assert sent == []
@@ -181,10 +182,13 @@ def test_forwarding_suppresses_unsupported_non_us_backslash_in_control_mode(capl
     )
 
     decision = use_case.handle(
-        KeyEvent(
-            usage_page=HID.KEYBOARD_PAGE,
-            usage=HID.NON_US_BACKSLASH,
-            pressed=True,
+        CapturedKeyEvent(
+            key_event=KeyEvent(
+                usage_page=HID.KEYBOARD_PAGE,
+                usage=HID.NON_US_BACKSLASH,
+                pressed=True,
+            ),
+            native_context=None,
         )
     )
 
@@ -209,10 +213,13 @@ def test_forwarding_suppresses_unsupported_jis_key_in_control_mode(caplog):
     )
 
     decision = use_case.handle(
-        KeyEvent(
-            usage_page=HID.KEYBOARD_PAGE,
-            usage=HID.INTERNATIONAL3,
-            pressed=True,
+        CapturedKeyEvent(
+            key_event=KeyEvent(
+                usage_page=HID.KEYBOARD_PAGE,
+                usage=HID.INTERNATIONAL3,
+                pressed=True,
+            ),
+            native_context=None,
         )
     )
 

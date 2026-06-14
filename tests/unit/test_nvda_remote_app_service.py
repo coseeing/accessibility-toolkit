@@ -1,4 +1,5 @@
 from adapters.inputs.base import KeyEventDecision
+from adapters.inputs.captured_event import CapturedKeyEvent
 from application.output_capabilities import OutputCapabilities
 from interop.key import HID, KeyEvent
 from interop.protocol.messages import RemoteMessageType
@@ -161,7 +162,7 @@ def test_nvda_remote_service_forwards_keys_when_controlling():
     service.start_control()
     event = KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.A, pressed=True)
 
-    decision = service.handle_key_event(event)
+    decision = service.handle_key_event(CapturedKeyEvent(key_event=event, native_context=None))
 
     assert decision == KeyEventDecision.SUPPRESS
     assert transport.sent == [(RemoteMessageType.KEY, {"vk_code": 65, "scan_code": 30, "extended": False, "pressed": True})]
@@ -172,7 +173,7 @@ def test_nvda_remote_service_passes_through_keys_before_control():
     service.state.connection_state = service.state.connection_state.CONNECTED
 
     decision = service.handle_key_event(
-        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.A, pressed=True)
+        CapturedKeyEvent(key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.A, pressed=True), native_context=None)
     )
 
     assert decision == KeyEventDecision.PASS_THROUGH
@@ -186,10 +187,10 @@ def test_nvda_remote_service_uses_f11_as_local_stop():
     service.start_control()
 
     keydown_decision = service.handle_key_event(
-        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.F11, pressed=True)
+        CapturedKeyEvent(key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.F11, pressed=True), native_context=None)
     )
     keyup_decision = service.handle_key_event(
-        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.F11, pressed=False)
+        CapturedKeyEvent(key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.F11, pressed=False), native_context=None)
     )
 
     assert keydown_decision == KeyEventDecision.SUPPRESS
@@ -238,10 +239,10 @@ def test_nvda_remote_service_does_not_swallow_unmapped_key_when_not_controlling(
     service.state.control_state = service.state.control_state.CONNECTED
 
     keydown_decision = service.handle_key_event(
-        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.A, pressed=True)
+        CapturedKeyEvent(key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.A, pressed=True), native_context=None)
     )
     keyup_decision = service.handle_key_event(
-        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.A, pressed=False)
+        CapturedKeyEvent(key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.A, pressed=False), native_context=None)
     )
 
     assert keydown_decision == KeyEventDecision.PASS_THROUGH
@@ -308,7 +309,7 @@ def test_nvda_remote_service_stop_control_handles_hotkey_start_failure():
     hotkey.start = _failing_start
 
     decision = service.handle_key_event(
-        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.F11, pressed=True)
+        CapturedKeyEvent(key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.F11, pressed=True), native_context=None)
     )
 
     assert decision == KeyEventDecision.SUPPRESS
