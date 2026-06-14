@@ -2,6 +2,7 @@ import pytest
 
 from adapters.inputs.base import KeyEventDecision
 from adapters.inputs.captured_event import CapturedKeyEvent
+from adapters.windows.native_key_context import WindowsNativeKeyContext
 from application.keyboard import KeyboardInputService
 from application.output_capabilities import OutputCapabilities
 from application.speech_service import SpeechService
@@ -191,6 +192,34 @@ def test_key_echo_app_service_stops_echo_on_escape_keydown() -> None:
 
     assert decision == KeyEventDecision.SUPPRESS
     assert service.is_echo_running() is False
+    assert speech_output.cancel_calls == 0
+    assert speech_output.spoken == []
+
+
+def test_key_echo_app_service_passes_num_lock_through_for_windows_captured_event() -> None:
+    capture = FakeCapture()
+    speech_output = FakeSpeechOutput()
+    service = KeyEchoAppService(
+        hotkey_capture=FakeHotkeyCapture(),
+        input_capture=capture,
+        outputs=OutputCapabilities(speech=SpeechService.single_backend(speech_output)),
+    )
+    input_service = KeyboardInputService(capture, service)
+    service.attach_input_service(input_service)
+    service.start_echo()
+
+    decision = service.handle_key_event(
+        CapturedKeyEvent(
+            key_event=KeyEvent(
+                usage_page=HID.KEYBOARD_PAGE,
+                usage=HID.NUM_LOCK,
+                pressed=True,
+            ),
+            native_context=WindowsNativeKeyContext(vk_code=0x90, scan_code=69, extended=True),
+        )
+    )
+
+    assert decision == KeyEventDecision.PASS_THROUGH
     assert speech_output.cancel_calls == 0
     assert speech_output.spoken == []
 

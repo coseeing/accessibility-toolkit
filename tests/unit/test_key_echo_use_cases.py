@@ -94,3 +94,21 @@ def test_echo_input_use_case_speaks_vk_text_on_keydown():
     assert decision == KeyEventDecision.SUPPRESS
     assert calls[0] == ("cancel", None)
     assert calls[1][0] == "speak"
+
+
+def test_echo_input_use_case_treats_num_lock_like_any_other_key():
+    from apps.key_echo.use_cases.echo_input import KeyEchoInputUseCase
+
+    calls = []
+    use_case = KeyEchoInputUseCase(
+        cancel=lambda: calls.append(("cancel", None)),
+        speak=lambda sequence: calls.append(("speak", sequence)),
+    )
+
+    decision = use_case.handle(
+        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.NUM_LOCK, pressed=True)
+    )
+
+    assert decision == KeyEventDecision.SUPPRESS
+    assert calls[0] == ("cancel", None)
+    assert calls[1][0] == "speak"

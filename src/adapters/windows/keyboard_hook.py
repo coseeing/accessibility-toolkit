@@ -116,6 +116,8 @@ class WindowsKeyboardCapture:
                 wintypes.LPARAM,
             ]
             self._user32.CallNextHookEx.restype = ctypes.c_ssize_t
+            self._user32.GetKeyState.argtypes = [ctypes.c_int]
+            self._user32.GetKeyState.restype = ctypes.c_short
             self._kernel32.GetModuleHandleW.argtypes = [wintypes.LPCWSTR]
             self._kernel32.GetModuleHandleW.restype = wintypes.HANDLE
         except AttributeError:
@@ -128,6 +130,12 @@ class WindowsKeyboardCapture:
             scan_code = int(data.scanCode)
             extended = bool(data.flags & LLKHF_EXTENDED)
             pressed = w_param in (WM_KEYDOWN, WM_SYSKEYDOWN)
+            num_lock_on = None
+            if self._user32 is not None:
+                try:
+                    num_lock_on = bool(int(self._user32.GetKeyState(0x90)) & 1)
+                except AttributeError:
+                    num_lock_on = None
             event = key_event_from_windows(
                 vk_code=vk_code,
                 scan_code=scan_code,
@@ -135,11 +143,12 @@ class WindowsKeyboardCapture:
                 pressed=pressed,
             )
             _logger.debug(
-                "Windows hook raw vk=0x%02X scan=%d extended=%s pressed=%s mapped=%s",
+                "Windows hook raw vk=0x%02X scan=%d extended=%s pressed=%s numlock_on=%s mapped=%s",
                 vk_code,
                 scan_code,
                 extended,
                 pressed,
+                num_lock_on,
                 (
                     f"0x{event.usage_page:02X}:0x{event.usage:02X}"
                     if event is not None

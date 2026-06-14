@@ -4,6 +4,7 @@ from typing import Any
 from adapters.inputs.base import HotkeyCapture, InputCapture, KeyEventDecision
 from adapters.inputs.captured_event import CapturedKeyEvent
 from application.input import InputActivationUseCase
+from application.input import should_pass_through_system_toggle
 from application.keyboard import KeyEventHandler
 from application.output_capabilities import OutputCapabilities
 from application.services import ClipboardService
@@ -227,6 +228,8 @@ class NvdaRemoteAppService(KeyEventHandler):
         self._outputs.speech.shutdown()
 
     def handle_key_event(self, event: CapturedKeyEvent) -> KeyEventDecision:
+        if should_pass_through_system_toggle(event):
+            return KeyEventDecision.PASS_THROUGH
         key_event = event.key_event
         if not key_event.pressed and key_event.usage in self._suppressed_keyups:
             self._suppressed_keyups.discard(key_event.usage)

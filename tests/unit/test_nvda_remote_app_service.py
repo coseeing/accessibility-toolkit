@@ -1,5 +1,6 @@
 from adapters.inputs.base import KeyEventDecision
 from adapters.inputs.captured_event import CapturedKeyEvent
+from adapters.windows.native_key_context import WindowsNativeKeyContext
 from application.output_capabilities import OutputCapabilities
 from interop.key import HID, KeyEvent
 from interop.protocol.messages import RemoteMessageType
@@ -166,6 +167,27 @@ def test_nvda_remote_service_forwards_keys_when_controlling():
 
     assert decision == KeyEventDecision.SUPPRESS
     assert transport.sent == [(RemoteMessageType.KEY, {"vk_code": 65, "scan_code": 30, "extended": False, "pressed": True})]
+
+
+def test_nvda_remote_service_passes_num_lock_through_when_controlling_on_windows():
+    service, transport, capture, hotkey, _dispatch_calls = build_service()
+    service.bind()
+    service.state.connection_state = service.state.connection_state.CONNECTED
+    service.start_control()
+
+    decision = service.handle_key_event(
+        CapturedKeyEvent(
+            key_event=KeyEvent(
+                usage_page=HID.KEYBOARD_PAGE,
+                usage=HID.NUM_LOCK,
+                pressed=True,
+            ),
+            native_context=WindowsNativeKeyContext(vk_code=0x90, scan_code=69, extended=True),
+        )
+    )
+
+    assert decision == KeyEventDecision.PASS_THROUGH
+    assert transport.sent == []
 
 
 def test_nvda_remote_service_passes_through_keys_before_control():

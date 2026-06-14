@@ -865,3 +865,32 @@ def test_key_event_from_windows_prefers_standard_scan_code_over_vk_fallback():
     event = key_event_from_windows(vk_code=0x23, scan_code=79, extended=True, pressed=True)
 
     assert event == KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.END, pressed=True)
+
+
+@pytest.mark.parametrize(
+    ("vk_code", "scan_code", "extended", "expected_usage"),
+    [
+        (0x28, 80, False, HID.DOWN),
+        (0x62, 80, False, HID.KEYPAD_2),
+    ],
+)
+def test_key_event_from_windows_prefers_vk_for_numlock_sensitive_keypad_navigation_events(
+    vk_code,
+    scan_code,
+    extended,
+    expected_usage,
+):
+    from adapters.windows.hid_map import key_event_from_windows
+
+    event = key_event_from_windows(
+        vk_code=vk_code,
+        scan_code=scan_code,
+        extended=extended,
+        pressed=True,
+    )
+
+    assert event == KeyEvent(
+        usage_page=HID.KEYBOARD_PAGE,
+        usage=expected_usage,
+        pressed=True,
+    )

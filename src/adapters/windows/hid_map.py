@@ -1,4 +1,9 @@
+import logging
+
 from interop.key import HID, KeyEvent
+
+
+_logger = logging.getLogger(__name__)
 
 _SCAN_TO_USAGE: dict[tuple[int, bool], int] = {
     (1, False): HID.ESCAPE,
@@ -146,13 +151,39 @@ _VK_TO_USAGE_KEYPAD_NAV: dict[int, int] = {
 
 
 def key_event_from_windows(*, vk_code: int, scan_code: int, extended: bool, pressed: bool) -> KeyEvent | None:
-    usage = _SCAN_TO_USAGE.get((scan_code, extended))
+    resolution = "unresolved"
+    usage = _VK_TO_USAGE_KEYPAD_NAV.get(vk_code)
+    if usage is not None:
+        resolution = "vk_keypad_nav"
+    else:
+        usage = _SCAN_TO_USAGE.get((scan_code, extended))
+        if usage is not None:
+            resolution = "scan"
     if usage is None and extended and scan_code > 0xFF:
         usage = _SCAN_TO_USAGE.get((scan_code & 0xFF, extended))
-    if usage is None:
-        usage = _VK_TO_USAGE_KEYPAD_NAV.get(vk_code)
+        if usage is not None:
+            resolution = "masked_scan"
     if usage is None and vk_code == 0xF2:
         usage = HID.INTERNATIONAL3
+        resolution = "vk_international3"
     if usage is None:
+        _logger.debug(
+            "Windows HID map failed vk=0x%02X scan=%d scan_low=0x%02X extended=%s pressed=%s",
+            vk_code,
+            scan_code,
+            scan_code & 0xFF,
+            extended,
+            pressed,
+        )
         return None
+    _logger.debug(
+        "Windows HID map resolved via %s vk=0x%02X scan=%d scan_low=0x%02X extended=%s pressed=%s usage=0x%02X",
+        resolution,
+        vk_code,
+        scan_code,
+        scan_code & 0xFF,
+        extended,
+        pressed,
+        usage,
+    )
     return KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=usage, pressed=pressed)
