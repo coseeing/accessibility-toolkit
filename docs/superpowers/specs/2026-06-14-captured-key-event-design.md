@@ -32,6 +32,24 @@ The design must therefore satisfy both of these requirements:
 - Keep existing macOS behavior working without inventing synthetic native metadata.
 - Limit platform-specific knowledge to adapter and app-boundary code.
 
+## Delivery Phasing
+
+This design is intentionally staged.
+
+Phase 1 in this spec delivers:
+
+- `CapturedKeyEvent`
+- `WindowsNativeKeyContext`
+- improved Windows HID semantic mapping for general business logic
+- NVDA Remote legacy forwarding that uses `native_context` as the primary payload source on Windows
+
+Phase 2 is explicitly deferred:
+
+- evaluate whether HID semantics alone can reliably produce a compatible legacy payload
+- determine whether NVDA Remote can eventually stop depending on `native_context` for forwarding
+
+Phase 1 does not attempt to prove that `HID -> legacy payload` reconstruction is fully reliable on Windows hardware.
+
 ## Non-Goals
 
 - Redesign the entire input system or mode manager.
@@ -195,6 +213,8 @@ Behavior:
 2. Otherwise:
    - fall back to the existing HID-based `key_event_to_legacy_remote_payload(captured.key_event)`
 
+In Phase 1, the Windows native-context path is the intended primary behavior for NVDA Remote forwarding. The HID-based fallback remains as a compatibility path for non-Windows or missing-context scenarios, not as the primary correctness strategy for Windows forwarding.
+
 ### Rationale
 
 This isolates Windows payload preservation to the NVDA Remote compatibility boundary:
@@ -247,6 +267,11 @@ Preserve coverage for:
 - The listener signature change affects many test doubles and fake capture objects. The migration is broad but mostly mechanical.
 - Allowing Windows-native type checks to spread beyond bridge helpers would undermine the layering goal.
 - Expanding VK-assisted mapping outside the keypad/navigation problem set could accidentally weaken scan-based semantics for unrelated keys.
+
+## Deferred Follow-Up
+
+- Investigate whether Windows legacy payloads can be derived from HID semantics alone with acceptable reliability.
+- If that becomes demonstrably reliable, evaluate whether NVDA Remote forwarding can reduce or remove its dependency on `native_context`.
 
 ## Alternatives Considered
 
