@@ -1,4 +1,4 @@
-from adapters.inputs.base import KeyEventDecision
+from application.input.results import AppKeyEventResult
 from interop.key import HID, KeyEvent
 
 from apps.shared.mode_manager import ModeManager
@@ -51,7 +51,7 @@ class FakeMode:
 
     def handle_key_event(self, event):
         self.events.append(event.usage)
-        return KeyEventDecision.SUPPRESS
+        return AppKeyEventResult.HANDLED_STOP
 
 
 def test_mode_manager_enters_mode_on_activation():
@@ -86,7 +86,7 @@ def test_mode_manager_routes_non_exit_keys_to_active_mode():
         KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.A, pressed=True)
     )
 
-    assert decision == KeyEventDecision.SUPPRESS
+    assert decision is AppKeyEventResult.HANDLED_STOP
     assert mode.events == [HID.A]
 
 
@@ -105,7 +105,7 @@ def test_mode_manager_exit_key_deactivates_mode():
         KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.ESCAPE, pressed=True)
     )
 
-    assert decision == KeyEventDecision.SUPPRESS
+    assert decision is AppKeyEventResult.HANDLED_STOP
     assert mode.exited == 1
     assert manager.active_mode_id is None
     assert statuses == [
@@ -125,7 +125,7 @@ def test_mode_manager_passes_through_when_no_mode_active():
         KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.A, pressed=True)
     )
 
-    assert decision == KeyEventDecision.PASS_THROUGH
+    assert decision is AppKeyEventResult.UNHANDLED
 
 
 def test_mode_manager_rejects_activation_when_cannot_enter():
@@ -179,7 +179,7 @@ def test_mode_manager_ignores_exit_key_release():
         KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.ESCAPE, pressed=False)
     )
 
-    assert decision == KeyEventDecision.SUPPRESS
+    assert decision is AppKeyEventResult.HANDLED_STOP
     assert mode.events == [HID.ESCAPE]
     assert manager.active_mode_id == "echo"
 
@@ -217,6 +217,19 @@ def test_mode_manager_preserves_active_mode_when_exit_active_fails():
         KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.ESCAPE, pressed=True)
     )
 
-    assert decision == KeyEventDecision.SUPPRESS
+    assert decision is AppKeyEventResult.HANDLED_STOP
     assert mode.exited == 0
     assert manager.active_mode_id == "echo"
+
+
+def test_mode_manager_returns_unhandled_when_no_mode_is_active():
+    manager = ModeManager(
+        activation=FakeActivation(),
+        notify_status=lambda _status: None,
+    )
+
+    result = manager.handle_key_event(
+        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.A, pressed=True)
+    )
+
+    assert result is AppKeyEventResult.UNHANDLED
