@@ -4,7 +4,7 @@ import threading
 from ctypes import wintypes
 from typing import Any
 
-from adapters.inputs.base import KeyEventDecision
+from application.input.results import AppKeyEventResult, KeyboardPipelineResult
 from adapters.windows.keyboard_hook import WindowsKeyboardCapture
 
 
@@ -168,10 +168,10 @@ class WindowsKeyPressHotkeyCapture:
     def stop(self) -> None:
         self._keyboard_capture.stop()
 
-    def _handle_key_event(self, event) -> KeyEventDecision:
+    def _handle_key_event(self, event) -> KeyboardPipelineResult:
         key_event = event.key_event
         if key_event.usage != self._usage or not key_event.pressed:
-            return KeyEventDecision.PASS_THROUGH
+            return KeyboardPipelineResult(send_to_system=True, app_result=AppKeyEventResult.UNHANDLED)
         if self._handler is not None:
             self._handler()
-        return KeyEventDecision.SUPPRESS
+        return KeyboardPipelineResult(send_to_system=False, app_result=AppKeyEventResult.UNHANDLED)

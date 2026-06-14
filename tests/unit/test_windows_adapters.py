@@ -13,9 +13,9 @@ from adapters.windows.nvda_controller import (
 )
 from adapters.windows.hotkey import WindowsKeyPressHotkeyCapture
 from interop.key import HID, KeyEvent
-from adapters.inputs.base import KeyEventDecision
 from adapters.inputs.captured_event import CapturedKeyEvent
 from adapters.windows.native_key_context import WindowsNativeKeyContext
+from application.input.results import AppKeyEventResult, KeyboardPipelineResult
 
 
 WM_KEYDOWN = 0x0100
@@ -58,6 +58,20 @@ class FakeKeyboardKernel32:
         return 456
 
 
+def _passthrough(seen):
+    def record(event):
+        seen.append(event)
+        return KeyboardPipelineResult(send_to_system=True, app_result=AppKeyEventResult.UNHANDLED)
+    return record
+
+
+def _suppress(seen):
+    def record(event):
+        seen.append(event)
+        return KeyboardPipelineResult(send_to_system=False, app_result=AppKeyEventResult.UNHANDLED)
+    return record
+
+
 def test_windows_keyboard_capture_installs_and_unhooks_low_level_hook():
     user32 = FakeKeyboardUser32()
     capture = WindowsKeyboardCapture(
@@ -84,7 +98,7 @@ def test_windows_keyboard_hook_callback_emits_hid_key_event():
         is_windows=True,
     )
     seen = []
-    capture.set_listener(seen.append)
+    capture.set_listener(_passthrough(seen))
     capture.start()
     callback = user32.installed[0][1]
     key_data = FakeKbdLlHookStruct(vkCode=0x09, scanCode=15, flags=0)
@@ -107,7 +121,7 @@ def test_windows_keyboard_hook_emits_hid_for_digit_and_letter():
         is_windows=True,
     )
     seen = []
-    capture.set_listener(seen.append)
+    capture.set_listener(_passthrough(seen))
     capture.start()
     callback = user32.installed[0][1]
 
@@ -136,7 +150,7 @@ def test_windows_keyboard_hook_emits_hid_for_backspace():
         is_windows=True,
     )
     seen = []
-    capture.set_listener(seen.append)
+    capture.set_listener(_passthrough(seen))
     capture.start()
     callback = user32.installed[0][1]
     key_data = FakeKbdLlHookStruct(vkCode=0x08, scanCode=14, flags=0)
@@ -159,7 +173,7 @@ def test_windows_keyboard_hook_emits_hid_for_minus_equals():
         is_windows=True,
     )
     seen = []
-    capture.set_listener(seen.append)
+    capture.set_listener(_passthrough(seen))
     capture.start()
     callback = user32.installed[0][1]
 
@@ -182,7 +196,7 @@ def test_windows_keyboard_hook_emits_hid_for_left_meta_with_extended():
         is_windows=True,
     )
     seen = []
-    capture.set_listener(seen.append)
+    capture.set_listener(_passthrough(seen))
     capture.start()
     callback = user32.installed[0][1]
     key_data = FakeKbdLlHookStruct(vkCode=0x5B, scanCode=91, flags=LLKHF_EXTENDED)
@@ -205,7 +219,7 @@ def test_windows_keyboard_hook_emits_hid_for_right_shift():
         is_windows=True,
     )
     seen = []
-    capture.set_listener(seen.append)
+    capture.set_listener(_passthrough(seen))
     capture.start()
     callback = user32.installed[0][1]
     key_data = FakeKbdLlHookStruct(vkCode=0xA1, scanCode=54, flags=0)
@@ -242,7 +256,7 @@ def test_windows_keyboard_hook_accepts_shift_keys_with_and_without_extended_flag
         is_windows=True,
     )
     seen = []
-    capture.set_listener(seen.append)
+    capture.set_listener(_passthrough(seen))
     capture.start()
     callback = user32.installed[0][1]
     key_data = FakeKbdLlHookStruct(vkCode=vk_code, scanCode=scan_code, flags=flags)
@@ -534,7 +548,7 @@ def test_windows_keypress_hotkey_capture_triggers_handler_on_matching_keydown():
         )
     )
 
-    assert decision == KeyEventDecision.SUPPRESS
+    assert decision == KeyboardPipelineResult(send_to_system=False, app_result=AppKeyEventResult.UNHANDLED)
     assert seen == ["enter"]
 
 
@@ -555,7 +569,7 @@ def test_windows_keypress_hotkey_capture_ignores_non_matching_keys():
         )
     )
 
-    assert decision == KeyEventDecision.PASS_THROUGH
+    assert decision == KeyboardPipelineResult(send_to_system=True, app_result=AppKeyEventResult.UNHANDLED)
     assert seen == []
 
 
@@ -567,7 +581,7 @@ def test_windows_keyboard_hook_emits_hid_for_semicolon_and_quote():
         is_windows=True,
     )
     seen = []
-    capture.set_listener(seen.append)
+    capture.set_listener(_passthrough(seen))
     capture.start()
     callback = user32.installed[0][1]
 
@@ -596,7 +610,7 @@ def test_windows_keyboard_hook_emits_hid_for_insert_delete_and_page_down():
         is_windows=True,
     )
     seen = []
-    capture.set_listener(seen.append)
+    capture.set_listener(_passthrough(seen))
     capture.start()
     callback = user32.installed[0][1]
 
@@ -631,7 +645,7 @@ def test_windows_keyboard_hook_distinguishes_numpad_from_main_cluster_keys():
         is_windows=True,
     )
     seen = []
-    capture.set_listener(seen.append)
+    capture.set_listener(_passthrough(seen))
     capture.start()
     callback = user32.installed[0][1]
 
@@ -666,7 +680,7 @@ def test_windows_keyboard_hook_emits_hid_for_non_us_backslash_when_available():
         is_windows=True,
     )
     seen = []
-    capture.set_listener(seen.append)
+    capture.set_listener(_passthrough(seen))
     capture.start()
     callback = user32.installed[0][1]
 
@@ -689,7 +703,7 @@ def test_windows_keyboard_hook_emits_hid_for_keypad_equals():
         is_windows=True,
     )
     seen = []
-    capture.set_listener(seen.append)
+    capture.set_listener(_passthrough(seen))
     capture.start()
     callback = user32.installed[0][1]
 
@@ -712,7 +726,7 @@ def test_windows_keyboard_hook_emits_hid_for_print_screen_scroll_lock_pause_num_
         is_windows=True,
     )
     seen = []
-    capture.set_listener(seen.append)
+    capture.set_listener(_passthrough(seen))
     capture.start()
     callback = user32.installed[0][1]
 
@@ -759,7 +773,7 @@ def test_windows_keyboard_hook_emits_hid_for_common_jis_keys_when_available():
         is_windows=True,
     )
     seen = []
-    capture.set_listener(seen.append)
+    capture.set_listener(_passthrough(seen))
     capture.start()
     callback = user32.installed[0][1]
 
@@ -790,6 +804,42 @@ def test_windows_keyboard_hook_emits_hid_for_common_jis_keys_when_available():
             native_context=WindowsNativeKeyContext(vk_code=0xF4, scan_code=123, extended=False),
         ),
     ]
+
+
+def test_windows_hook_suppresses_when_send_to_system_is_false():
+    user32 = FakeKeyboardUser32()
+    capture = WindowsKeyboardCapture(
+        user32=user32,
+        kernel32=FakeKeyboardKernel32(),
+        is_windows=True,
+    )
+    capture.set_listener(lambda e: KeyboardPipelineResult(send_to_system=False, app_result=AppKeyEventResult.UNHANDLED))
+    capture.start()
+    callback = user32.installed[0][1]
+    key_data = FakeKbdLlHookStruct(vkCode=0x09, scanCode=15, flags=0)
+
+    result = callback(0, WM_KEYDOWN, ctypes.addressof(key_data))
+
+    assert result == 1
+
+
+def test_windows_hook_passes_through_when_send_to_system_is_true():
+    user32 = FakeKeyboardUser32()
+    capture = WindowsKeyboardCapture(
+        user32=user32,
+        kernel32=FakeKeyboardKernel32(),
+        is_windows=True,
+    )
+    seen = []
+    capture.set_listener(_passthrough(seen))
+    capture.start()
+    callback = user32.installed[0][1]
+    key_data = FakeKbdLlHookStruct(vkCode=0x09, scanCode=15, flags=0)
+
+    result = callback(0, WM_KEYDOWN, ctypes.addressof(key_data))
+
+    assert result == 0
+    assert len(seen) == 1
 
 
 def test_windows_key_event_from_windows_maps_international3_via_vkcode_fallback():

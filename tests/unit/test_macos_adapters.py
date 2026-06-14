@@ -1,6 +1,5 @@
 import pytest
 
-from adapters.inputs.base import KeyEventDecision
 from adapters.inputs.captured_event import CapturedKeyEvent
 from adapters.macos.event_tap import (
     MacOSEventTapManager,
@@ -10,6 +9,7 @@ from adapters.macos.event_tap import (
 from adapters.macos.hid_map import KEYCODE_TO_USAGE
 from adapters.macos.keymap import key_event_from_macos
 from adapters.macos.permissions import AccessibilityPermissions
+from application.input.results import AppKeyEventResult, KeyboardPipelineResult
 from interop.key import HID, KeyEvent
 
 
@@ -277,7 +277,7 @@ def test_event_tap_manager_routes_keyboard_decision():
         start_thread=False,
     )
     seen = []
-    manager.set_keyboard_listener(lambda event: seen.append(event) or KeyEventDecision.SUPPRESS)
+    manager.set_keyboard_listener(lambda event: seen.append(event) or KeyboardPipelineResult(send_to_system=False, app_result=AppKeyEventResult.UNHANDLED))
 
     manager.start()
     decision = manager.handle_raw_event(
@@ -285,7 +285,7 @@ def test_event_tap_manager_routes_keyboard_decision():
     )
 
     assert seen == [RawMacKeyEvent(key_code=0, pressed=True, is_repeat=False)]
-    assert decision == KeyEventDecision.SUPPRESS
+    assert decision == KeyboardPipelineResult(send_to_system=False, app_result=AppKeyEventResult.UNHANDLED)
 
 
 def test_event_tap_manager_hotkey_handler_suppresses_matching_event():
@@ -306,7 +306,7 @@ def test_event_tap_manager_hotkey_handler_suppresses_matching_event():
     )
 
     assert seen == [RawMacKeyEvent(key_code=103, pressed=True, is_repeat=False)]
-    assert decision == KeyEventDecision.SUPPRESS
+    assert decision == KeyboardPipelineResult(send_to_system=False, app_result=AppKeyEventResult.UNHANDLED)
 
 
 def test_event_tap_manager_stop_releases_resources():
@@ -356,12 +356,12 @@ def test_macos_keyboard_capture_binds_listener_and_translates_event():
     manager = FakeManager()
     capture = MacOSKeyboardCapture(manager=manager)
     seen = []
-    capture.set_listener(lambda event: seen.append(event) or KeyEventDecision.SUPPRESS)
+    capture.set_listener(lambda event: seen.append(event) or KeyboardPipelineResult(send_to_system=False, app_result=AppKeyEventResult.UNHANDLED))
 
     capture.start()
     decision = manager.listener(RawMacKeyEvent(key_code=0, pressed=True, is_repeat=False))
 
-    assert decision == KeyEventDecision.SUPPRESS
+    assert decision == KeyboardPipelineResult(send_to_system=False, app_result=AppKeyEventResult.UNHANDLED)
     assert seen == [CapturedKeyEvent(key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.A, pressed=True), native_context=None)]
 
 
@@ -385,12 +385,42 @@ def test_macos_keyboard_capture_clears_listener_when_start_fails():
     manager = FakeManager()
     manager.start_error = RuntimeError("boom")
     capture = MacOSKeyboardCapture(manager=manager)
-    capture.set_listener(lambda event: KeyEventDecision.PASS_THROUGH)
+    capture.set_listener(lambda event: KeyboardPipelineResult(send_to_system=True, app_result=AppKeyEventResult.UNHANDLED))
 
     with pytest.raises(RuntimeError, match="boom"):
         capture.start()
 
     assert manager.listener is None
+
+
+def test_macos_hook_suppresses_when_send_to_system_is_false():
+    from adapters.macos.keyboard_hook import MacOSKeyboardCapture
+
+    manager = FakeManager()
+    capture = MacOSKeyboardCapture(manager=manager)
+    capture.set_listener(
+        lambda e: KeyboardPipelineResult(send_to_system=False, app_result=AppKeyEventResult.UNHANDLED)
+    )
+
+    capture.start()
+    result = manager.listener(RawMacKeyEvent(key_code=0, pressed=True, is_repeat=False))
+
+    assert result == KeyboardPipelineResult(send_to_system=False, app_result=AppKeyEventResult.UNHANDLED)
+
+
+def test_macos_hook_passes_through_when_send_to_system_is_true():
+    from adapters.macos.keyboard_hook import MacOSKeyboardCapture
+
+    manager = FakeManager()
+    capture = MacOSKeyboardCapture(manager=manager)
+    capture.set_listener(
+        lambda e: KeyboardPipelineResult(send_to_system=True, app_result=AppKeyEventResult.UNHANDLED)
+    )
+
+    capture.start()
+    result = manager.listener(RawMacKeyEvent(key_code=0, pressed=True, is_repeat=False))
+
+    assert result == KeyboardPipelineResult(send_to_system=True, app_result=AppKeyEventResult.UNHANDLED)
 
 
 def test_macos_hotkey_capture_triggers_f11_once_on_keydown():
@@ -409,13 +439,13 @@ def test_macos_hotkey_capture_triggers_f11_once_on_keydown():
     capture.start()
     assert manager.handle_raw_event(
         RawMacKeyEvent(key_code=103, pressed=True, is_repeat=False)
-    ) == KeyEventDecision.SUPPRESS
+    ) == KeyboardPipelineResult(send_to_system=False, app_result=AppKeyEventResult.UNHANDLED)
     assert manager.handle_raw_event(
         RawMacKeyEvent(key_code=103, pressed=True, is_repeat=True)
-    ) == KeyEventDecision.SUPPRESS
+    ) == KeyboardPipelineResult(send_to_system=False, app_result=AppKeyEventResult.UNHANDLED)
     assert manager.handle_raw_event(
         RawMacKeyEvent(key_code=103, pressed=False, is_repeat=False)
-    ) == KeyEventDecision.SUPPRESS
+    ) == KeyboardPipelineResult(send_to_system=False, app_result=AppKeyEventResult.UNHANDLED)
 
     assert triggered == ["f11"]
 
@@ -438,7 +468,7 @@ def test_macos_hotkey_capture_ignores_non_f11_keys():
         RawMacKeyEvent(key_code=0, pressed=True, is_repeat=False)
     )
 
-    assert decision == KeyEventDecision.PASS_THROUGH
+    assert decision == KeyboardPipelineResult(send_to_system=True, app_result=AppKeyEventResult.UNHANDLED)
     assert triggered == []
 
 
@@ -469,7 +499,7 @@ def test_macos_hotkey_capture_stop_preserves_active_keyboard_capture():
     hotkey = MacOSHotkeyCapture(manager=manager)
     keyboard = MacOSKeyboardCapture(manager=manager)
     seen = []
-    keyboard.set_listener(lambda event: seen.append(event) or KeyEventDecision.SUPPRESS)
+    keyboard.set_listener(lambda event: seen.append(event) or KeyboardPipelineResult(send_to_system=False, app_result=AppKeyEventResult.UNHANDLED))
     hotkey.set_handler(lambda: None)
 
     keyboard.start()
@@ -481,7 +511,7 @@ def test_macos_hotkey_capture_stop_preserves_active_keyboard_capture():
 
     assert manager.running is True
     assert backend.stop_calls == 0
-    assert decision == KeyEventDecision.SUPPRESS
+    assert decision == KeyboardPipelineResult(send_to_system=False, app_result=AppKeyEventResult.UNHANDLED)
     assert seen == [CapturedKeyEvent(key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.A, pressed=True), native_context=None)]
 
 
@@ -605,7 +635,7 @@ def test_quartz_backend_exists_with_correct_interface():
 def test_quartz_backend_create_event_tap_raises_without_quartz():
     backend = QuartzEventTapBackend()
     with pytest.raises(RuntimeError, match="Quartz"):
-        backend.create_event_tap(lambda e: KeyEventDecision.PASS_THROUGH)
+        backend.create_event_tap(lambda e: KeyboardPipelineResult(send_to_system=True, app_result=AppKeyEventResult.UNHANDLED))
 
 
 def test_quartz_backend_methods_raise_without_quartz():
@@ -626,7 +656,7 @@ def test_quartz_backend_methods_raise_without_quartz():
 def test_quartz_backend_create_event_tap_returns_tap_and_stores_callback():
     fake_q = FakeQuartzModule()
     backend = QuartzEventTapBackend(quartz=fake_q)
-    callback = lambda e: KeyEventDecision.PASS_THROUGH
+    callback = lambda e: KeyboardPipelineResult(send_to_system=True, app_result=AppKeyEventResult.UNHANDLED)
     result = backend.create_event_tap(callback)
     tap, *_ = fake_q.taps_created[0]
     assert result is tap
@@ -639,7 +669,7 @@ def test_quartz_backend_cg_callback_translates_keydown():
     fake_q = FakeQuartzModule()
     backend = QuartzEventTapBackend(quartz=fake_q)
     received = []
-    backend.create_event_tap(lambda e: received.append(e) or KeyEventDecision.PASS_THROUGH)
+    backend.create_event_tap(lambda e: received.append(e) or KeyboardPipelineResult(send_to_system=True, app_result=AppKeyEventResult.UNHANDLED))
     cg_callback = fake_q.taps_created[0][5]
 
     fake_event = {
@@ -657,7 +687,7 @@ def test_quartz_backend_cg_callback_translates_keyup():
     fake_q = FakeQuartzModule()
     backend = QuartzEventTapBackend(quartz=fake_q)
     received = []
-    backend.create_event_tap(lambda e: received.append(e) or KeyEventDecision.PASS_THROUGH)
+    backend.create_event_tap(lambda e: received.append(e) or KeyboardPipelineResult(send_to_system=True, app_result=AppKeyEventResult.UNHANDLED))
     cg_callback = fake_q.taps_created[0][5]
 
     fake_event = {
@@ -675,7 +705,7 @@ def test_quartz_backend_cg_callback_detects_repeat():
     fake_q = FakeQuartzModule()
     backend = QuartzEventTapBackend(quartz=fake_q)
     received = []
-    backend.create_event_tap(lambda e: received.append(e) or KeyEventDecision.PASS_THROUGH)
+    backend.create_event_tap(lambda e: received.append(e) or KeyboardPipelineResult(send_to_system=True, app_result=AppKeyEventResult.UNHANDLED))
     cg_callback = fake_q.taps_created[0][5]
 
     fake_event = {
@@ -690,7 +720,7 @@ def test_quartz_backend_cg_callback_detects_repeat():
 def test_quartz_backend_cg_callback_returns_none_to_suppress():
     fake_q = FakeQuartzModule()
     backend = QuartzEventTapBackend(quartz=fake_q)
-    backend.create_event_tap(lambda e: KeyEventDecision.SUPPRESS)
+    backend.create_event_tap(lambda e: KeyboardPipelineResult(send_to_system=False, app_result=AppKeyEventResult.UNHANDLED))
     cg_callback = fake_q.taps_created[0][5]
 
     fake_event = {fake_q.kCGKeyboardEventKeycode: 0, fake_q.kCGKeyboardEventAutorepeat: 0}
@@ -702,7 +732,7 @@ def test_quartz_backend_cg_callback_returns_none_to_suppress():
 def test_quartz_backend_cg_callback_returns_event_to_pass_through():
     fake_q = FakeQuartzModule()
     backend = QuartzEventTapBackend(quartz=fake_q)
-    backend.create_event_tap(lambda e: KeyEventDecision.PASS_THROUGH)
+    backend.create_event_tap(lambda e: KeyboardPipelineResult(send_to_system=True, app_result=AppKeyEventResult.UNHANDLED))
     cg_callback = fake_q.taps_created[0][5]
 
     fake_event = {fake_q.kCGKeyboardEventKeycode: 0, fake_q.kCGKeyboardEventAutorepeat: 0}
@@ -715,7 +745,7 @@ def test_quartz_backend_cg_callback_ignores_flags_changed():
     fake_q = FakeQuartzModule()
     backend = QuartzEventTapBackend(quartz=fake_q)
     called = []
-    backend.create_event_tap(lambda e: called.append(e) or KeyEventDecision.PASS_THROUGH)
+    backend.create_event_tap(lambda e: called.append(e) or KeyboardPipelineResult(send_to_system=True, app_result=AppKeyEventResult.UNHANDLED))
     cg_callback = fake_q.taps_created[0][5]
 
     fake_event = {fake_q.kCGKeyboardEventKeycode: 0, fake_q.kCGKeyboardEventAutorepeat: 0}
@@ -729,7 +759,7 @@ def test_quartz_backend_cg_callback_flagschanged_shift_pressed():
     fake_q = FakeQuartzModule()
     backend = QuartzEventTapBackend(quartz=fake_q)
     received = []
-    backend.create_event_tap(lambda e: received.append(e) or KeyEventDecision.PASS_THROUGH)
+    backend.create_event_tap(lambda e: received.append(e) or KeyboardPipelineResult(send_to_system=True, app_result=AppKeyEventResult.UNHANDLED))
     cg_callback = fake_q.taps_created[0][5]
 
     fake_event = {
@@ -745,7 +775,7 @@ def test_quartz_backend_cg_callback_flagschanged_shift_released():
     fake_q = FakeQuartzModule()
     backend = QuartzEventTapBackend(quartz=fake_q)
     received = []
-    backend.create_event_tap(lambda e: received.append(e) or KeyEventDecision.PASS_THROUGH)
+    backend.create_event_tap(lambda e: received.append(e) or KeyboardPipelineResult(send_to_system=True, app_result=AppKeyEventResult.UNHANDLED))
     cg_callback = fake_q.taps_created[0][5]
 
     press_event = {
@@ -769,7 +799,7 @@ def test_quartz_backend_cg_callback_flagschanged_right_shift_pressed_and_release
     fake_q = FakeQuartzModule()
     backend = QuartzEventTapBackend(quartz=fake_q)
     received = []
-    backend.create_event_tap(lambda e: received.append(e) or KeyEventDecision.PASS_THROUGH)
+    backend.create_event_tap(lambda e: received.append(e) or KeyboardPipelineResult(send_to_system=True, app_result=AppKeyEventResult.UNHANDLED))
     cg_callback = fake_q.taps_created[0][5]
 
     press_event = {
@@ -793,7 +823,7 @@ def test_quartz_backend_cg_callback_flagschanged_command_pressed():
     fake_q = FakeQuartzModule()
     backend = QuartzEventTapBackend(quartz=fake_q)
     received = []
-    backend.create_event_tap(lambda e: received.append(e) or KeyEventDecision.PASS_THROUGH)
+    backend.create_event_tap(lambda e: received.append(e) or KeyboardPipelineResult(send_to_system=True, app_result=AppKeyEventResult.UNHANDLED))
     cg_callback = fake_q.taps_created[0][5]
 
     fake_event = {
@@ -809,7 +839,7 @@ def test_quartz_backend_cg_callback_flagschanged_capslock_pressed():
     fake_q = FakeQuartzModule()
     backend = QuartzEventTapBackend(quartz=fake_q)
     received = []
-    backend.create_event_tap(lambda e: received.append(e) or KeyEventDecision.PASS_THROUGH)
+    backend.create_event_tap(lambda e: received.append(e) or KeyboardPipelineResult(send_to_system=True, app_result=AppKeyEventResult.UNHANDLED))
     cg_callback = fake_q.taps_created[0][5]
 
     fake_event = {
@@ -872,7 +902,7 @@ def test_quartz_backend_create_run_loop_source_and_add_source():
 def test_quartz_backend_create_event_tap_uses_correct_constants():
     fake_q = FakeQuartzModule()
     backend = QuartzEventTapBackend(quartz=fake_q)
-    backend.create_event_tap(lambda e: KeyEventDecision.PASS_THROUGH)
+    backend.create_event_tap(lambda e: KeyboardPipelineResult(send_to_system=True, app_result=AppKeyEventResult.UNHANDLED))
 
     _, location, place, options, mask, callback, user_data = fake_q.taps_created[0]
 
@@ -897,7 +927,7 @@ def test_quartz_backend_rejects_null_event_tap():
     fake_q = NullTapQuartzModule()
     backend = QuartzEventTapBackend(quartz=fake_q)
     with pytest.raises(RuntimeError, match="Failed to create Quartz event tap"):
-        backend.create_event_tap(lambda e: KeyEventDecision.PASS_THROUGH)
+        backend.create_event_tap(lambda e: KeyboardPipelineResult(send_to_system=True, app_result=AppKeyEventResult.UNHANDLED))
 
 
 def test_quartz_backend_run_loop_stop_uses_stored_run_loop():

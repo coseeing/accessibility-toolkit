@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import threading
 from typing import Any
 
-from adapters.inputs.base import KeyEventDecision
+from application.input.results import AppKeyEventResult, KeyboardPipelineResult
 
 
 @dataclass(frozen=True, slots=True)
@@ -13,7 +13,7 @@ class RawMacKeyEvent:
     is_repeat: bool
 
 
-RawListener = Callable[[RawMacKeyEvent], KeyEventDecision]
+RawListener = Callable[[RawMacKeyEvent], KeyboardPipelineResult]
 HotkeyHandler = Callable[[RawMacKeyEvent], bool]
 
 
@@ -128,16 +128,16 @@ class MacOSEventTapManager:
         self._thread = None
         self._running = False
 
-    def handle_raw_event(self, event: RawMacKeyEvent) -> KeyEventDecision:
+    def handle_raw_event(self, event: RawMacKeyEvent) -> KeyboardPipelineResult:
         if not event.pressed and event.key_code in self._suppressed_keyups:
             self._suppressed_keyups.discard(event.key_code)
-            return KeyEventDecision.SUPPRESS
+            return KeyboardPipelineResult(send_to_system=False, app_result=AppKeyEventResult.UNHANDLED)
         if self._hotkey_handler is not None and self._hotkey_handler(event):
             if event.pressed:
                 self._suppressed_keyups.add(event.key_code)
-            return KeyEventDecision.SUPPRESS
+            return KeyboardPipelineResult(send_to_system=False, app_result=AppKeyEventResult.UNHANDLED)
         if self._keyboard_listener is None:
-            return KeyEventDecision.PASS_THROUGH
+            return KeyboardPipelineResult(send_to_system=True, app_result=AppKeyEventResult.UNHANDLED)
         return self._keyboard_listener(event)
 
     def handle_tap_disabled(self) -> None:
@@ -175,7 +175,7 @@ class QuartzEventTapBackend:
     def set_ready_event(self, ready: threading.Event | None) -> None:
         self._ready = ready
 
-    def create_event_tap(self, callback: Callable[[RawMacKeyEvent], KeyEventDecision]) -> Any:
+    def create_event_tap(self, callback: Callable[[RawMacKeyEvent], KeyboardPipelineResult]) -> Any:
         Q = self._require_quartz()
 
         _MODIFIER_KEY_CODES = frozenset({54, 55, 56, 57, 58, 59, 60, 61, 62})
@@ -218,8 +218,8 @@ class QuartzEventTapBackend:
                 raw = RawMacKeyEvent(key_code=key_code, pressed=False, is_repeat=False)
             else:
                 return event
-            decision = callback(raw)
-            if decision == KeyEventDecision.SUPPRESS:
+            result = callback(raw)
+            if not result.send_to_system:
                 return None
             return event
 

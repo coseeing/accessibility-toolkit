@@ -3,6 +3,7 @@ from enum import StrEnum
 from typing import Protocol
 
 from adapters.inputs.captured_event import CapturedKeyEvent
+from application.input.results import KeyboardPipelineResult
 
 
 class KeyEventDecision(StrEnum):
@@ -16,7 +17,7 @@ class InputCapture(Protocol):
 
     def set_listener(
         self,
-        listener: Callable[[CapturedKeyEvent], KeyEventDecision],
+        listener: Callable[[CapturedKeyEvent], KeyboardPipelineResult],
     ) -> None: ...
 
     def start(self) -> None: ...
