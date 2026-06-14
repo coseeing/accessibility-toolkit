@@ -174,4 +174,4 @@ class WindowsKeyPressHotkeyCapture:
             return KeyboardPipelineResult(send_to_system=True, app_result=AppKeyEventResult.UNHANDLED)
         if self._handler is not None:
             self._handler()
-        return KeyboardPipelineResult(send_to_system=False, app_result=AppKeyEventResult.UNHANDLED)
+        return KeyboardPipelineResult(send_to_system=False, app_result=AppKeyEventResult.HANDLED_STOP)

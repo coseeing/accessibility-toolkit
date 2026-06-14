@@ -33,16 +33,15 @@
 - 面向系統的 pass-through 行為
 - app 內部的 handling 狀態
 
-本次第一個具體使用情境是：
+本次第一個具體使用情境包括：
 
 - Windows 上的 `key_echo` 應將 `Num Lock` 往下傳給系統
 - `key_echo` 也應在 app 邏輯內照常處理該鍵
-
-本階段不變更 `nvda_remote` 的行為，只做介面相容。
+- Windows 上的 `nvda_remote` 也應將 `Num Lock` 往下傳給本機系統
+- 本階段 `nvda_remote` 不應將 `Num Lock` 轉送到遠端
 
 ## 非目標
 
-- 本階段不變更 `nvda_remote` 對 `Num Lock` 的 forwarding 行為
 - 本階段不引入 `AppPostProcessingStage`
 - 本階段不將這套機制擴充到 `Caps Lock` 或 `Scroll Lock`
 - 本 spec 不重設計 legacy payload forwarding
@@ -233,15 +232,14 @@ capture / app 邊界應直接回傳 `KeyboardPipelineResult`。
 
 ## 本階段的 `nvda_remote` 範圍
 
-本階段的 `nvda_remote` 只做介面相容調整。
+本階段的 `nvda_remote` 會採用新的 pipeline result 模型，以及共用的 Windows `Num Lock` pass-through policy。
 
 這表示：
 
-- service 層可能需要適配新的 pipeline result 型別
-- 目前的 forwarding 行為應保持不變
-- 尚不採用 Windows `Num Lock` pass-through 語意
-
-這樣可讓設計聚焦，避免把 decision-model 重構與 remote forwarding policy 變更綁在同一個階段。
+- service 層會適配新的 pipeline result 型別
+- Windows `Num Lock` 會先往下傳給本機系統，再決定後續 app 邏輯
+- 本階段 `Num Lock` 不會流入既有的 remote forwarding 路徑
+- 其他既有 controlling / forwarding 行為應維持不變
 
 ## 受影響元件
 
@@ -261,7 +259,8 @@ capture / app 邊界應直接回傳 `KeyboardPipelineResult`。
 - `src/apps/key_echo/service.py`
   - 改為組裝與執行 keyboard pipeline
 - `src/apps/nvda_remote/service.py`
-  - 適配新的結果模型，但不改 forwarding policy
+  - 適配新的結果模型
+  - 套用共用的 Windows `Num Lock` pass-through 行為
 - `src/adapters/windows/keyboard_hook.py`
   - 改為使用 `send_to_system`
 - `src/adapters/macos/keyboard_hook.py`
@@ -276,7 +275,7 @@ capture / app 邊界應直接回傳 `KeyboardPipelineResult`。
 3. 更新 Windows 與 macOS adapter，使其只讀取 `send_to_system`
 4. 更新 `ModeManager` 與 `ActiveKeyEventPolicy`，改回傳 `AppKeyEventResult`
 5. 更新 `key_echo` use case 與 service，使其使用新 pipeline
-6. 讓 `nvda_remote` 適配新介面，但不改變既有行為
+6. 讓 `nvda_remote` 適配新介面，並在 forwarding 前套用共用的 Windows `Num Lock` pass-through
 
 ## 測試策略
 
@@ -306,8 +305,8 @@ capture / app 邊界應直接回傳 `KeyboardPipelineResult`。
   - 一般鍵 -> app 會處理，系統不會收到
   - Windows `Num Lock` -> app 會處理，系統也會收到
 - `nvda_remote`
-  - 本階段只驗證介面相容
-  - 目前 controlling 行為不應回歸
+  - Windows `Num Lock` -> 本機系統會收到，且不會轉送到遠端
+  - 其他既有 controlling 行為不應回歸
 
 ## 設計理由
 

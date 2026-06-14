@@ -131,11 +131,11 @@ class MacOSEventTapManager:
     def handle_raw_event(self, event: RawMacKeyEvent) -> KeyboardPipelineResult:
         if not event.pressed and event.key_code in self._suppressed_keyups:
             self._suppressed_keyups.discard(event.key_code)
-            return KeyboardPipelineResult(send_to_system=False, app_result=AppKeyEventResult.UNHANDLED)
+            return KeyboardPipelineResult(send_to_system=False, app_result=AppKeyEventResult.HANDLED_STOP)
         if self._hotkey_handler is not None and self._hotkey_handler(event):
             if event.pressed:
                 self._suppressed_keyups.add(event.key_code)
-            return KeyboardPipelineResult(send_to_system=False, app_result=AppKeyEventResult.UNHANDLED)
+            return KeyboardPipelineResult(send_to_system=False, app_result=AppKeyEventResult.HANDLED_STOP)
         if self._keyboard_listener is None:
             return KeyboardPipelineResult(send_to_system=True, app_result=AppKeyEventResult.UNHANDLED)
         return self._keyboard_listener(event)

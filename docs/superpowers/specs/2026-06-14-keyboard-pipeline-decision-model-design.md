@@ -33,16 +33,15 @@ Introduce a theoretically correct keyboard pipeline model that separates:
 - system-facing pass-through behavior
 - app-internal handling state
 
-The first concrete use case is:
+The first concrete use cases are:
 
 - `key_echo` on Windows should pass `Num Lock` through to the system
 - `key_echo` should still handle the key within app logic
-
-`nvda_remote` is not changing behavior in this phase beyond interface compatibility.
+- `nvda_remote` on Windows should also pass `Num Lock` through to the local system
+- in this phase, `nvda_remote` should not forward `Num Lock` to the remote side
 
 ## Non-Goals
 
-- Do not change `nvda_remote` forwarding behavior for `Num Lock` in this phase
 - Do not introduce `AppPostProcessingStage` in this phase
 - Do not extend this mechanism to `Caps Lock` or `Scroll Lock`
 - Do not redesign legacy payload forwarding in this spec
@@ -233,15 +232,14 @@ This is the first explicit case of the previously missing combination:
 
 ## `nvda_remote` Scope in This Phase
 
-`nvda_remote` is only updated for interface compatibility in this phase.
+`nvda_remote` adopts the new pipeline result model and the shared Windows `Num Lock` pass-through policy in this phase.
 
 This means:
 
-- its service layer may need to adapt to the new pipeline result types
-- its current forwarding behavior should remain unchanged
-- it will not yet adopt Windows `Num Lock` pass-through semantics
-
-This keeps the design focused and avoids coupling the decision-model refactor with remote forwarding policy changes.
+- its service layer adapts to the new pipeline result types
+- Windows `Num Lock` is passed through to the local system before remote forwarding logic
+- `Num Lock` does not flow into the existing remote forwarding path in this phase
+- all other existing controlling/forwarding behavior should remain unchanged
 
 ## Affected Components
 
@@ -261,7 +259,8 @@ This keeps the design focused and avoids coupling the decision-model refactor wi
 - `src/apps/key_echo/service.py`
   - compose and run the keyboard pipeline
 - `src/apps/nvda_remote/service.py`
-  - adapt to the new result model without changing forwarding policy
+  - adapt to the new result model
+  - apply shared Windows `Num Lock` pass-through behavior
 - `src/adapters/windows/keyboard_hook.py`
   - use `send_to_system`
 - `src/adapters/macos/keyboard_hook.py`
@@ -276,7 +275,7 @@ This keeps the design focused and avoids coupling the decision-model refactor wi
 3. update Windows and macOS adapters to read only `send_to_system`
 4. update `ModeManager` and `ActiveKeyEventPolicy` to return `AppKeyEventResult`
 5. update `key_echo` use cases and service to use the pipeline
-6. adapt `nvda_remote` to the new interfaces without changing its behavior
+6. adapt `nvda_remote` to the new interfaces and apply shared Windows `Num Lock` pass-through before forwarding
 
 ## Testing Strategy
 
@@ -306,8 +305,8 @@ This keeps the design focused and avoids coupling the decision-model refactor wi
   - general key -> app handles, system does not receive
   - Windows `Num Lock` -> app handles, system receives
 - `nvda_remote`
-  - interface compatibility only in this phase
-  - current controlling behavior should not regress
+  - Windows `Num Lock` -> local system receives it, remote forwarding does not
+  - current controlling behavior for other keys should not regress
 
 ## Rationale
 

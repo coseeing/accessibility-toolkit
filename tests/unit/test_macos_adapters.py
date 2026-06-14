@@ -306,7 +306,7 @@ def test_event_tap_manager_hotkey_handler_suppresses_matching_event():
     )
 
     assert seen == [RawMacKeyEvent(key_code=103, pressed=True, is_repeat=False)]
-    assert decision == KeyboardPipelineResult(send_to_system=False, app_result=AppKeyEventResult.UNHANDLED)
+    assert decision == KeyboardPipelineResult(send_to_system=False, app_result=AppKeyEventResult.HANDLED_STOP)
 
 
 def test_event_tap_manager_stop_releases_resources():
@@ -439,13 +439,13 @@ def test_macos_hotkey_capture_triggers_f11_once_on_keydown():
     capture.start()
     assert manager.handle_raw_event(
         RawMacKeyEvent(key_code=103, pressed=True, is_repeat=False)
-    ) == KeyboardPipelineResult(send_to_system=False, app_result=AppKeyEventResult.UNHANDLED)
+    ) == KeyboardPipelineResult(send_to_system=False, app_result=AppKeyEventResult.HANDLED_STOP)
     assert manager.handle_raw_event(
         RawMacKeyEvent(key_code=103, pressed=True, is_repeat=True)
-    ) == KeyboardPipelineResult(send_to_system=False, app_result=AppKeyEventResult.UNHANDLED)
+    ) == KeyboardPipelineResult(send_to_system=False, app_result=AppKeyEventResult.HANDLED_STOP)
     assert manager.handle_raw_event(
         RawMacKeyEvent(key_code=103, pressed=False, is_repeat=False)
-    ) == KeyboardPipelineResult(send_to_system=False, app_result=AppKeyEventResult.UNHANDLED)
+    ) == KeyboardPipelineResult(send_to_system=False, app_result=AppKeyEventResult.HANDLED_STOP)
 
     assert triggered == ["f11"]
 

@@ -548,7 +548,7 @@ def test_windows_keypress_hotkey_capture_triggers_handler_on_matching_keydown():
         )
     )
 
-    assert decision == KeyboardPipelineResult(send_to_system=False, app_result=AppKeyEventResult.UNHANDLED)
+    assert decision == KeyboardPipelineResult(send_to_system=False, app_result=AppKeyEventResult.HANDLED_STOP)
     assert seen == ["enter"]
 
 
