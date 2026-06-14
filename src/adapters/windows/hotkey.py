@@ -169,7 +169,8 @@ class WindowsKeyPressHotkeyCapture:
         self._keyboard_capture.stop()
 
     def _handle_key_event(self, event) -> KeyEventDecision:
-        if event.usage != self._usage or not event.pressed:
+        key_event = event.key_event
+        if key_event.usage != self._usage or not key_event.pressed:
             return KeyEventDecision.PASS_THROUGH
         if self._handler is not None:
             self._handler()

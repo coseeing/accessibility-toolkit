@@ -1,6 +1,7 @@
 import pytest
 
 from adapters.inputs.base import KeyEventDecision
+from adapters.inputs.captured_event import CapturedKeyEvent
 from adapters.macos.event_tap import (
     MacOSEventTapManager,
     QuartzEventTapBackend,
@@ -361,7 +362,7 @@ def test_macos_keyboard_capture_binds_listener_and_translates_event():
     decision = manager.listener(RawMacKeyEvent(key_code=0, pressed=True, is_repeat=False))
 
     assert decision == KeyEventDecision.SUPPRESS
-    assert seen == [KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.A, pressed=True)]
+    assert seen == [CapturedKeyEvent(key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.A, pressed=True), native_context=None)]
 
 
 def test_macos_keyboard_capture_proxies_lifecycle():
@@ -481,7 +482,7 @@ def test_macos_hotkey_capture_stop_preserves_active_keyboard_capture():
     assert manager.running is True
     assert backend.stop_calls == 0
     assert decision == KeyEventDecision.SUPPRESS
-    assert seen == [KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.A, pressed=True)]
+    assert seen == [CapturedKeyEvent(key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.A, pressed=True), native_context=None)]
 
 
 class FakeQuartzModule:

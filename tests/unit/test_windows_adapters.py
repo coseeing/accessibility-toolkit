@@ -14,6 +14,8 @@ from adapters.windows.nvda_controller import (
 from adapters.windows.hotkey import WindowsKeyPressHotkeyCapture
 from interop.key import HID, KeyEvent
 from adapters.inputs.base import KeyEventDecision
+from adapters.inputs.captured_event import CapturedKeyEvent
+from adapters.windows.native_key_context import WindowsNativeKeyContext
 
 
 WM_KEYDOWN = 0x0100
@@ -90,7 +92,10 @@ def test_windows_keyboard_hook_callback_emits_hid_key_event():
     callback(0, WM_KEYDOWN, ctypes.addressof(key_data))
 
     assert seen == [
-        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.TAB, pressed=True),
+        CapturedKeyEvent(
+            key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.TAB, pressed=True),
+            native_context=WindowsNativeKeyContext(vk_code=0x09, scan_code=15, extended=False),
+        ),
     ]
 
 
@@ -112,8 +117,14 @@ def test_windows_keyboard_hook_emits_hid_for_digit_and_letter():
     callback(0, WM_KEYDOWN, ctypes.addressof(key_data))
 
     assert seen == [
-        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.C, pressed=True),
-        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.DIGIT_1, pressed=True),
+        CapturedKeyEvent(
+            key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.C, pressed=True),
+            native_context=WindowsNativeKeyContext(vk_code=0x43, scan_code=46, extended=False),
+        ),
+        CapturedKeyEvent(
+            key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.DIGIT_1, pressed=True),
+            native_context=WindowsNativeKeyContext(vk_code=0x31, scan_code=2, extended=False),
+        ),
     ]
 
 
@@ -133,7 +144,10 @@ def test_windows_keyboard_hook_emits_hid_for_backspace():
     callback(0, WM_KEYDOWN, ctypes.addressof(key_data))
 
     assert seen == [
-        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.BACKSPACE, pressed=True),
+        CapturedKeyEvent(
+            key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.BACKSPACE, pressed=True),
+            native_context=WindowsNativeKeyContext(vk_code=0x08, scan_code=14, extended=False),
+        ),
     ]
 
 
@@ -153,7 +167,10 @@ def test_windows_keyboard_hook_emits_hid_for_minus_equals():
     callback(0, WM_KEYDOWN, ctypes.addressof(key_data))
 
     assert seen == [
-        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.MINUS, pressed=True),
+        CapturedKeyEvent(
+            key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.MINUS, pressed=True),
+            native_context=WindowsNativeKeyContext(vk_code=0xBD, scan_code=12, extended=False),
+        ),
     ]
 
 
@@ -173,7 +190,10 @@ def test_windows_keyboard_hook_emits_hid_for_left_meta_with_extended():
     callback(0, WM_KEYDOWN, ctypes.addressof(key_data))
 
     assert seen == [
-        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.LEFT_META, pressed=True),
+        CapturedKeyEvent(
+            key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.LEFT_META, pressed=True),
+            native_context=WindowsNativeKeyContext(vk_code=0x5B, scan_code=91, extended=True),
+        ),
     ]
 
 
@@ -193,7 +213,10 @@ def test_windows_keyboard_hook_emits_hid_for_right_shift():
     callback(0, WM_KEYDOWN, ctypes.addressof(key_data))
 
     assert seen == [
-        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.RIGHT_SHIFT, pressed=True),
+        CapturedKeyEvent(
+            key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.RIGHT_SHIFT, pressed=True),
+            native_context=WindowsNativeKeyContext(vk_code=0xA1, scan_code=54, extended=False),
+        ),
     ]
 
 
@@ -227,7 +250,10 @@ def test_windows_keyboard_hook_accepts_shift_keys_with_and_without_extended_flag
     callback(0, WM_KEYDOWN, ctypes.addressof(key_data))
 
     assert seen == [
-        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=usage, pressed=True),
+        CapturedKeyEvent(
+            key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=usage, pressed=True),
+            native_context=WindowsNativeKeyContext(vk_code=vk_code, scan_code=scan_code, extended=bool(flags & LLKHF_EXTENDED)),
+        ),
     ]
 
 
@@ -502,7 +528,10 @@ def test_windows_keypress_hotkey_capture_triggers_handler_on_matching_keydown():
 
     capture.start()
     decision = keyboard.listener(
-        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.ENTER, pressed=True)
+        CapturedKeyEvent(
+            key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.ENTER, pressed=True),
+            native_context=None,
+        )
     )
 
     assert decision == KeyEventDecision.SUPPRESS
@@ -520,7 +549,10 @@ def test_windows_keypress_hotkey_capture_ignores_non_matching_keys():
 
     capture.start()
     decision = keyboard.listener(
-        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.A, pressed=True)
+        CapturedKeyEvent(
+            key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.A, pressed=True),
+            native_context=None,
+        )
     )
 
     assert decision == KeyEventDecision.PASS_THROUGH
@@ -539,12 +571,20 @@ def test_windows_keyboard_hook_emits_hid_for_semicolon_and_quote():
     capture.start()
     callback = user32.installed[0][1]
 
-    callback(0, WM_KEYDOWN, ctypes.addressof(FakeKbdLlHookStruct(vkCode=0xBA, scanCode=39, flags=0)))
-    callback(0, WM_KEYDOWN, ctypes.addressof(FakeKbdLlHookStruct(vkCode=0xDE, scanCode=40, flags=0)))
+    key_data1 = FakeKbdLlHookStruct(vkCode=0xBA, scanCode=39, flags=0)
+    callback(0, WM_KEYDOWN, ctypes.addressof(key_data1))
+    key_data2 = FakeKbdLlHookStruct(vkCode=0xDE, scanCode=40, flags=0)
+    callback(0, WM_KEYDOWN, ctypes.addressof(key_data2))
 
     assert seen == [
-        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.SEMICOLON, pressed=True),
-        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.QUOTE, pressed=True),
+        CapturedKeyEvent(
+            key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.SEMICOLON, pressed=True),
+            native_context=WindowsNativeKeyContext(vk_code=0xBA, scan_code=39, extended=False),
+        ),
+        CapturedKeyEvent(
+            key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.QUOTE, pressed=True),
+            native_context=WindowsNativeKeyContext(vk_code=0xDE, scan_code=40, extended=False),
+        ),
     ]
 
 
@@ -560,14 +600,26 @@ def test_windows_keyboard_hook_emits_hid_for_insert_delete_and_page_down():
     capture.start()
     callback = user32.installed[0][1]
 
-    callback(0, WM_KEYDOWN, ctypes.addressof(FakeKbdLlHookStruct(vkCode=0x2D, scanCode=82, flags=LLKHF_EXTENDED)))
-    callback(0, WM_KEYDOWN, ctypes.addressof(FakeKbdLlHookStruct(vkCode=0x2E, scanCode=83, flags=LLKHF_EXTENDED)))
-    callback(0, WM_KEYDOWN, ctypes.addressof(FakeKbdLlHookStruct(vkCode=0x22, scanCode=81, flags=LLKHF_EXTENDED)))
+    key_data1 = FakeKbdLlHookStruct(vkCode=0x2D, scanCode=82, flags=LLKHF_EXTENDED)
+    callback(0, WM_KEYDOWN, ctypes.addressof(key_data1))
+    key_data2 = FakeKbdLlHookStruct(vkCode=0x2E, scanCode=83, flags=LLKHF_EXTENDED)
+    callback(0, WM_KEYDOWN, ctypes.addressof(key_data2))
+    key_data3 = FakeKbdLlHookStruct(vkCode=0x22, scanCode=81, flags=LLKHF_EXTENDED)
+    callback(0, WM_KEYDOWN, ctypes.addressof(key_data3))
 
     assert seen == [
-        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.INSERT, pressed=True),
-        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.DELETE, pressed=True),
-        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.PAGE_DOWN, pressed=True),
+        CapturedKeyEvent(
+            key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.INSERT, pressed=True),
+            native_context=WindowsNativeKeyContext(vk_code=0x2D, scan_code=82, extended=True),
+        ),
+        CapturedKeyEvent(
+            key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.DELETE, pressed=True),
+            native_context=WindowsNativeKeyContext(vk_code=0x2E, scan_code=83, extended=True),
+        ),
+        CapturedKeyEvent(
+            key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.PAGE_DOWN, pressed=True),
+            native_context=WindowsNativeKeyContext(vk_code=0x22, scan_code=81, extended=True),
+        ),
     ]
 
 
@@ -583,14 +635,26 @@ def test_windows_keyboard_hook_distinguishes_numpad_from_main_cluster_keys():
     capture.start()
     callback = user32.installed[0][1]
 
-    callback(0, WM_KEYDOWN, ctypes.addressof(FakeKbdLlHookStruct(vkCode=0x61, scanCode=79, flags=0)))
-    callback(0, WM_KEYDOWN, ctypes.addressof(FakeKbdLlHookStruct(vkCode=0x6F, scanCode=53, flags=LLKHF_EXTENDED)))
-    callback(0, WM_KEYDOWN, ctypes.addressof(FakeKbdLlHookStruct(vkCode=0x6E, scanCode=83, flags=0)))
+    key_data1 = FakeKbdLlHookStruct(vkCode=0x61, scanCode=79, flags=0)
+    callback(0, WM_KEYDOWN, ctypes.addressof(key_data1))
+    key_data2 = FakeKbdLlHookStruct(vkCode=0x6F, scanCode=53, flags=LLKHF_EXTENDED)
+    callback(0, WM_KEYDOWN, ctypes.addressof(key_data2))
+    key_data3 = FakeKbdLlHookStruct(vkCode=0x6E, scanCode=83, flags=0)
+    callback(0, WM_KEYDOWN, ctypes.addressof(key_data3))
 
     assert seen == [
-        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.KEYPAD_1, pressed=True),
-        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.KEYPAD_DIVIDE, pressed=True),
-        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.KEYPAD_DECIMAL, pressed=True),
+        CapturedKeyEvent(
+            key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.KEYPAD_1, pressed=True),
+            native_context=WindowsNativeKeyContext(vk_code=0x61, scan_code=79, extended=False),
+        ),
+        CapturedKeyEvent(
+            key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.KEYPAD_DIVIDE, pressed=True),
+            native_context=WindowsNativeKeyContext(vk_code=0x6F, scan_code=53, extended=True),
+        ),
+        CapturedKeyEvent(
+            key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.KEYPAD_DECIMAL, pressed=True),
+            native_context=WindowsNativeKeyContext(vk_code=0x6E, scan_code=83, extended=False),
+        ),
     ]
 
 
@@ -606,10 +670,14 @@ def test_windows_keyboard_hook_emits_hid_for_non_us_backslash_when_available():
     capture.start()
     callback = user32.installed[0][1]
 
-    callback(0, WM_KEYDOWN, ctypes.addressof(FakeKbdLlHookStruct(vkCode=0xE2, scanCode=86, flags=0)))
+    key_data = FakeKbdLlHookStruct(vkCode=0xE2, scanCode=86, flags=0)
+    callback(0, WM_KEYDOWN, ctypes.addressof(key_data))
 
     assert seen == [
-        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.NON_US_BACKSLASH, pressed=True),
+        CapturedKeyEvent(
+            key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.NON_US_BACKSLASH, pressed=True),
+            native_context=WindowsNativeKeyContext(vk_code=0xE2, scan_code=86, extended=False),
+        ),
     ]
 
 
@@ -629,7 +697,10 @@ def test_windows_keyboard_hook_emits_hid_for_keypad_equals():
     callback(0, WM_KEYDOWN, ctypes.addressof(key_data))
 
     assert seen == [
-        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.KEYPAD_EQUALS, pressed=True),
+        CapturedKeyEvent(
+            key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.KEYPAD_EQUALS, pressed=True),
+            native_context=WindowsNativeKeyContext(vk_code=0xBB, scan_code=89, extended=False),
+        ),
     ]
 
 
@@ -657,11 +728,26 @@ def test_windows_keyboard_hook_emits_hid_for_print_screen_scroll_lock_pause_num_
     callback(0, WM_KEYDOWN, ctypes.addressof(key_data))
 
     assert seen == [
-        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.PRINT_SCREEN, pressed=True),
-        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.SCROLL_LOCK, pressed=True),
-        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.PAUSE, pressed=True),
-        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.NUM_LOCK, pressed=True),
-        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.APPLICATION, pressed=True),
+        CapturedKeyEvent(
+            key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.PRINT_SCREEN, pressed=True),
+            native_context=WindowsNativeKeyContext(vk_code=0x2C, scan_code=55, extended=True),
+        ),
+        CapturedKeyEvent(
+            key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.SCROLL_LOCK, pressed=True),
+            native_context=WindowsNativeKeyContext(vk_code=0x91, scan_code=70, extended=False),
+        ),
+        CapturedKeyEvent(
+            key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.PAUSE, pressed=True),
+            native_context=WindowsNativeKeyContext(vk_code=0x13, scan_code=69, extended=False),
+        ),
+        CapturedKeyEvent(
+            key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.NUM_LOCK, pressed=True),
+            native_context=WindowsNativeKeyContext(vk_code=0x90, scan_code=69, extended=True),
+        ),
+        CapturedKeyEvent(
+            key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.APPLICATION, pressed=True),
+            native_context=WindowsNativeKeyContext(vk_code=0x5D, scan_code=93, extended=True),
+        ),
     ]
 
 
@@ -687,10 +773,22 @@ def test_windows_keyboard_hook_emits_hid_for_common_jis_keys_when_available():
     callback(0, WM_KEYDOWN, ctypes.addressof(key_data))
 
     assert seen == [
-        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.NON_US_HASH, pressed=True),
-        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.INTERNATIONAL1, pressed=True),
-        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.INTERNATIONAL4, pressed=True),
-        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.INTERNATIONAL5, pressed=True),
+        CapturedKeyEvent(
+            key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.NON_US_HASH, pressed=True),
+            native_context=WindowsNativeKeyContext(vk_code=0xC0, scan_code=125, extended=False),
+        ),
+        CapturedKeyEvent(
+            key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.INTERNATIONAL1, pressed=True),
+            native_context=WindowsNativeKeyContext(vk_code=0xE2, scan_code=115, extended=False),
+        ),
+        CapturedKeyEvent(
+            key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.INTERNATIONAL4, pressed=True),
+            native_context=WindowsNativeKeyContext(vk_code=0xF3, scan_code=121, extended=False),
+        ),
+        CapturedKeyEvent(
+            key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.INTERNATIONAL5, pressed=True),
+            native_context=WindowsNativeKeyContext(vk_code=0xF4, scan_code=123, extended=False),
+        ),
     ]
 
 

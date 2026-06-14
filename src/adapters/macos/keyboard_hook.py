@@ -2,6 +2,7 @@ from collections.abc import Callable
 from typing import Any
 
 from adapters.inputs.base import KeyEventDecision
+from adapters.inputs.captured_event import CapturedKeyEvent
 from adapters.macos.event_tap import RawMacKeyEvent
 from adapters.macos.keymap import key_event_from_macos
 from interop.key.key_event import KeyEvent
@@ -10,13 +11,13 @@ from interop.key.key_event import KeyEvent
 class MacOSKeyboardCapture:
     def __init__(self, *, manager: Any) -> None:
         self._manager = manager
-        self._listener: Callable[[KeyEvent], KeyEventDecision] | None = None
+        self._listener: Callable[[CapturedKeyEvent], KeyEventDecision] | None = None
 
     @property
     def running(self) -> bool:
         return bool(self._manager.running)
 
-    def set_listener(self, listener: Callable[[KeyEvent], KeyEventDecision]) -> None:
+    def set_listener(self, listener: Callable[[CapturedKeyEvent], KeyEventDecision]) -> None:
         self._listener = listener
 
     def start(self) -> None:
@@ -41,4 +42,9 @@ class MacOSKeyboardCapture:
         )
         if key_event is None:
             return KeyEventDecision.PASS_THROUGH
-        return self._listener(key_event)
+        return self._listener(
+            CapturedKeyEvent(
+                key_event=key_event,
+                native_context=None,
+            )
+        )

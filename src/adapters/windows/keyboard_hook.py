@@ -6,7 +6,9 @@ from ctypes import wintypes
 from typing import Any
 
 from adapters.inputs.base import KeyEventDecision
+from adapters.inputs.captured_event import CapturedKeyEvent
 from adapters.windows.hid_map import key_event_from_windows
+from adapters.windows.native_key_context import WindowsNativeKeyContext
 from interop.key.key_event import KeyEvent
 
 
@@ -47,7 +49,7 @@ class WindowsKeyboardCapture:
         kernel32: Any | None = None,
         is_windows: bool | None = None,
     ) -> None:
-        self._listener: Callable[[KeyEvent], KeyEventDecision] | None = None
+        self._listener: Callable[[CapturedKeyEvent], KeyEventDecision] | None = None
         self._running = False
         self._is_windows = sys.platform == "win32" if is_windows is None else is_windows
         self._user32 = user32
@@ -59,7 +61,7 @@ class WindowsKeyboardCapture:
     def running(self) -> bool:
         return self._running
 
-    def set_listener(self, listener: Callable[[KeyEvent], KeyEventDecision]) -> None:
+    def set_listener(self, listener: Callable[[CapturedKeyEvent], KeyEventDecision]) -> None:
         self._listener = listener
 
     def start(self) -> None:
@@ -144,14 +146,23 @@ class WindowsKeyboardCapture:
                     else "None"
                 ),
             )
-            decision = self._emit_for_tests(event)
+            decision = self._emit_for_tests(event, vk_code, scan_code, extended)
             if decision == KeyEventDecision.SUPPRESS:
                 return 1
         if self._user32 is None:
             return 0
         return int(self._user32.CallNextHookEx(self._hook_handle, n_code, w_param, l_param))
 
-    def _emit_for_tests(self, event: KeyEvent | None) -> KeyEventDecision:
+    def _emit_for_tests(self, event: KeyEvent | None, vk_code: int, scan_code: int, extended: bool) -> KeyEventDecision:
         if event is None or self._listener is None:
             return KeyEventDecision.PASS_THROUGH
-        return self._listener(event)
+        return self._listener(
+            CapturedKeyEvent(
+                key_event=event,
+                native_context=WindowsNativeKeyContext(
+                    vk_code=vk_code,
+                    scan_code=scan_code,
+                    extended=extended,
+                ),
+            )
+        )
