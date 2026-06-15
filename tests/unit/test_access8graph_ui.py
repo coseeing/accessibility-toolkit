@@ -236,19 +236,23 @@ def test_main_frame_preserves_error_after_failed_start(
 
 
 def test_main_frame_clears_error_on_new_file_selection(
-    main_frame_type, tmp_path
+    monkeypatch, tmp_path
 ) -> None:
+    new_path = tmp_path / "good.graphml"
+    new_path.write_text("<graphml />", encoding="utf-8")
+
+    fake_wx = install_fake_wx(monkeypatch)
+    fake_wx.FileDialog.GetPath = lambda self: str(new_path)
+    sys.modules.pop("ui.access8graph.main_frame", None)
+    module = importlib.import_module("ui.access8graph.main_frame")
+
     controller = FakeController()
-    frame = main_frame_type(controller=controller)
+    frame = module.Access8GraphMainFrame(controller=controller)
 
     controller.listener({"kind": "error", "message": "parse failed"})
     assert frame.status_label.GetLabel() == "parse failed"
 
-    new_path = tmp_path / "good.graphml"
-    new_path.write_text("<graphml />", encoding="utf-8")
-    controller.choose_graphml(str(new_path))
-    frame._last_error = None
-    frame._sync_controls()
+    frame._on_choose_graphml(None)
 
     assert frame.status_label.GetLabel() == "good.graphml"
 
