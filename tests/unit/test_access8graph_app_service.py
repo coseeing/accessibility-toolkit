@@ -184,3 +184,53 @@ def test_service_escape_stops_navigation() -> None:
         app_result=AppKeyEventResult.HANDLED_STOP,
     )
     assert service.is_navigation_running() is False
+
+
+def test_service_rejects_non_existent_file_in_choose_graphml() -> None:
+    service, _input_capture, _hotkey_capture, _speech = build_service()
+
+    with pytest.raises(FileNotFoundError):
+        service.choose_graphml("/nonexistent/path.graphml")
+
+
+def test_service_accepts_uppercase_graphml_suffix(tmp_path: Path) -> None:
+    service, _input_capture, _hotkey_capture, _speech = build_service()
+    path = tmp_path / "map.GRAPHML"
+    path.write_text("<graphml />", encoding="utf-8")
+
+    service.choose_graphml(str(path))
+
+    assert service.get_selected_graphml_path() == str(path)
+
+
+def test_service_malformed_graphml_does_not_leave_input_capture_running(
+    tmp_path: Path,
+) -> None:
+    service, input_capture, hotkey_capture, _speech = build_service()
+    path = tmp_path / "bad.graphml"
+    path.write_text("not valid xml <<<", encoding="utf-8")
+    service.choose_graphml(str(path))
+    hotkey_capture.start()
+
+    with pytest.raises(RuntimeError, match="Failed to start"):
+        service.start_navigation()
+
+    assert service.is_navigation_running() is False
+    assert input_capture.running is False
+    assert hotkey_capture.running is True
+
+
+def test_service_deleted_file_fails_before_activation(tmp_path: Path) -> None:
+    service, input_capture, hotkey_capture, _speech = build_service()
+    path = tmp_path / "will_be_deleted.graphml"
+    path.write_text("<graphml />", encoding="utf-8")
+    service.choose_graphml(str(path))
+    path.unlink()
+    hotkey_capture.start()
+
+    with pytest.raises(FileNotFoundError):
+        service.start_navigation()
+
+    assert service.is_navigation_running() is False
+    assert input_capture.running is False
+    assert hotkey_capture.running is True

@@ -87,6 +87,7 @@ class Access8GraphMainFrame(wx.Frame):
     def _on_controller_status(self, status) -> None:
         if isinstance(status, dict) and status.get("kind") == "error":
             self.status_label.SetLabel(str(status.get("message", "")))
+            return
         self._sync_controls()
 
     def _on_close(self, event) -> None:

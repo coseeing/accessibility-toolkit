@@ -307,9 +307,8 @@ class Graph:
 		parser = ET.XMLParser()
 		try:
 			tree = ET.fromstring(content.encode('utf-8'), parser=parser)
-		except BaseException as e:
-			print(e)
-			return
+		except Exception as e:
+			raise ValueError(f"Failed to parse GraphML file: {e}") from e
 
 		for item in tree.iter():
 			_, _, postfix = item.tag.partition('}')

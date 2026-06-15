@@ -33,7 +33,13 @@ class Access8GraphNavigationMode:
         return self._service.get_selected_graphml_path() is not None
 
     def enter(self) -> bool:
-        self._service._start_flow()
+        try:
+            self._service._start_flow()
+        except Exception as error:
+            self._service._notify_status_listener(
+                {"kind": "error", "message": str(error)}
+            )
+            return False
         return True
 
     def exit(self) -> bool:
@@ -107,9 +113,12 @@ class Access8GraphAppService(KeyEventHandler):
         self._status_listener = listener
 
     def choose_graphml(self, path: str) -> None:
-        if Path(path).suffix != ".graphml":
-            raise ValueError("File must be .graphml")
-        self._selected_path = path
+        graphml_path = Path(path)
+        if graphml_path.suffix.lower() != ".graphml":
+            raise ValueError("Selected file must have a .graphml extension")
+        if not graphml_path.is_file():
+            raise FileNotFoundError(str(graphml_path))
+        self._selected_path = str(graphml_path)
 
     def get_selected_graphml_path(self) -> str | None:
         return self._selected_path
@@ -117,7 +126,12 @@ class Access8GraphAppService(KeyEventHandler):
     def start_navigation(self) -> None:
         if self._selected_path is None:
             raise RuntimeError("No GraphML file selected")
-        self._mode_manager.activate_mode("navigation")
+        if not Path(self._selected_path).is_file():
+            raise FileNotFoundError(
+                f"GraphML file no longer exists: {self._selected_path}"
+            )
+        if not self._mode_manager.activate_mode("navigation"):
+            raise RuntimeError("Failed to start navigation")
 
     def stop_navigation(self) -> None:
         if self._mode_manager.active_mode_id == "navigation":
@@ -132,7 +146,6 @@ class Access8GraphAppService(KeyEventHandler):
         self._navigation_running = active
 
     def _start_flow(self) -> None:
-        self._navigation_running = True
         graph = Graph(path=self._selected_path)
         model = MrtModel(graph)
         self._flow = MrtFlow(

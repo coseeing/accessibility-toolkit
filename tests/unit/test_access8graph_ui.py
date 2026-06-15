@@ -196,3 +196,17 @@ def test_main_frame_start_stop_button_calls_controller(main_frame_type, tmp_path
     assert controller.stop_calls == 1
 
     frame.Destroy()
+
+
+def test_main_frame_preserves_error_label_from_controller_status(
+    main_frame_type,
+) -> None:
+    controller = FakeController()
+    frame = main_frame_type(controller=controller)
+
+    assert controller.listener is not None
+    controller.listener({"kind": "error", "message": "Something went wrong"})
+
+    assert frame.status_label.GetLabel() == "Something went wrong"
+
+    frame.Destroy()
