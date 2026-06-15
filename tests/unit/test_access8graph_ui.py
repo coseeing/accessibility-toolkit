@@ -126,6 +126,7 @@ class FakeController:
         self.running = False
         self.start_calls = 0
         self.stop_calls = 0
+        self.start_error: str | None = None
 
     def set_status_listener(self, listener) -> None:
         self.listener = listener
@@ -138,6 +139,10 @@ class FakeController:
 
     def start_navigation(self) -> None:
         self.start_calls += 1
+        if self.start_error:
+            if self.listener:
+                self.listener({"kind": "error", "message": self.start_error})
+            raise RuntimeError("Failed to start navigation")
         self.running = True
 
     def stop_navigation(self) -> None:
@@ -208,5 +213,23 @@ def test_main_frame_preserves_error_label_from_controller_status(
     controller.listener({"kind": "error", "message": "Something went wrong"})
 
     assert frame.status_label.GetLabel() == "Something went wrong"
+
+    frame.Destroy()
+
+
+def test_main_frame_preserves_error_after_failed_start(
+    main_frame_type, tmp_path
+) -> None:
+    controller = FakeController()
+    controller.start_error = "parse failed"
+    path = tmp_path / "bad.graphml"
+    path.write_text("<graphml />", encoding="utf-8")
+    controller.choose_graphml(str(path))
+    frame = main_frame_type(controller=controller)
+    frame._sync_controls()
+
+    frame._on_toggle_navigation(None)
+
+    assert frame.status_label.GetLabel() == "parse failed"
 
     frame.Destroy()

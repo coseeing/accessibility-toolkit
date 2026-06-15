@@ -7,6 +7,7 @@ class Access8GraphMainFrame(wx.Frame):
     def __init__(self, controller):
         super().__init__(parent=None, title="Access8Graph")
         self.controller = controller
+        self._last_error: str | None = None
         if self.controller is not None and hasattr(self.controller, "set_status_listener"):
             self.controller.set_status_listener(self._on_controller_status)
 
@@ -77,6 +78,8 @@ class Access8GraphMainFrame(wx.Frame):
             "Stop Navigation" if running else "Start Navigation"
         )
         self.navigation_button.Enable(bool(selected_path) or running)
+        if self._last_error:
+            return
         if running:
             self.status_label.SetLabel("Navigation running")
         elif selected_path:
@@ -86,8 +89,10 @@ class Access8GraphMainFrame(wx.Frame):
 
     def _on_controller_status(self, status) -> None:
         if isinstance(status, dict) and status.get("kind") == "error":
-            self.status_label.SetLabel(str(status.get("message", "")))
+            self._last_error = str(status.get("message", ""))
+            self.status_label.SetLabel(self._last_error)
             return
+        self._last_error = None
         self._sync_controls()
 
     def _on_close(self, event) -> None:
