@@ -395,7 +395,7 @@ class MrtUndirectionNavigator(MrtNavigator):
 			datas = [{"id": item, "node_info": (self.node_info_display(item["sub_line"][0]), self.node_info_display(item["sub_line"][-1]))} for item in self.transfer_another_end_sub_line]
 		except BaseException as e:
 			print(e)
-			data = []
+			datas = []
 		for item in datas:
 			display.append({
 				"id": item["id"],
