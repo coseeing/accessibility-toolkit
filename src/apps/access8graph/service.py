@@ -3,30 +3,57 @@ from pathlib import Path
 from adapters.inputs.base import HotkeyCapture, InputCapture
 from adapters.inputs.captured_event import CapturedKeyEvent
 from application.input import (
-    AppKeyEventResult,
     assemble_pipeline_result,
     InputActivationUseCase,
     KeyboardPipelineResult,
     should_pass_through_system_toggle,
 )
+from application.input.results import AppKeyEventResult
 from application.keyboard import KeyEventHandler, KeyboardInputService
 from application.output_capabilities import OutputCapabilities
 from interop.key import HID
 
 from apps.access8graph.flow import MrtFlow
-from apps.access8graph.graphml import (
-    Graph,
-    MrtDirectionNavigator,
-    MrtModel,
-    MrtUndirectionNavigator,
-)
+from apps.access8graph.graphml import Graph, MrtDirectionNavigator, MrtModel, MrtUndirectionNavigator
 from apps.access8graph.input import Access8GraphKeyTranslator
 from apps.access8graph.output import Access8GraphFlowOutput
+from apps.shared.mode_manager import ModeManager
 from apps.shared.speech_settings_controller import SpeechSettingsController
 
 
-class Access8GraphAppService(KeyEventHandler):
+class Access8GraphNavigationMode:
+    mode_id = "navigation"
     enter_usage = HID.F10
+    exit_usage = HID.ESCAPE
+
+    def __init__(self, service):
+        self._service = service
+
+    def can_enter(self) -> bool:
+        return self._service.get_selected_graphml_path() is not None
+
+    def enter(self) -> bool:
+        self._service._start_flow()
+        return True
+
+    def exit(self) -> bool:
+        self._service._stop_flow()
+        return True
+
+    def handle_key_event(self, event):
+        translator = Access8GraphKeyTranslator()
+        command = translator.translate(event)
+        if command is None:
+            return AppKeyEventResult.UNHANDLED
+        flow = self._service._flow
+        if flow is None:
+            return AppKeyEventResult.UNHANDLED
+        flow.enter(command)
+        return AppKeyEventResult.HANDLED_STOP
+
+
+class Access8GraphAppService(KeyEventHandler):
+    enter_usage = Access8GraphNavigationMode.enter_usage
 
     def __init__(
         self,
@@ -44,13 +71,14 @@ class Access8GraphAppService(KeyEventHandler):
         self._main_thread_dispatch = main_thread_dispatch or (
             lambda callback: callback()
         )
+        self._selected_path: str | None = None
+        self._navigation_running = False
+        self._flow = None
+
+        self._flow_output = Access8GraphFlowOutput(outputs=outputs)
         self._speech_settings = SpeechSettingsController(
             speech=outputs.speech,
         )
-        self._translator = Access8GraphKeyTranslator()
-        self._selected_graphml_path: str | None = None
-        self._flow: MrtFlow | None = None
-        self._navigation_active = False
         self._activation = InputActivationUseCase(
             input_capture=input_capture,
             hotkey_capture=hotkey_capture,
@@ -60,9 +88,16 @@ class Access8GraphAppService(KeyEventHandler):
                 {"kind": "error", "message": message}
             ),
         )
+        self._mode_manager = ModeManager(
+            activation=self._activation,
+            notify_status=self._notify_status_listener,
+        )
 
     def attach_input_service(self, input_service: KeyboardInputService) -> None:
         self._input_service = input_service
+        self._mode_manager.register(
+            Access8GraphNavigationMode(self)
+        )
 
     def bind(self) -> None:
         self.input_capture.set_listener(self.handle_key_event)
@@ -72,86 +107,66 @@ class Access8GraphAppService(KeyEventHandler):
         self._status_listener = listener
 
     def choose_graphml(self, path: str) -> None:
-        if not path.endswith(".graphml"):
-            raise ValueError("Path must end with .graphml")
-        if not Path(path).exists():
-            raise FileNotFoundError(f"File not found: {path}")
-        self._selected_graphml_path = path
+        if Path(path).suffix != ".graphml":
+            raise ValueError("File must be .graphml")
+        self._selected_path = path
+
+    def get_selected_graphml_path(self) -> str | None:
+        return self._selected_path
 
     def start_navigation(self) -> None:
-        if self._selected_graphml_path is None:
+        if self._selected_path is None:
             raise RuntimeError("No GraphML file selected")
-        graph = Graph(path=self._selected_graphml_path)
-        model = MrtModel(graph)
-        direction_navigator = MrtDirectionNavigator(model)
-        undirection_navigator = MrtUndirectionNavigator(model)
-        navigator = {
-            "direction": direction_navigator,
-            "undirection": undirection_navigator,
-        }
-        flow_output = Access8GraphFlowOutput(self._outputs)
-        self._flow = MrtFlow(navigator, flow_output)
-        self._activation.enter_active()
+        self._mode_manager.activate_mode("navigation")
 
     def stop_navigation(self) -> None:
-        if self._flow is not None:
-            self._activation.exit_active()
-            self._flow = None
+        if self._mode_manager.active_mode_id == "navigation":
+            self._mode_manager.exit_active_mode()
+        else:
+            self._stop_flow()
 
     def is_navigation_running(self) -> bool:
-        return self._navigation_active
+        return self._navigation_running
 
     def _set_navigation_active(self, active: bool) -> None:
-        self._navigation_active = active
+        self._navigation_running = active
 
-    def handle_key_event(self, event: CapturedKeyEvent) -> KeyboardPipelineResult:
-        send_to_system = should_pass_through_system_toggle(event)
-
-        if not self.is_navigation_running():
-            return assemble_pipeline_result(
-                send_to_system=send_to_system,
-                app_result=AppKeyEventResult.UNHANDLED,
-            )
-
-        command = self._translator.translate(event.key_event)
-        if command is None:
-            return assemble_pipeline_result(
-                send_to_system=False,
-                app_result=AppKeyEventResult.HANDLED_STOP,
-            )
-
-        if command["key"] == "escape":
-            self.stop_navigation()
-            return assemble_pipeline_result(
-                send_to_system=False,
-                app_result=AppKeyEventResult.HANDLED_STOP,
-            )
-
-        self._flow.enter(command)
-        return assemble_pipeline_result(
-            send_to_system=False,
-            app_result=AppKeyEventResult.HANDLED_STOP,
+    def _start_flow(self) -> None:
+        self._navigation_running = True
+        graph = Graph(path=self._selected_path)
+        model = MrtModel(graph)
+        self._flow = MrtFlow(
+            navigator={
+                "direction": MrtDirectionNavigator(model),
+                "undirection": MrtUndirectionNavigator(model),
+            },
+            output=self._flow_output,
         )
 
-    def get_backend_options(self) -> tuple[tuple[str, str], ...]:
+    def _stop_flow(self) -> None:
+        self._navigation_running = False
+        self._flow = None
+        self._flow_output.cancel_speech()
+
+    def get_speech_backend_options(self) -> tuple[tuple[str, str], ...]:
         return self._speech_settings.get_backend_options()
 
-    def get_selected_backend(self) -> str:
+    def get_selected_speech_backend(self) -> str:
         return self._speech_settings.get_selected_backend()
 
-    def set_backend(self, backend_id: str) -> None:
+    def set_speech_backend(self, backend_id: str) -> None:
         self._speech_settings.set_backend(backend_id)
         self._notify_status_listener(
             {"kind": "speech_backend", "backend_id": backend_id}
         )
 
-    def list_voices(self) -> tuple[tuple[str, str], ...]:
+    def get_available_voices(self) -> tuple[tuple[str, str], ...]:
         return self._speech_settings.list_voices()
 
-    def get_voice(self) -> str | None:
+    def get_selected_voice(self) -> str | None:
         return self._speech_settings.get_voice()
 
-    def set_voice(self, voice_id: str) -> None:
+    def set_selected_voice(self, voice_id: str) -> None:
         self._speech_settings.set_voice(voice_id)
 
     def get_rate(self) -> int | None:
@@ -179,6 +194,13 @@ class Access8GraphAppService(KeyEventHandler):
         if self.hotkey_capture is not None and self.hotkey_capture.running:
             self.hotkey_capture.stop()
         self._outputs.speech.shutdown()
+
+    def handle_key_event(self, event: CapturedKeyEvent) -> KeyboardPipelineResult:
+        send_to_system = should_pass_through_system_toggle(event)
+        app_result = self._mode_manager.handle_key_event(event.key_event)
+        return assemble_pipeline_result(
+            send_to_system=send_to_system, app_result=app_result
+        )
 
     def _notify_status_listener(self, status: dict[str, str]) -> None:
         if self._status_listener is not None:
