@@ -4,6 +4,8 @@
 
 Access8Graph is an NVDA add-on for navigating accessible structure diagrams, especially MRT-style route graphs authored as yEd GraphML. Its current implementation depends on NVDA runtime APIs for keyboard hooks, focus objects, speech, tones, and review text. The parser, MRT model, and navigator are comparatively independent and can be reused outside NVDA with limited adaptation.
 
+The original Access8Graph source tree is now available inside this repository at `Access8Graph/`; implementation work should use that root-level tree as the migration source and fixture location.
+
 This project already provides the shared architecture needed for that migration:
 
 - Keyboard input capture through `KeyboardInputService`, `InputCapture`, and `HotkeyCapture`.
@@ -136,10 +138,8 @@ New flow responsibilities:
 
 - Hold navigators and state objects.
 - Accept a command dict with `key`, `repeat`, and `pressing`.
-- Normalize command keys in the same way as the original flow:
-  - Remove `kb:` prefix if present.
-  - Map arrow keys to `up`, `down`, `left`, `right`.
-  - Treat Enter as `onok()`.
+- Consume command keys produced by `Access8GraphKeyTranslator`; the translator is responsible for mapping HID events to `up`, `down`, `left`, `right`, `enter`, and the MRT letter commands.
+- Treat `enter` as `onok()`.
 - Emit output through injected callbacks:
   - `cancel_speech()`.
   - `speak(items: tuple[str, ...])`.
@@ -187,6 +187,7 @@ Speech:
 - `cancel_speech()` calls `outputs.speech.cancel()`.
 - `speak(items)` wraps strings in `SpeechSequence`.
 - Empty strings are removed before speaking.
+- Non-empty speech items are separated with `BreakCommand(time=1)` from `interop.speech.speech_commands`, matching the pacing intent of the original NVDA flow.
 
 Tone:
 
@@ -194,7 +195,7 @@ Tone:
 - If `outputs.tone` is absent, failure beep is a no-op.
 - A no-op beep must not cause command handling to fail.
 
-The original NVDA `BreakCommand(1)` pauses are not required for the first migration. If speech becomes too dense, a later implementation can add a repository-native speech pause command or chunking strategy.
+The original NVDA flow inserted `BreakCommand(1)` between spoken items. This repository already has an equivalent command type, so the migration should use `interop.speech.speech_commands.BreakCommand(time=1)` when constructing the `SpeechSequence`.
 
 ## 9. Error Handling
 
