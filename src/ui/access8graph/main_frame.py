@@ -45,6 +45,7 @@ class Access8GraphMainFrame(wx.Frame):
                 return
             try:
                 self.controller.choose_graphml(dialog.GetPath())
+                self._last_error = None
             except Exception as error:
                 self._show_error(str(error), "GraphML Error")
         self._sync_controls()

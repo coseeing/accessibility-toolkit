@@ -233,3 +233,23 @@ def test_main_frame_preserves_error_after_failed_start(
     assert frame.status_label.GetLabel() == "parse failed"
 
     frame.Destroy()
+
+
+def test_main_frame_clears_error_on_new_file_selection(
+    main_frame_type, tmp_path
+) -> None:
+    controller = FakeController()
+    frame = main_frame_type(controller=controller)
+
+    controller.listener({"kind": "error", "message": "parse failed"})
+    assert frame.status_label.GetLabel() == "parse failed"
+
+    new_path = tmp_path / "good.graphml"
+    new_path.write_text("<graphml />", encoding="utf-8")
+    controller.choose_graphml(str(new_path))
+    frame._last_error = None
+    frame._sync_controls()
+
+    assert frame.status_label.GetLabel() == "good.graphml"
+
+    frame.Destroy()
