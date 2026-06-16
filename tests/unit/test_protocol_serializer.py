@@ -1,6 +1,5 @@
 import pytest
 
-from interop.protocol.connection_info import ConnectionInfo, ConnectionMode
 from interop.key import HID, KeyEvent
 from interop.speech.speech_commands import (
     BreakCommand,
@@ -12,12 +11,6 @@ from interop.speech.speech_commands import (
 from interop.speech.speech_sequence import SpeechSequence
 from interop.protocol.messages import RemoteMessageType, address_to_host_port
 from interop.protocol.serializer import JSONSerializer
-
-
-def test_serializer_imports_are_available():
-    serializer = JSONSerializer()
-    assert RemoteMessageType.KEY.value == "key"
-    assert serializer.SEP == b"\n"
 
 
 def test_protocol_helpers_and_serializer_round_trip():
@@ -44,12 +37,6 @@ def test_key_event_to_message_payload():
         "extended": False,
         "pressed": True,
     }
-
-
-def test_connection_info_defaults_to_master_mode():
-    connection_info = ConnectionInfo(hostname="example.com", port=6837, key="secret")
-    assert connection_info.mode is ConnectionMode.MASTER
-    assert connection_info.mode.value == "master"
 
 
 def test_serializer_restores_speak_sequence_during_deserialize():

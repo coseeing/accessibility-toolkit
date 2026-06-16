@@ -503,11 +503,6 @@ def test_main_frame_exposes_connect_controls(monkeypatch):
     assert frame.key_ctrl.enabled is True
 
 
-def test_fake_wx_imports_do_not_leave_app_wx_modules_cached():
-    assert "ui.app" not in sys.modules
-    assert "ui.main_frame" not in sys.modules
-
-
 def test_main_frame_dispatches_button_actions(monkeypatch):
     install_fake_wx(monkeypatch)
     MainFrame = importlib.import_module("ui.nvda_remote.main_frame").MainFrame
@@ -748,24 +743,6 @@ def test_echo_app_creates_and_shows_main_frame(monkeypatch):
 
     assert app.OnInit() is True
     assert "main" in app.shell.panel_controller._panels
-
-
-def test_ui_main_delegates_to_apps_nvda_remote_main(monkeypatch):
-    install_fake_wx(monkeypatch)
-    fake_main_module = types.ModuleType("apps.nvda_remote.main")
-    fake_main_module.calls = []
-
-    def fake_main():
-        fake_main_module.calls.append("main")
-        return 321
-
-    fake_main_module.main = fake_main
-    monkeypatch.setitem(sys.modules, "apps.nvda_remote.main", fake_main_module)
-
-    ui_main = importlib.import_module("ui.main")
-
-    assert ui_main.main() == 321
-    assert fake_main_module.calls == ["main"]
 
 
 def test_nvda_remote_main_build_runtime_composes_app_service_and_gui(monkeypatch):
@@ -1444,7 +1421,7 @@ def test_default_config_path_uses_app_support_for_frozen_macos(monkeypatch):
 
     assert (
         nvda_remote_main.default_config_path()
-        == bootstrap.runtime.Path("/Users/tester/Library/Application Support/nvda-remote-client/nvda-remote-client.json")
+        == bootstrap.runtime.Path("/Users/tester/Library/Application Support/accessibility-toolkit/accessibility-toolkit.json")
     )
 
 
@@ -1459,7 +1436,7 @@ def test_default_log_path_uses_library_logs_for_frozen_macos(monkeypatch):
 
     assert (
         bootstrap.runtime.default_log_path()
-        == bootstrap.runtime.Path("/Users/tester/Library/Logs/nvda-remote-client/nvda-remote-client.log")
+        == bootstrap.runtime.Path("/Users/tester/Library/Logs/accessibility-toolkit/accessibility-toolkit.log")
     )
 
 

@@ -30,11 +30,12 @@ APPS = {
         "entry": SRC / "apps" / "key_echo" / "main.py",
         "hiddenimports": [
             "adapters.windows.keyboard_hook",
+            "adapters.windows.hotkey",
             "adapters.windows.nvda_controller",
         ],
     },
     "nvda_remote": {
-        "name": "nvda-remote-client",
+        "name": "nvda_remote",
         "entry": SRC / "apps" / "nvda_remote" / "main.py",
         "hiddenimports": [
             "adapters.windows.keyboard_hook",

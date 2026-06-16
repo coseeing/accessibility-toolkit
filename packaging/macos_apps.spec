@@ -20,7 +20,7 @@ APPS = {
     "access8graph": {
         "name": "access8graph",
         "entry": SRC / "apps" / "access8graph" / "main.py",
-        "bundle_identifier": "org.nvda-remote-client.access8graph",
+        "bundle_identifier": "org.coseeing.access8graph",
         "hiddenimports": [
             "adapters.macos.permissions",
             "adapters.macos.event_tap",
@@ -31,17 +31,18 @@ APPS = {
     "key_echo": {
         "name": "key-echo-demo",
         "entry": SRC / "apps" / "key_echo" / "main.py",
-        "bundle_identifier": "org.nvda-remote-client.key-echo-demo",
+        "bundle_identifier": "org.coseeing.key-echo-demo",
         "hiddenimports": [
             "adapters.macos.permissions",
             "adapters.macos.event_tap",
             "adapters.macos.keyboard_hook",
+            "adapters.macos.hotkey",
         ],
     },
     "nvda_remote": {
-        "name": "nvda-remote-client",
+        "name": "nvda_remote",
         "entry": SRC / "apps" / "nvda_remote" / "main.py",
-        "bundle_identifier": "org.nvda-remote-client.nvda-remote-client",
+        "bundle_identifier": "org.coseeing.accessibility-toolkit",
         "hiddenimports": [
             "adapters.macos.permissions",
             "adapters.macos.event_tap",

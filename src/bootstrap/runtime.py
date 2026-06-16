@@ -16,7 +16,7 @@ def _macos_logs_dir(app_name: str) -> Path:
     return Path.home() / "Library" / "Logs" / app_name
 
 
-def default_log_path(app_name: str = "nvda-remote-client") -> Path:
+def default_log_path(app_name: str = "accessibility-toolkit") -> Path:
     if _is_frozen():
         if sys.platform == "darwin":
             return _macos_logs_dir(app_name) / f"{app_name}.log"
@@ -24,7 +24,7 @@ def default_log_path(app_name: str = "nvda-remote-client") -> Path:
     return Path.cwd().resolve() / f"{app_name}.log"
 
 
-def default_config_path(app_name: str = "nvda-remote-client") -> Path:
+def default_config_path(app_name: str = "accessibility-toolkit") -> Path:
     if _is_frozen():
         if sys.platform == "darwin":
             return _macos_app_support_dir(app_name) / f"{app_name}.json"
@@ -34,7 +34,7 @@ def default_config_path(app_name: str = "nvda-remote-client") -> Path:
 
 def configure_logging(
     log_path: Path | None = None,
-    app_name: str = "nvda-remote-client",
+    app_name: str = "accessibility-toolkit",
 ) -> Path:
     if log_path is None:
         log_path = default_log_path(app_name)

@@ -26,7 +26,7 @@ class TestDefaultLogPath:
 
         result = default_log_path()
 
-        assert result == cwd / "nvda-remote-client.log"
+        assert result == cwd / "accessibility-toolkit.log"
 
     def test_frozen_darwin_logs_dir(self, monkeypatch):
         monkeypatch.setattr(sys, "frozen", True, raising=False)
