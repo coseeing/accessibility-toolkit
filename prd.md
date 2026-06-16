@@ -4,7 +4,7 @@ This document defines the product framing for `accessibility-toolkit`. It explai
 
 ## 1. Executive Summary
 
-`accessibility-toolkit` is a Python toolkit for building desktop accessibility applications that need shared keyboard input capture, mode-based event handling, speech/output services, and reusable tool-shell behavior. The product goal is to turn the current repository into a clearly defined toolkit that supports multiple accessibility apps, rather than treating shared runtime infrastructure as a side effect of one NVDA Remote client. If successful, the toolkit will reduce duplicated engineering work, accelerate new accessibility app development, and provide a stable base for both internal app development and future reuse.
+`accessibility-toolkit` is a Python toolkit for building desktop accessibility applications that need shared keyboard and hotkey capture, a keyboard event handling pipeline, speech and output scheduling, mode switching and interaction control, and application interfaces. The product goal is to turn the current repository into a clearly defined toolkit that supports multiple accessibility apps, rather than treating shared runtime infrastructure as a side effect of one NVDA Remote client. If successful, the toolkit will reduce duplicated engineering work, accelerate new accessibility app development, and provide a stable base for both internal app development and future reuse.
 
 ## 2. Problem Statement
 
@@ -19,9 +19,9 @@ This document defines the product framing for `accessibility-toolkit`. It explai
 Accessibility desktop applications repeatedly need the same infrastructure:
 
 - keyboard and hotkey capture
-- mode entry and exit behavior
-- speech backend selection and output control
-- reusable desktop shell behavior
+- keyboard event handling pipelines plus mode entry/exit behavior
+- speech backend selection and output scheduling control
+- reusable application interfaces
 - clean separation between shared runtime and app-specific behavior
 
 Without a toolkit, each app tends to implement these concerns independently or entangle them with domain logic.
@@ -37,7 +37,7 @@ Without a toolkit, each app tends to implement these concerns independently or e
 
 Evidence comes from the repository's own evolution:
 
-- The project started as an NVDA Remote client and later had to extract shared input, output, bootstrap, and shell layers
+- The project started as an NVDA Remote client and later had to extract shared input, output, bootstrap, and application-interface layers
 - `key_echo` exists to prove that the shared input/output foundation is not remote-specific
 - `access8graph` exists to prove that the same foundation can support a non-remote spoken navigation tool
 - Current project documentation now describes the repository as a toolkit with multiple apps on top of it
@@ -47,7 +47,7 @@ Evidence comes from the repository's own evolution:
 ### Primary Persona: Accessibility App Developer
 
 - Role: Python developer building desktop accessibility tools
-- Goal: deliver app-specific behavior without rebuilding input, speech, and shell infrastructure
+- Goal: deliver app-specific behavior without rebuilding input, speech, and application-interface infrastructure
 - Pain points:
   - low-level input handling is easy to get wrong
   - speech backend wiring is repetitive
@@ -90,7 +90,7 @@ Evidence comes from the repository's own evolution:
 The repository has already crossed the point where toolkit framing is justified:
 
 - multiple apps now exist with different user-facing purposes
-- shared bootstrap, input lifecycle, speech, and shell layers already exist
+- shared bootstrap, input lifecycle, speech, and application-interface layers already exist
 - the project name and top-level documentation are being normalized around the toolkit concept
 
 If product framing does not catch up to implementation reality, the repository will remain technically reusable but conceptually confusing.
@@ -113,10 +113,11 @@ The practical alternatives today are:
 
 `accessibility-toolkit` differentiates itself through:
 
-- HID-first keyboard handling
-- mode-based lifecycle management
-- shared speech/output services
-- reusable tool-app shell behavior
+- keyboard and hotkey capture
+- keyboard event handling pipeline
+- speech and output scheduling
+- mode switching and interaction control
+- application interfaces
 - demonstrated reuse across multiple app categories
 
 ## 5. Solution Overview
@@ -127,23 +128,28 @@ The practical alternatives today are:
 
 ### Core Product Capabilities
 
-1. Shared input foundation
+1. Keyboard and hotkey capture
 - normalize native keyboard and hotkey input into shared models
-- provide consistent idle/active lifecycle behavior
+- provide a consistent foundation for idle/active capture switching
 
-2. Mode-based event handling
-- support enter/exit mode behavior and active keyboard routing
-- keep capture switching and mode state out of app-local reinvention
+2. Keyboard event handling pipeline
+- support mode entry, exit, and active keyboard routing
+- keep capture switching and event-handling state out of app-local reinvention
 
-3. Shared speech/output services
+3. Speech and output scheduling
 - provide a stable speech facade with backend and settings control
 - provide centralized output sequencing behavior
 
-4. Reusable desktop tool shell
-- provide common tray/menu shell behavior and settings access
-- support utility-style app lifecycle conventions
+4. Mode switching and interaction control
+- provide shared rules for mode entry/exit and interaction control
+- let different apps build consistent hotkey-driven interaction flows
 
-5. App-specific orchestration on top
+5. Application interfaces
+- provide common tray/menu behavior and settings access
+- support utility-style app window lifecycle conventions
+
+On top of these 5 shared capabilities, the toolkit also supports app-specific composition:
+
 - keep domain logic inside each app
 - allow remote-control, key echo, and graph navigation to coexist on the same shared runtime
 
@@ -152,7 +158,7 @@ The practical alternatives today are:
 #### Flow A: Developer builds a new app on the toolkit
 
 1. Developer adopts the toolkit runtime model
-2. Developer wires app-specific services into shared input/output and shell layers
+2. Developer wires app-specific services into shared input/output and application-interface layers
 3. Developer defines mode entry, active handling, and exit behavior
 4. App launches using shared runtime infrastructure
 
@@ -202,7 +208,7 @@ Next milestone:
 
 ### Epic Hypothesis
 
-If the current shared runtime is formalized as `accessibility-toolkit`, then developers and maintainers will build and evolve accessibility desktop apps faster and more consistently because input, output, mode, and shell infrastructure will already exist as reusable product capabilities.
+If the current shared runtime is formalized as `accessibility-toolkit`, then developers and maintainers will build and evolve accessibility desktop apps faster and more consistently because keyboard and hotkey capture, keyboard event handling pipelines, speech and output scheduling, mode switching and interaction control, and application interfaces will already exist as reusable product capabilities.
 
 ### User Story 1: Shared Input Lifecycle
 
@@ -216,7 +222,7 @@ As an accessibility app developer, I want a shared idle/active keyboard lifecycl
 
 ### User Story 2: Shared Speech and Output
 
-As an app developer, I want a shared speech/output service so I can provide spoken feedback without binding my app directly to backend-specific code.
+As an app developer, I want shared speech and output services so I can provide spoken feedback without binding my app directly to backend-specific code.
 
 #### Acceptance Criteria
 
@@ -224,13 +230,13 @@ As an app developer, I want a shared speech/output service so I can provide spok
 - Output sequencing behavior is available through shared services
 - Apps can reuse shared speech settings UI behavior
 
-### User Story 3: Shared Tool Shell
+### User Story 3: Shared Application Interfaces
 
-As a maintainer building multiple utility-style accessibility apps, I want a common tool shell so window lifecycle and settings access behave consistently across apps.
+As a maintainer building multiple utility-style accessibility apps, I want common application interfaces so window lifecycle and settings access behave consistently across apps.
 
 #### Acceptance Criteria
 
-- Toolkit apps can use a shared desktop shell pattern
+- Toolkit apps can use a shared desktop interface pattern
 - Utility-style main windows can hide instead of exiting on close
 - Shared menu actions for main panel, speech settings, and exit are reusable
 
@@ -250,7 +256,7 @@ As a developer migrating an accessibility workflow out of an NVDA-dependent envi
 
 #### Acceptance Criteria
 
-- Toolkit documentation explains the role of shared input, output, and shell behavior
+- Toolkit documentation explains the role of shared input, output, and application-interface behavior
 - Reference apps demonstrate both remote-control and non-remote use cases
 - Migrated app logic can run without assuming NVDA runtime APIs
 
@@ -264,7 +270,7 @@ As a developer migrating an accessibility workflow out of an NVDA-dependent envi
 ### Edge Cases
 
 - Some keys may need both system pass-through and app-side handling
-- Some apps fit the tool-shell model more naturally than others
+- Some apps fit the utility-style application interface model more naturally than others
 - Toolkit identity must not flatten meaningful differences between apps
 
 ## 8. Out of Scope
@@ -327,5 +333,5 @@ Mitigation:
 
 - Should the repository remain a monorepo with reference apps, or eventually separate toolkit code from example applications?
 - What is the intended long-term distribution model: internal toolkit, open-source repo, Python package, or all three?
-- Which current shared shell behaviors should become a stable public API surface?
+- Which current shared application-interface behaviors should become a stable public API surface?
 - What is the next candidate app that will validate whether the toolkit abstraction is strong enough?

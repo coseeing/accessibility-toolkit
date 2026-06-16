@@ -4,7 +4,7 @@
 
 ## 1. 執行摘要
 
-`accessibility-toolkit` 是一套以 Python 開發的桌面無障礙應用工具套件，提供共享的鍵盤輸入擷取、mode-based 事件處理、語音／輸出服務，以及可重用的工具型應用殼層。這份產品文件的目標，是把目前的 repository 明確定義為一套支援多個無障礙 app 的 toolkit，而不是把共享執行期基礎設施視為單一 NVDA Remote client 的副產品。如果這個定位成立，toolkit 能降低重複工程成本、加快新無障礙桌面 app 的開發速度，並為內部 app 開發與未來重用建立穩定基礎。
+`accessibility-toolkit` 是一套以 Python 開發的桌面無障礙應用工具套件，提供共享的鍵盤與快速鍵擷取、鍵盤事件處理管線、語音與輸出排程、模式切換與互動控制，以及應用程式介面。這份產品文件的目標，是把目前的 repository 明確定義為一套支援多個無障礙 app 的 toolkit，而不是把共享執行期基礎設施視為單一 NVDA Remote client 的副產品。如果這個定位成立，toolkit 能降低重複工程成本、加快新無障礙桌面 app 的開發速度，並為內部 app 開發與未來重用建立穩定基礎。
 
 ## 2. 問題陳述
 
@@ -19,9 +19,9 @@
 桌面無障礙應用一再需要同一套基礎設施：
 
 - 鍵盤與快速鍵擷取
-- mode 進入與退出行為
-- 語音後端選擇與輸出控制
-- 可重複使用的桌面工具殼層
+- 鍵盤事件處理管線與 mode 進入/退出行為
+- 語音後端選擇與輸出排程控制
+- 可重複使用的應用程式介面
 - 共享執行期與 app 專屬行為之間的清楚分界
 
 如果沒有 toolkit，每個 app 都傾向自行實作這些 concern，或把它們和 domain logic 糾纏在一起。
@@ -37,7 +37,7 @@
 
 這裡的證據來自 repository 本身的演進歷程：
 
-- 專案最早是 NVDA Remote client，之後才逐步抽出共享輸入、輸出、bootstrap 與 shell 層
+- 專案最早是 NVDA Remote client，之後才逐步抽出共享輸入、輸出、bootstrap 與應用程式介面層
 - `key_echo` 的存在，就是為了驗證共享輸入／輸出基礎不是 remote 專屬
 - `access8graph` 的存在，就是為了驗證同一套 foundation 也能支撐非 remote 的語音導覽工具
 - 目前的專案文件已經把 repository 描述為一套承載多個 app 的 toolkit
@@ -47,7 +47,7 @@
 ### 主要 Persona：無障礙 App 開發者
 
 - 角色：使用 Python 開發桌面無障礙工具的工程師
-- 目標：不重做輸入、語音與殼層基礎設施，就能交付 app 專屬功能
+- 目標：不重做輸入、語音與應用程式介面基礎設施，就能交付 app 專屬功能
 - 痛點：
   - 低階輸入處理容易出錯
   - 語音後端 wiring 很重複
@@ -90,7 +90,7 @@
 repository 已經跨過了需要 toolkit framing 的門檻：
 
 - 現在已經有多個使用者目的不同的 app
-- 共享 bootstrap、輸入生命週期、speech 與 shell 層都已經存在
+- 共享 bootstrap、輸入生命週期、speech 與應用程式介面層都已經存在
 - 專案名稱與頂層文件正在往 toolkit 概念收斂
 
 如果產品定位沒有跟上實作現況，這個 repository 會變成技術上可重用，但概念上仍然讓人困惑。
@@ -113,10 +113,11 @@ repository 已經跨過了需要 toolkit framing 的門檻：
 
 `accessibility-toolkit` 的差異化在於：
 
-- HID-first 鍵盤處理
-- mode-based 生命週期管理
-- 共用語音／輸出服務
-- 可重複使用的工具型 app shell
+- 鍵盤與快速鍵擷取
+- 鍵盤事件處理管線
+- 語音與輸出排程
+- 模式切換與互動控制
+- 應用程式介面
 - 已由多種不同 app 類型實際驗證可重用性
 
 ## 5. 解決方案概述
@@ -127,23 +128,28 @@ repository 已經跨過了需要 toolkit framing 的門檻：
 
 ### 核心產品能力
 
-1. 共享輸入基礎
+1. 鍵盤與快速鍵擷取
 - 將原生鍵盤與快速鍵輸入正規化成共享模型
-- 提供一致的 idle / active 生命週期行為
+- 提供一致的 idle / active 捕捉切換基礎
 
-2. Mode-based 事件處理
+2. 鍵盤事件處理管線
 - 支援 mode 的進入、退出與 active keyboard routing
-- 避免每個 app 自己重做 capture 切換與 mode state 管理
+- 避免每個 app 自己重做 capture 切換與事件處理狀態管理
 
-3. 共用語音／輸出服務
+3. 語音與輸出排程
 - 提供穩定的 speech facade，以及後端與設定控制
 - 以中心化方式管理輸出順序
 
-4. 可重用的桌面工具殼層
-- 提供共用的 tray/menu shell 行為與設定入口
+4. 模式切換與互動控制
+- 提供共享的 mode 進入/退出規則與互動控制邏輯
+- 讓不同 app 可以建立一致的 hotkey-driven interaction flow
+
+5. 應用程式介面
+- 提供共用的 tray/menu 行為與設定入口
 - 支援工具型 app 的視窗生命週期慣例
 
-5. 建立在其上的 app 專屬 orchestration
+這 5 項共用功能之上，toolkit 也支援 app 專屬組裝：
+
 - domain logic 保留在各 app 內
 - 讓 remote control、key echo 與 graph navigation 共存在同一套共享 runtime 上
 
@@ -152,7 +158,7 @@ repository 已經跨過了需要 toolkit framing 的門檻：
 #### Flow A：開發者用 toolkit 建立新 app
 
 1. 開發者採用 toolkit 的 runtime 模型
-2. 開發者把 app 專屬 service 接到共享輸入／輸出與 shell 層
+2. 開發者把 app 專屬 service 接到共享輸入／輸出與應用程式介面層
 3. 開發者定義 mode 的進入、active handling 與退出行為
 4. app 使用共享 runtime 基礎設施啟動
 
@@ -202,7 +208,7 @@ repository 已經跨過了需要 toolkit framing 的門檻：
 
 ### Epic Hypothesis
 
-如果把目前共享 runtime 正式定義為 `accessibility-toolkit`，那麼開發者與維護者就能更快、更一致地建立與演進桌面無障礙 app，因為輸入、輸出、mode 與 shell 基礎設施已經以可重用的產品能力存在。
+如果把目前共享 runtime 正式定義為 `accessibility-toolkit`，那麼開發者與維護者就能更快、更一致地建立與演進桌面無障礙 app，因為鍵盤與快速鍵擷取、鍵盤事件處理管線、語音與輸出排程、模式切換與互動控制，以及應用程式介面等基礎設施已經以可重用的產品能力存在。
 
 ### User Story 1：共享輸入生命週期
 
@@ -226,11 +232,11 @@ repository 已經跨過了需要 toolkit framing 的門檻：
 
 ### User Story 3：共享工具型 Shell
 
-作為要維護多個工具型無障礙 app 的人，我希望有共用的工具殼層，讓視窗生命週期與設定入口在不同 app 之間保持一致。
+作為要維護多個工具型無障礙 app 的人，我希望有共用的應用程式介面，讓視窗生命週期與設定入口在不同 app 之間保持一致。
 
 #### 驗收條件
 
-- toolkit app 可以採用共享桌面 shell 模式
+- toolkit app 可以採用共享桌面介面模式
 - 工具型 app 的主視窗在關閉時可以隱藏，而不是直接退出
 - 主面板、語音設定與離開等共用選單動作可被重用
 
@@ -250,7 +256,7 @@ repository 已經跨過了需要 toolkit framing 的門檻：
 
 #### 驗收條件
 
-- toolkit 文件能清楚說明共享輸入、輸出與 shell 的角色
+- toolkit 文件能清楚說明共享輸入、輸出與應用程式介面的角色
 - 參考 app 同時展示 remote-control 與 non-remote 的使用情境
 - 遷移後的 app 邏輯不需假設 NVDA runtime API 一定存在
 
@@ -264,7 +270,7 @@ repository 已經跨過了需要 toolkit framing 的門檻：
 ### 邊界情況
 
 - 某些按鍵可能同時需要 system pass-through 與 app-side handling
-- 有些 app 比其他 app 更自然地符合 tool-shell 模型
+- 有些 app 比其他 app 更自然地符合工具型應用介面模型
 - toolkit 身分不應抹平各 app 真正有意義的差異
 
 ## 8. 不在範圍內
@@ -327,5 +333,5 @@ Mitigation：
 
 - 這個 repository 是否應繼續維持 monorepo 加參考 app 的形式，還是未來把 toolkit code 與 example apps 分開？
 - 長期的發佈模式是什麼：內部 toolkit、開源 repo、Python package，還是三者並存？
-- 現有共享 shell 行為中，哪些應成為穩定的公開 API surface？
+- 現有共享應用程式介面行為中，哪些應成為穩定的公開 API surface？
 - 下一個能驗證 toolkit 抽象是否足夠穩健的候選 app 是什麼？

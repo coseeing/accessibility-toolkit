@@ -21,10 +21,10 @@ Its core architectural responsibilities are:
 
 - capture keyboard and hotkey input across supported platforms
 - normalize input into shared models
-- manage idle / active mode transitions
-- route events through a shared keyboard decision pipeline
-- provide reusable speech/output services
-- provide reusable tool-app shell behavior for wxPython desktop apps
+- manage mode switching and interaction control
+- route events through a shared keyboard event handling pipeline
+- provide reusable speech and output scheduling services
+- provide reusable application interface behavior
 
 The toolkit is currently exercised by three reference apps:
 
@@ -34,7 +34,7 @@ The toolkit is currently exercised by three reference apps:
 
 ## 3. Core Toolkit Capabilities
 
-### 3.1 Shared Input Foundation
+### 3.1 Keyboard and Hotkey Capture
 
 The toolkit provides two capture concepts:
 
@@ -60,7 +60,7 @@ Current rule:
 - shared layers and app logic should reason in HID usages
 - only `nvda_remote` converts HID input back into legacy relay key payloads
 
-### 3.3 Mode-Based Input Lifecycle
+### 3.3 Mode Switching and Interaction Control
 
 The toolkit uses a shared lifecycle model:
 
@@ -71,7 +71,7 @@ The toolkit uses a shared lifecycle model:
   - `InputCapture` is active
   - app handles general key events and exit behavior
 
-This lifecycle is coordinated by shared logic so apps do not each invent their own capture-switching model.
+This lifecycle is coordinated by shared logic so apps do not each invent their own capture-switching model and interaction-control flow.
 
 Key shared components:
 
@@ -80,7 +80,7 @@ Key shared components:
 - `ModeManager`
   - owns current active mode and routes active events
 
-### 3.4 Keyboard Pipeline Decision Model
+### 3.4 Keyboard Event Handling Pipeline
 
 The toolkit separates two concerns that were previously conflated:
 
@@ -101,7 +101,7 @@ This allows valid combinations such as:
 
 That is important for cases such as Windows `Num Lock`.
 
-### 3.5 Shared Output and Speech Services
+### 3.5 Speech and Output Scheduling
 
 The toolkit provides:
 
@@ -114,20 +114,20 @@ The toolkit provides:
   - output sequencing behavior
   - a future extension point for non-speech outputs
 
-The shared output model allows apps to produce spoken feedback without embedding backend-specific logic in each app.
+The shared output model allows apps to produce spoken feedback without rewriting backend-specific logic in each app.
 
-### 3.6 Tool App Shell
+### 3.6 Application Interfaces
 
-The toolkit includes a reusable desktop tool-shell pattern for wxPython apps.
+The toolkit includes reusable desktop application interface behavior for wxPython apps.
 
-The shell supports:
+The interface supports:
 
 - tray or menu-bar style app presence
 - main panel lifecycle
 - speech settings panel access
 - hide-on-close behavior for utility-style apps
 
-This is what makes `key_echo` and `access8graph` feel like related tools instead of independent one-off shells.
+This is what makes `key_echo` and `access8graph` feel like related tools instead of completely separate shells.
 
 ## 4. Toolkit Boundaries
 
@@ -139,11 +139,11 @@ The toolkit owns:
 
 - platform input/output adapters
 - shared input normalization and capture contracts
-- activation and mode-lifecycle rules
-- keyboard pipeline decision models
-- speech/output services
+- mode switching and interaction-control rules
+- keyboard event handling pipeline
+- speech and output scheduling services
 - shared bootstrap/runtime wiring
-- reusable tool-shell behavior
+- reusable application interface behavior
 
 ### 4.2 What Does Not Belong to the Toolkit
 
@@ -184,9 +184,9 @@ App-specific responsibilities:
 Toolkit responsibilities used by the app:
 
 - input activation
-- keyboard pipeline handling
-- speech/output services
-- tool shell and speech settings UI
+- keyboard event handling pipeline
+- speech and output scheduling
+- application interfaces and speech settings UI
 
 ### 5.2 `key_echo`
 
@@ -202,9 +202,9 @@ App-specific responsibilities:
 Toolkit responsibilities used by the app:
 
 - capture lifecycle
-- keyboard pipeline
+- keyboard event handling pipeline
 - speech backend management
-- tool shell behavior
+- application interface behavior
 
 ### 5.3 `nvda_remote`
 
@@ -242,7 +242,7 @@ Each app follows the same high-level runtime shape:
 4. create queued output service
 5. create app-specific service
 6. create keyboard input service
-7. create wx app / shell / frames
+7. create wx app / interface / frames
 
 This keeps platform policy, runtime policy, and app-specific business wiring separate.
 
@@ -321,11 +321,11 @@ Architectural result:
 
 - shared logic moved to HID-first keyboard identity
 
-### 7.6 Tool-App Platform
+### 7.6 Application Interface Platform
 
 Pressure:
 
-- `access8graph` and `key_echo` needed reusable utility-app shell behavior
+- `access8graph` and `key_echo` needed reusable application interface behavior
 
 Architectural result:
 
@@ -344,9 +344,9 @@ The architecture maps to the repository roughly like this:
 - `src/interop/`
   - shared protocol, transport, key, and speech models
 - `src/apps/`
-  - app-specific orchestration
+  - app-specific composition
 - `src/apps/shared/`
-  - reusable shell, mode, and controller helpers
+  - reusable interface, mode, and controller helpers
 - `src/ui/`
   - wxPython UI
 

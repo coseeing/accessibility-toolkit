@@ -1,56 +1,54 @@
 # accessibility-toolkit
 
-`accessibility-toolkit` is a Python toolkit for building desktop accessibility applications. It provides a shared foundation for HID-first keyboard input, mode-based event handling, speech/output services, and reusable wxPython tool-app shell behavior.
+`accessibility-toolkit` is a Python toolkit for building desktop accessibility applications. It organizes the common capabilities found in accessibility apps into a shared foundation. Its core areas are keyboard and hotkey capture, a keyboard event handling pipeline, speech and output scheduling, mode switching and interaction control, and application interfaces.
 
-This repository currently includes three reference applications built on that toolkit:
+This repository currently includes three applications built on the toolkit:
 
 - `access8graph`
   - GraphML-driven spoken MRT navigation
 - `key_echo`
-  - keyboard echo demo for validating input and speech behavior
+  - a demo app for validating how apps are composed and how interaction flows behave across input, handling, and output
 - `nvda_remote`
   - NVDA Remote relay client for forwarding input and consuming remote speech
 
 ## Overview
 
-The project started from a standalone NVDA Remote client and evolved into a shared toolkit once multiple accessibility apps needed the same runtime capabilities:
+Accessibility applications usually need input capture, event transformation, speech feedback, mode switching, and application interfaces. The goal of this project is to organize those recurring needs into a reusable toolkit so new applications can build on a shared foundation instead of reimplementing the same pieces inside each app.
+
+The toolkit currently provides these 5 shared capabilities:
 
 - keyboard and hotkey capture
-- idle / active mode switching
-- speech backend management
-- queued output behavior
-- desktop tool shell and settings UI
-
-The goal of the repository is to let new accessibility apps reuse this infrastructure instead of rebuilding it inside each app.
+- keyboard event handling pipeline
+- speech and output scheduling
+- mode switching and interaction control
+- application interfaces
 
 ## What's Included
 
-- Shared input activation, keyboard handling, and output scheduling services
-- Shared protocol, message, and session models for remote interoperability
-- Shared wxPython tool shell and speech settings UI
+- Shared runtime components and services built around those 5 shared capabilities
+- Shared tool shell and speech settings UI
 - Windows adapters for keyboard hooks, hotkey capture, clipboard access, and NVDA Controller speech
 - macOS adapters for keyboard capture, hotkey capture, and accessibility permission checks
-- Reference apps for remote control, key echo, and graph navigation
-- Unit and integration tests covering both shared layers and app-level behavior
+- Reference apps for remote control, key echo, and graph navigation built on the toolkit
 
 ## Current Status
 
-The shared toolkit architecture is implemented and in active use by all three reference apps. Real runtime behavior has been manually validated on Windows, including relay compatibility, keyboard hook behavior, clipboard updates, and NVDA speech output. macOS support exists in the shared layers and app bootstrap path, but runtime validation is still narrower than Windows.
+The shared toolkit architecture is implemented and already used by all three applications.
 
 ## Quick Start
 
-Create a virtual environment, install dependencies, and run one of the apps:
+Create a virtual environment, install dependencies, and then run one of the apps:
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install -e .
-PYTHONPATH=src python -m apps.access8graph.main
 ```
 
-Other useful entrypoints:
+Run an app:
 
 ```bash
+PYTHONPATH=src python -m apps.access8graph.main
 PYTHONPATH=src python -m apps.key_echo.main
 PYTHONPATH=src python -m apps.nvda_remote.main
 ```
@@ -62,7 +60,9 @@ python -m venv .venv
 .venv\Scripts\Activate.ps1
 pip install -e .
 $env:PYTHONPATH="src"
+python -m apps.key_echo.main
 python -m apps.access8graph.main
+python -m apps.nvda_remote.main
 ```
 
 ## Installation
@@ -70,9 +70,8 @@ python -m apps.access8graph.main
 Requirements:
 
 - Python 3.11+
-- Windows or macOS for real runtime validation
-- `wxPython` for the GUI
-- NVDA installed and running locally on Windows if you want speech output through the vendored controller DLL
+- Windows or macOS
+- NVDA installed and running if you want speech output through the NVDA controller DLL on Windows
 
 Install on macOS or Linux:
 
@@ -244,19 +243,15 @@ The shared build specs live at:
 
 ```text
 src/
-  apps/          App-specific orchestration and entrypoints
-  application/   Shared input, output, keyboard, and speech services
-  interop/       Shared key, speech, protocol, and transport models
-  adapters/      Platform-specific implementations
-  bootstrap/     Shared runtime/bootstrap wiring
-  ui/            wxPython shells and app-specific frames
+  apps/          app-specific orchestration and entrypoints
+  application/   shared input, output, keyboard, and speech services
+  interop/       shared key, speech, protocol, and transport models
+  adapters/      platform-specific implementations
+  bootstrap/     shared runtime/bootstrap wiring
+  ui/            wxPython shells and app-specific panels
 tests/
   unit/
   integration/
-docs/
-  zh_TW/
-  superpowers/specs/
-  superpowers/plans/
 ```
 
 ## Documentation
@@ -265,12 +260,6 @@ docs/
   - system architecture, toolkit boundaries, and design context
 - [prd.md](prd.md)
   - product framing, target users, requirements, and success criteria
-- [docs/zh_TW/README.md](docs/zh_TW/README.md)
-  - Traditional Chinese overview and onboarding guide
-- [docs/zh_TW/spec.md](docs/zh_TW/spec.md)
-  - Traditional Chinese architecture and system context
-- [docs/zh_TW/prd.md](docs/zh_TW/prd.md)
-  - Traditional Chinese product requirements document
 - `docs/superpowers/specs/`
   - historical design documents for major implementation phases
 - `docs/superpowers/plans/`

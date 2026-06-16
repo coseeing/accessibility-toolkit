@@ -21,10 +21,10 @@
 
 - 在支援的平台上擷取鍵盤與快速鍵輸入
 - 將輸入正規化成共享模型
-- 管理 idle / active mode 切換
-- 透過共享鍵盤決策 pipeline 路由事件
-- 提供可重複使用的語音／輸出服務
-- 提供可重複使用的 wxPython 工具型 app shell 行為
+- 管理模式切換與互動控制
+- 透過共享模型鍵盤事件處理管線路由事件
+- 提供可重複使用的語音與輸出排程服務
+- 提供可重複使用的應用程式介面行為
 
 目前這個 toolkit 由三個參考 app 實際使用：
 
@@ -34,7 +34,7 @@
 
 ## 3. Toolkit 核心能力
 
-### 3.1 共用輸入基礎
+### 3.1 鍵盤與快速鍵擷取
 
 toolkit 提供兩種 capture 概念：
 
@@ -60,7 +60,7 @@ toolkit 以 HID-first 作為鍵盤識別的共享模型。
 - 共享層與 app 邏輯應該以 HID usage 推論鍵盤語意
 - 只有 `nvda_remote` 會把 HID 輸入轉回 legacy relay key payload
 
-### 3.3 Mode-Based 輸入生命週期
+### 3.3 模式切換與互動控制
 
 toolkit 使用共享的生命週期模型：
 
@@ -71,7 +71,7 @@ toolkit 使用共享的生命週期模型：
   - `InputCapture` 啟用
   - app 處理一般按鍵事件與退出行為
 
-這套生命週期由共享邏輯協調，避免每個 app 自己重新發明 capture 切換規則。
+這套生命週期由共享邏輯協調，避免每個 app 自己重新發明 capture 切換規則與互動控制流程。
 
 核心共享元件：
 
@@ -80,7 +80,7 @@ toolkit 使用共享的生命週期模型：
 - `ModeManager`
   - 負責目前 active mode 與 active 事件路由
 
-### 3.4 鍵盤 Pipeline 決策模型
+### 3.4 鍵盤事件處理管線
 
 toolkit 將兩件原本混在一起的事情拆開：
 
@@ -101,7 +101,7 @@ toolkit 將兩件原本混在一起的事情拆開：
 
 例如 Windows 上的 `Num Lock`。
 
-### 3.5 共用輸出與語音服務
+### 3.5 語音與輸出排程
 
 toolkit 提供：
 
@@ -116,9 +116,9 @@ toolkit 提供：
 
 這套共享輸出模型，讓 app 可以提供語音回饋，而不必在每個 app 裡重寫 backend 專屬邏輯。
 
-### 3.6 工具型 App Shell
+### 3.6 應用程式介面
 
-toolkit 內含可重複使用的 wxPython 桌面工具型 shell。
+toolkit 內含可重複使用的 wxPython 桌面工具型應用程式介面。
 
 它支援：
 
@@ -139,11 +139,11 @@ toolkit 負責：
 
 - 平台輸入／輸出 adapter
 - 共享輸入正規化與 capture 契約
-- 啟用與 mode 生命週期規則
-- 鍵盤 pipeline 決策模型
-- 語音／輸出服務
+- 模式切換與互動控制規則
+- 鍵盤事件處理管線
+- 語音與輸出排程服務
 - 共享 bootstrap / runtime wiring
-- 可重用的工具型 shell 行為
+- 可重用的應用程式介面行為
 
 ### 4.2 哪些不屬於 Toolkit
 
@@ -184,9 +184,9 @@ app 專屬職責：
 app 使用到的 toolkit 職責：
 
 - 輸入啟用
-- 鍵盤 pipeline 處理
-- 語音／輸出服務
-- tool shell 與語音設定 UI
+- 鍵盤事件處理管線
+- 語音與輸出排程
+- 應用程式介面與語音設定 UI
 
 ### 5.2 `key_echo`
 
@@ -202,9 +202,9 @@ app 專屬職責：
 app 使用到的 toolkit 職責：
 
 - capture 生命週期
-- 鍵盤 pipeline
+- 鍵盤事件處理管線
 - 語音後端管理
-- tool shell 行為
+- 應用程式介面行為
 
 ### 5.3 `nvda_remote`
 
@@ -242,7 +242,7 @@ app 使用到的 toolkit 職責：
 4. 建立 queued output service
 5. 建立 app 專屬 service
 6. 建立 keyboard input service
-7. 建立 wx app / shell / frame
+7. 建立 wx app / interface / frame
 
 這樣可以把平台政策、runtime 政策與 app 專屬 wiring 分開。
 
@@ -321,11 +321,11 @@ app 使用到的 toolkit 職責：
 
 - 共享邏輯轉向 HID-first 鍵盤識別
 
-### 7.6 工具型 App 平台
+### 7.6 應用程式介面平台
 
 壓力來源：
 
-- `access8graph` 與 `key_echo` 需要可重複使用的工具型 app shell 行為
+- `access8graph` 與 `key_echo` 需要可重複使用的應用程式介面行為
 
 架構結果：
 
@@ -344,9 +344,9 @@ app 使用到的 toolkit 職責：
 - `src/interop/`
   - 共享協定、transport、key 與 speech 模型
 - `src/apps/`
-  - app 專屬 orchestration
+  - app 專屬組裝
 - `src/apps/shared/`
-  - 可重用的 shell、mode 與 controller helper
+  - 可重用的介面、mode 與 controller helper
 - `src/ui/`
   - wxPython UI
 
