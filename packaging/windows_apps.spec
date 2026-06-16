@@ -16,6 +16,15 @@ NVDA_DLL = SRC / "adapters" / "windows" / "vendor" / "nvda" / "x64" / "nvdaContr
 
 
 APPS = {
+    "access8graph": {
+        "name": "access8graph",
+        "entry": SRC / "apps" / "access8graph" / "main.py",
+        "hiddenimports": [
+            "adapters.windows.keyboard_hook",
+            "adapters.windows.hotkey",
+            "adapters.windows.nvda_controller",
+        ],
+    },
     "key_echo": {
         "name": "key-echo-demo",
         "entry": SRC / "apps" / "key_echo" / "main.py",

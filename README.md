@@ -1,21 +1,29 @@
 # NVDA Remote Client
 
-Standalone NVDA Remote client for Windows, implemented in Python.
+Python-based accessibility desktop app foundation built around a HID-first input model, shared speech/output services, mode-based event handling, a tray/tool app shell, and app-specific orchestration.
 
-This project is intended to connect to an existing NVDA Remote relay/server endpoint and control another machine that is already running NVDA Remote. The codebase is structured so protocol/session logic stays separate from Windows-specific input/output adapters, with the longer-term goal of making platform ports easier.
+The repository is no longer just a standalone NVDA Remote client. It provides a common foundation that accessibility app layers can build on, with platform adapters normalizing native input, shared application services coordinating activation and output lifecycles, and app-specific orchestration living under `src/apps/`.
+
+Current applications built on that foundation include:
+
+- `access8graph`: GraphML-driven spoken navigation for accessibility-focused graph exploration
+- `key_echo`: a keyboard echo demo app for validating input capture and speech behavior
+- `nvda_remote`: an NVDA Remote relay client that forwards input and routes remote speech
 
 ## Current Status
 
 The repository currently includes:
 
-- Relay protocol, JSON framing, and session state handling
-- Shared application services for keyboard and speech coordination
-- App-specific services for `nvda_remote` and `key_echo`
+- Shared input activation, keyboard handling, and output scheduling services
+- Shared protocol, message, and session models for remote interoperability
+- App-specific services for `access8graph`, `key_echo`, and `nvda_remote`
 - Windows adapter implementations for:
   - low-level keyboard hook setup
+  - hotkey capture
   - clipboard access
   - vendored NVDA controller client DLL loading path
-- A `wxPython` GUI shell
+- macOS adapter implementations for keyboard capture, hotkey capture, and accessibility permission checks
+- Reusable `wxPython` tool shell and speech settings UI
 - Unit and integration tests for the core contracts and adapter behavior
 
 What has been implemented in code has been manually validated on a real Windows machine. Real end-to-end relay compatibility, Windows UI behavior, keyboard hook behavior, clipboard updates, and NVDA speech output have been verified in that environment.
@@ -24,11 +32,12 @@ What has been implemented in code has been manually validated on a real Windows 
 
 ```text
 src/
-  apps/          App-specific composition roots and services
-  remote_core/   Protocol, transport, session, routing, models
-  application/   Shared keyboard/speech services and state
-  adapters/      Input/output abstractions and Windows implementations
-  ui/            wxPython app shell
+  apps/          App-specific composition roots and orchestration
+  application/   Shared input, output, keyboard, and speech services
+  interop/       Shared protocol, message, speech, and key models
+  adapters/      Platform-specific input/output implementations
+  bootstrap/     Shared runtime/bootstrap wiring for desktop apps
+  ui/            wxPython shells and app-specific frames
 tests/
   unit/
   integration/
@@ -40,9 +49,9 @@ docs/
 ## Requirements
 
 - Python 3.11+
-- Windows for real runtime validation
+- Windows or macOS for real runtime validation
 - `wxPython` for the GUI
-- NVDA installed and running locally if you want speech output through the vendored `x64/nvdaControllerClient.dll`
+- NVDA installed and running locally on Windows if you want speech output through the vendored `x64/nvdaControllerClient.dll`
 
 ## Install
 
@@ -70,7 +79,42 @@ python -m venv .venv
 pip install -e .
 ```
 
+## Architecture
+
+The runtime composition follows the same high-level shape across the current apps:
+
+- platform adapters capture native keyboard and hotkey input and normalize it into shared models
+- `application/` coordinates activation state, keyboard event routing, speech backends, and queued output
+- `apps/*` define app-specific modes and behaviors on top of that shared pipeline
+- `ui/*` hosts each app in a wxPython shell, with optional shared speech settings UI
+
+At the app layer today:
+
+- `access8graph` uses the shared hotkey/input lifecycle to enter a spoken graph navigation mode over GraphML data
+- `key_echo` uses the same foundation to echo key events through selectable speech backends
+- `nvda_remote` uses the same foundation plus relay/session logic to forward keyboard events and consume remote speech
+
 ## Run
+
+Start `access8graph` with:
+
+```bash
+PYTHONPATH=src python -m apps.access8graph.main
+```
+
+On Windows PowerShell:
+
+```powershell
+$env:PYTHONPATH="src"
+python -m apps.access8graph.main
+```
+
+On Windows `cmd.exe`:
+
+```cmd
+set PYTHONPATH=src
+python -m apps.access8graph.main
+```
 
 Start the NVDA Remote GUI with:
 
@@ -127,9 +171,23 @@ The key echo demo is wired to:
 - create a `SpeechService` with `pyttsx3` and `NVDA Controller` backend options
 - create a `KeyEchoAppService`
 - use `WindowsKeyboardCapture`
+- use `WindowsHotkeyCapture`
 - open a dedicated `wxPython` window with `Start` / `Stop` control and speech settings
 
+The Access8Graph app is wired to:
+
+- create a `SpeechService`
+- create an `Access8GraphAppService`
+- use shared input activation between `WindowsHotkeyCapture` / `MacOSHotkeyCapture` and full keyboard capture
+- open a `wxPython` tool shell for selecting a `.graphml` file and entering navigation mode
+
 ## Package
+
+Build the Access8Graph app as a macOS `.app` with the shared spec:
+
+```bash
+APP_TARGET=access8graph pyinstaller --clean --noconfirm packaging/macos_apps.spec
+```
 
 Build the key echo demo as a macOS `.app` with the shared spec:
 
@@ -150,6 +208,20 @@ pyinstaller --clean --noconfirm packaging/macos_apps.spec
 ```
 
 The macOS spec lives at `packaging/macos_apps.spec`. It collects `pyttsx3` submodules plus the lazily imported macOS input adapters required by the `.app` bundles.
+
+Build the Access8Graph app as a Windows executable with the shared spec:
+
+```powershell
+$env:APP_TARGET="access8graph"
+pyinstaller --clean --noconfirm packaging/windows_apps.spec
+```
+
+On Windows `cmd.exe`:
+
+```cmd
+set APP_TARGET=access8graph
+pyinstaller --clean --noconfirm packaging\windows_apps.spec
+```
 
 Build the NVDA Remote GUI as a Windows executable with the shared spec:
 
@@ -223,17 +295,18 @@ On Windows `cmd.exe`:
 pytest tests\unit tests\integration -v
 ```
 
-At the time of writing, the suite includes both unit and integration coverage for the shared keyboard service, shared speech service, NVDA Remote app service, and key echo app service.
+At the time of writing, the suite includes both unit and integration coverage for shared input/output behavior plus app-level coverage for `access8graph`, `key_echo`, and `nvda_remote`.
 
 ## Notes
 
-- The relay transport now includes TCP/TLS socket framing logic and buffered newline-delimited message parsing.
+- The relay transport includes TCP/TLS socket framing logic and buffered newline-delimited message parsing.
 - Session state moves to `connected` only after `channel_joined` is received.
-- The Windows keyboard hook, hotkey capture, clipboard backend, and NVDA controller DLL path are implemented behind adapters so `remote_core` stays free of `wx`, Win32, and DLL-specific imports.
+- Input capture and hotkey capture are activated through shared lifecycle logic so apps can switch cleanly between idle hotkey mode and active keyboard mode.
+- The Windows keyboard hook, hotkey capture, clipboard backend, and NVDA controller DLL path are implemented behind adapters so shared application and interop layers stay free of `wx`, Win32, and DLL-specific imports.
 - The vendored controller client DLL was taken from NVDA official controller client release zip and stored at `src/adapters/windows/vendor/nvda/x64/nvdaControllerClient.dll`.
 - Remote `speak` payloads are deserialized into local speech command objects before routing, then carried through as full speech sequences to the active speech backend.
 - The `pyttsx3` backend now schedules real breaks from remote `BreakCommand` items and applies rate, pitch, volume, and voice selection on a best-effort basis.
-- The GUI exposes speech backend, voice, rate, pitch, and volume controls through the main window via `SpeechService`.
+- The shared speech settings UI exposes speech backend, voice, rate, pitch, and volume controls through `SpeechService`.
 
 ## Related Docs
 

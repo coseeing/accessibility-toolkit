@@ -17,6 +17,17 @@ PYTTSX3_IMPORTS = collect_submodules("pyttsx3")
 
 
 APPS = {
+    "access8graph": {
+        "name": "access8graph",
+        "entry": SRC / "apps" / "access8graph" / "main.py",
+        "bundle_identifier": "org.nvda-remote-client.access8graph",
+        "hiddenimports": [
+            "adapters.macos.permissions",
+            "adapters.macos.event_tap",
+            "adapters.macos.keyboard_hook",
+            "adapters.macos.hotkey",
+        ],
+    },
     "key_echo": {
         "name": "key-echo-demo",
         "entry": SRC / "apps" / "key_echo" / "main.py",
