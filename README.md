@@ -1,66 +1,58 @@
-# NVDA Remote Client
+# accessibility-toolkit
 
-Python-based accessibility desktop app foundation built around a HID-first input model, shared speech/output services, mode-based event handling, a tray/tool app shell, and app-specific orchestration.
+`accessibility-toolkit` is a Python toolkit for building desktop accessibility applications. It provides a shared foundation for HID-first keyboard input, mode-based event handling, speech/output services, and reusable wxPython tool-app shell behavior.
 
-The repository is no longer just a standalone NVDA Remote client. It provides a common foundation that accessibility app layers can build on, with platform adapters normalizing native input, shared application services coordinating activation and output lifecycles, and app-specific orchestration living under `src/apps/`.
+This repository currently includes three reference applications built on that toolkit:
 
-Current applications built on that foundation include:
+- `access8graph`
+  - GraphML-driven spoken MRT navigation
+- `key_echo`
+  - keyboard echo demo for validating input and speech behavior
+- `nvda_remote`
+  - NVDA Remote relay client for forwarding input and consuming remote speech
 
-- `access8graph`: GraphML-driven spoken navigation for accessibility-focused graph exploration
-- `key_echo`: a keyboard echo demo app for validating input capture and speech behavior
-- `nvda_remote`: an NVDA Remote relay client that forwards input and routes remote speech
+## Overview
 
-## Current Status
+The project started from a standalone NVDA Remote client and evolved into a shared toolkit once multiple accessibility apps needed the same runtime capabilities:
 
-The repository currently includes:
+- keyboard and hotkey capture
+- idle / active mode switching
+- speech backend management
+- queued output behavior
+- desktop tool shell and settings UI
+
+The goal of the repository is to let new accessibility apps reuse this infrastructure instead of rebuilding it inside each app.
+
+## What's Included
 
 - Shared input activation, keyboard handling, and output scheduling services
 - Shared protocol, message, and session models for remote interoperability
-- App-specific services for `access8graph`, `key_echo`, and `nvda_remote`
-- Windows adapter implementations for:
-  - low-level keyboard hook setup
-  - hotkey capture
-  - clipboard access
-  - vendored NVDA controller client DLL loading path
-- macOS adapter implementations for keyboard capture, hotkey capture, and accessibility permission checks
-- Reusable `wxPython` tool shell and speech settings UI
-- Unit and integration tests for the core contracts and adapter behavior
+- Shared wxPython tool shell and speech settings UI
+- Windows adapters for keyboard hooks, hotkey capture, clipboard access, and NVDA Controller speech
+- macOS adapters for keyboard capture, hotkey capture, and accessibility permission checks
+- Reference apps for remote control, key echo, and graph navigation
+- Unit and integration tests covering both shared layers and app-level behavior
 
-What has been implemented in code has been manually validated on a real Windows machine. Real end-to-end relay compatibility, Windows UI behavior, keyboard hook behavior, clipboard updates, and NVDA speech output have been verified in that environment.
+## Current Status
 
-## Project Layout
+The shared toolkit architecture is implemented and in active use by all three reference apps. Real runtime behavior has been manually validated on Windows, including relay compatibility, keyboard hook behavior, clipboard updates, and NVDA speech output. macOS support exists in the shared layers and app bootstrap path, but runtime validation is still narrower than Windows.
 
-```text
-src/
-  apps/          App-specific composition roots and orchestration
-  application/   Shared input, output, keyboard, and speech services
-  interop/       Shared protocol, message, speech, and key models
-  adapters/      Platform-specific input/output implementations
-  bootstrap/     Shared runtime/bootstrap wiring for desktop apps
-  ui/            wxPython shells and app-specific frames
-tests/
-  unit/
-  integration/
-docs/
-  superpowers/specs/
-  superpowers/plans/
-```
+## Quick Start
 
-## Requirements
-
-- Python 3.11+
-- Windows or macOS for real runtime validation
-- `wxPython` for the GUI
-- NVDA installed and running locally on Windows if you want speech output through the vendored `x64/nvdaControllerClient.dll`
-
-## Install
-
-On macOS or Linux:
+Create a virtual environment, install dependencies, and run one of the apps:
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install -e .
+PYTHONPATH=src python -m apps.access8graph.main
+```
+
+Other useful entrypoints:
+
+```bash
+PYTHONPATH=src python -m apps.key_echo.main
+PYTHONPATH=src python -m apps.nvda_remote.main
 ```
 
 On Windows PowerShell:
@@ -69,9 +61,36 @@ On Windows PowerShell:
 python -m venv .venv
 .venv\Scripts\Activate.ps1
 pip install -e .
+$env:PYTHONPATH="src"
+python -m apps.access8graph.main
 ```
 
-On Windows `cmd.exe`:
+## Installation
+
+Requirements:
+
+- Python 3.11+
+- Windows or macOS for real runtime validation
+- `wxPython` for the GUI
+- NVDA installed and running locally on Windows if you want speech output through the vendored controller DLL
+
+Install on macOS or Linux:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -e .
+```
+
+Install on Windows PowerShell:
+
+```powershell
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install -e .
+```
+
+Install on Windows `cmd.exe`:
 
 ```cmd
 python -m venv .venv
@@ -79,24 +98,9 @@ python -m venv .venv
 pip install -e .
 ```
 
-## Architecture
-
-The runtime composition follows the same high-level shape across the current apps:
-
-- platform adapters capture native keyboard and hotkey input and normalize it into shared models
-- `application/` coordinates activation state, keyboard event routing, speech backends, and queued output
-- `apps/*` define app-specific modes and behaviors on top of that shared pipeline
-- `ui/*` hosts each app in a wxPython shell, with optional shared speech settings UI
-
-At the app layer today:
-
-- `access8graph` uses the shared hotkey/input lifecycle to enter a spoken graph navigation mode over GraphML data
-- `key_echo` uses the same foundation to echo key events through selectable speech backends
-- `nvda_remote` uses the same foundation plus relay/session logic to forward keyboard events and consume remote speech
-
 ## Run
 
-Start `access8graph` with:
+Start `access8graph`:
 
 ```bash
 PYTHONPATH=src python -m apps.access8graph.main
@@ -116,27 +120,7 @@ set PYTHONPATH=src
 python -m apps.access8graph.main
 ```
 
-Start the NVDA Remote GUI with:
-
-```bash
-PYTHONPATH=src python -m apps.nvda_remote.main
-```
-
-On Windows PowerShell:
-
-```powershell
-$env:PYTHONPATH="src"
-python -m apps.nvda_remote.main
-```
-
-On Windows `cmd.exe`:
-
-```cmd
-set PYTHONPATH=src
-python -m apps.nvda_remote.main
-```
-
-Start the standalone key echo demo with:
+Start `key_echo`:
 
 ```bash
 PYTHONPATH=src python -m apps.key_echo.main
@@ -156,60 +140,53 @@ set PYTHONPATH=src
 python -m apps.key_echo.main
 ```
 
-The NVDA Remote app is wired to:
+Start `nvda_remote`:
 
-- create a `RelayTransport`
-- create a `SpeechService`
-- create a `NvdaRemoteAppService`
-- use `WindowsKeyboardCapture`
-- use `WindowsHotkeyCapture`
-- use `WindowsClipboardService`
-- load `src/adapters/windows/vendor/nvda/x64/nvdaControllerClient.dll`
+```bash
+PYTHONPATH=src python -m apps.nvda_remote.main
+```
 
-The key echo demo is wired to:
+On Windows PowerShell:
 
-- create a `SpeechService` with `pyttsx3` and `NVDA Controller` backend options
-- create a `KeyEchoAppService`
-- use `WindowsKeyboardCapture`
-- use `WindowsHotkeyCapture`
-- open a dedicated `wxPython` window with `Start` / `Stop` control and speech settings
+```powershell
+$env:PYTHONPATH="src"
+python -m apps.nvda_remote.main
+```
 
-The Access8Graph app is wired to:
+On Windows `cmd.exe`:
 
-- create a `SpeechService`
-- create an `Access8GraphAppService`
-- use shared input activation between `WindowsHotkeyCapture` / `MacOSHotkeyCapture` and full keyboard capture
-- open a `wxPython` tool shell for selecting a `.graphml` file and entering navigation mode
+```cmd
+set PYTHONPATH=src
+python -m apps.nvda_remote.main
+```
 
-## Package
+## Build
 
-Build the Access8Graph app as a macOS `.app` with the shared spec:
+Build `access8graph` as a macOS `.app`:
 
 ```bash
 APP_TARGET=access8graph pyinstaller --clean --noconfirm packaging/macos_apps.spec
 ```
 
-Build the key echo demo as a macOS `.app` with the shared spec:
+Build `key_echo` as a macOS `.app`:
 
 ```bash
 APP_TARGET=key_echo pyinstaller --clean --noconfirm packaging/macos_apps.spec
 ```
 
-Build the NVDA Remote GUI as a macOS `.app` with the shared spec:
+Build `nvda_remote` as a macOS `.app`:
 
 ```bash
 APP_TARGET=nvda_remote pyinstaller --clean --noconfirm packaging/macos_apps.spec
 ```
 
-Build both macOS `.app` bundles in one run with:
+Build all macOS `.app` bundles:
 
 ```bash
 pyinstaller --clean --noconfirm packaging/macos_apps.spec
 ```
 
-The macOS spec lives at `packaging/macos_apps.spec`. It collects `pyttsx3` submodules plus the lazily imported macOS input adapters required by the `.app` bundles.
-
-Build the Access8Graph app as a Windows executable with the shared spec:
+Build `access8graph` as a Windows executable:
 
 ```powershell
 $env:APP_TARGET="access8graph"
@@ -223,21 +200,7 @@ set APP_TARGET=access8graph
 pyinstaller --clean --noconfirm packaging\windows_apps.spec
 ```
 
-Build the NVDA Remote GUI as a Windows executable with the shared spec:
-
-```powershell
-$env:APP_TARGET="nvda_remote"
-pyinstaller --clean --noconfirm packaging/windows_apps.spec
-```
-
-On Windows `cmd.exe`:
-
-```cmd
-set APP_TARGET=nvda_remote
-pyinstaller --clean --noconfirm packaging\windows_apps.spec
-```
-
-Build the key echo demo as a Windows executable with the shared spec:
+Build `key_echo` as a Windows executable:
 
 ```powershell
 $env:APP_TARGET="key_echo"
@@ -251,65 +214,64 @@ set APP_TARGET=key_echo
 pyinstaller --clean --noconfirm packaging\windows_apps.spec
 ```
 
-Build both Windows executables in one run with:
+Build `nvda_remote` as a Windows executable:
 
 ```powershell
-Remove-Item Env:APP_TARGET -ErrorAction Ignore
+$env:APP_TARGET="nvda_remote"
 pyinstaller --clean --noconfirm packaging/windows_apps.spec
 ```
 
 On Windows `cmd.exe`:
 
 ```cmd
-set APP_TARGET=
+set APP_TARGET=nvda_remote
 pyinstaller --clean --noconfirm packaging\windows_apps.spec
 ```
 
-The packaged output will be written under:
-
-```text
-dist/
-```
-
-The Windows spec lives at `packaging/windows_apps.spec`. It keeps the vendored NVDA controller DLL, `pyttsx3` submodules, and the lazily imported Windows adapters in one place instead of repeating them on the command line.
-
-`pyttsx3` and platform adapters are imported lazily at runtime, so the PyInstaller specs include explicit hidden imports for the platform adapters used by each packaged executable.
-
-## Test
-
-Run the test suite on macOS or Linux with:
-
-```bash
-pytest tests/unit tests/integration -v
-```
-
-On Windows PowerShell:
+Build all Windows executables:
 
 ```powershell
-pytest tests/unit tests/integration -v
+Remove-Item Env:APP_TARGET -ErrorAction Ignore
+pyinstaller --clean --noconfirm packaging/windows_apps.spec
 ```
 
-On Windows `cmd.exe`:
+The shared build specs live at:
 
-```cmd
-pytest tests\unit tests\integration -v
+- `packaging/macos_apps.spec`
+- `packaging/windows_apps.spec`
+
+## Project Layout
+
+```text
+src/
+  apps/          App-specific orchestration and entrypoints
+  application/   Shared input, output, keyboard, and speech services
+  interop/       Shared key, speech, protocol, and transport models
+  adapters/      Platform-specific implementations
+  bootstrap/     Shared runtime/bootstrap wiring
+  ui/            wxPython shells and app-specific frames
+tests/
+  unit/
+  integration/
+docs/
+  zh_TW/
+  superpowers/specs/
+  superpowers/plans/
 ```
 
-At the time of writing, the suite includes both unit and integration coverage for shared input/output behavior plus app-level coverage for `access8graph`, `key_echo`, and `nvda_remote`.
+## Documentation
 
-## Notes
-
-- The relay transport includes TCP/TLS socket framing logic and buffered newline-delimited message parsing.
-- Session state moves to `connected` only after `channel_joined` is received.
-- Input capture and hotkey capture are activated through shared lifecycle logic so apps can switch cleanly between idle hotkey mode and active keyboard mode.
-- The Windows keyboard hook, hotkey capture, clipboard backend, and NVDA controller DLL path are implemented behind adapters so shared application and interop layers stay free of `wx`, Win32, and DLL-specific imports.
-- The vendored controller client DLL was taken from NVDA official controller client release zip and stored at `src/adapters/windows/vendor/nvda/x64/nvdaControllerClient.dll`.
-- Remote `speak` payloads are deserialized into local speech command objects before routing, then carried through as full speech sequences to the active speech backend.
-- The `pyttsx3` backend now schedules real breaks from remote `BreakCommand` items and applies rate, pitch, volume, and voice selection on a best-effort basis.
-- The shared speech settings UI exposes speech backend, voice, rate, pitch, and volume controls through `SpeechService`.
-
-## Related Docs
-
-- [Design spec](docs/superpowers/specs/2026-05-31-nvda-remote-client-design.md)
-- [Traditional Chinese design spec](docs/superpowers/specs/2026-05-31-nvda-remote-client-design_zh-TW.md)
-- [Implementation plan](docs/superpowers/plans/2026-05-31-nvda-remote-client-implementation.md)
+- [spec.md](spec.md)
+  - system architecture, toolkit boundaries, and design context
+- [prd.md](prd.md)
+  - product framing, target users, requirements, and success criteria
+- [docs/zh_TW/README.md](docs/zh_TW/README.md)
+  - Traditional Chinese overview and onboarding guide
+- [docs/zh_TW/spec.md](docs/zh_TW/spec.md)
+  - Traditional Chinese architecture and system context
+- [docs/zh_TW/prd.md](docs/zh_TW/prd.md)
+  - Traditional Chinese product requirements document
+- `docs/superpowers/specs/`
+  - historical design documents for major implementation phases
+- `docs/superpowers/plans/`
+  - implementation plans tied to those design phases
