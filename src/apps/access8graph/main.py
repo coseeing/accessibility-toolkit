@@ -12,6 +12,7 @@ from apps.access8graph.service import Access8GraphAppService
 from bootstrap.platform import (
     create_hotkey_capture,
     create_input_capture,
+    create_tone_output,
     default_speech_backend_id,
     default_speech_backend_options,
 )
@@ -22,6 +23,7 @@ from bootstrap.runtime import configure_logging
 class Access8GraphRuntime:
     input_capture: InputCapture
     hotkey_capture: HotkeyCapture
+    tone_output: object
     speech_scheduler: OutputScheduler
     speech_service: SpeechService
     output_service: QueuedOutputService
@@ -35,6 +37,7 @@ def build_runtime() -> Access8GraphRuntime:
 
     input_capture = create_input_capture()
     hotkey_capture = create_hotkey_capture(Access8GraphAppService.enter_usage)
+    tone_output = create_tone_output()
     speech_scheduler = OutputScheduler()
     speech_service = SpeechService(
         backend_options=default_speech_backend_options(speech_scheduler),
@@ -45,7 +48,7 @@ def build_runtime() -> Access8GraphRuntime:
     app_service = Access8GraphAppService(
         hotkey_capture=hotkey_capture,
         input_capture=input_capture,
-        outputs=OutputCapabilities(speech=output_service),
+        outputs=OutputCapabilities(speech=output_service, tone=tone_output),
         main_thread_dispatch=getattr(Access8GraphApp, "dispatch", None),
     )
     input_service = KeyboardInputService(input_capture, app_service)
@@ -56,6 +59,7 @@ def build_runtime() -> Access8GraphRuntime:
     return Access8GraphRuntime(
         input_capture=input_capture,
         hotkey_capture=hotkey_capture,
+        tone_output=tone_output,
         speech_scheduler=speech_scheduler,
         speech_service=speech_service,
         output_service=output_service,

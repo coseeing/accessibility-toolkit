@@ -13,6 +13,7 @@ from bootstrap.platform import (
     create_input_capture,
     create_hotkey_capture,
     create_clipboard_service,
+    create_tone_output,
     default_speech_backend_options,
     default_speech_backend_id,
 )
@@ -29,6 +30,7 @@ class NvdaRemoteRuntime:
     input_capture: InputCapture
     hotkey_capture: HotkeyCapture
     clipboard: ClipboardService
+    tone_output: object
     speech_scheduler: OutputScheduler
     speech_service: SpeechService
     output_service: QueuedOutputService
@@ -68,6 +70,7 @@ def build_runtime() -> NvdaRemoteRuntime:
     input_capture = create_input_capture()
     hotkey_capture = create_hotkey_capture(NvdaRemoteAppService.enter_usage)
     clipboard = create_clipboard_service()
+    tone_output = create_tone_output()
     output_service = QueuedOutputService(speech=speech_service)
     app_service = NvdaRemoteAppService(
         transport=transport,
@@ -76,6 +79,7 @@ def build_runtime() -> NvdaRemoteRuntime:
         clipboard=clipboard,
         outputs=OutputCapabilities(
             speech=output_service,
+            tone=tone_output,
         ),
         on_speech_backend_changed=config_store.save_backend_id,
         main_thread_dispatch=getattr(NvdaRemoteApp, "dispatch", None),
@@ -90,6 +94,7 @@ def build_runtime() -> NvdaRemoteRuntime:
         input_capture=input_capture,
         hotkey_capture=hotkey_capture,
         clipboard=clipboard,
+        tone_output=tone_output,
         speech_scheduler=speech_scheduler,
         speech_service=speech_service,
         output_service=output_service,

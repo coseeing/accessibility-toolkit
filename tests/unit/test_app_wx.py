@@ -786,6 +786,13 @@ def test_nvda_remote_main_build_runtime_composes_app_service_and_gui(monkeypatch
     class FakeClipboard:
         pass
 
+    class FakeToneOutput:
+        def __init__(self) -> None:
+            self.calls = []
+
+        def beep(self, hz, length, left=50, right=50):
+            self.calls.append((hz, length, left, right))
+
     class FakeKeyboardInputService:
         def __init__(self, capture, handler):
             self.capture = capture
@@ -850,6 +857,8 @@ def test_nvda_remote_main_build_runtime_composes_app_service_and_gui(monkeypatch
         lambda usage=HID.F11: FakeHotkeyCapture(),
     )
     monkeypatch.setattr(nvda_remote_main, "create_clipboard_service", lambda: FakeClipboard())
+    tone_output = FakeToneOutput()
+    monkeypatch.setattr(nvda_remote_main, "create_tone_output", lambda: tone_output)
     monkeypatch.setattr(nvda_remote_main, "KeyboardInputService", FakeKeyboardInputService)
     monkeypatch.setattr(nvda_remote_main, "NvdaRemoteAppService", FakeAppService)
     monkeypatch.setattr(nvda_remote_main, "NvdaRemoteApp", FakeApp)
@@ -868,6 +877,7 @@ def test_nvda_remote_main_build_runtime_composes_app_service_and_gui(monkeypatch
     assert runtime.speech_service.selected_backend_id == "pyttsx3"
     assert runtime.output_service.speech is runtime.speech_service
     assert runtime.app_service.outputs.speech is runtime.output_service
+    assert runtime.app_service.outputs.tone is tone_output
     assert runtime.app_service.on_speech_backend_changed == runtime.config_store.save_backend_id
     assert runtime.app_service.main_thread_dispatch is FakeApp.dispatch
     assert runtime.app_service.bind_calls == 1
@@ -1506,3 +1516,93 @@ def test_speech_settings_frame_reads_and_writes_controller_values(monkeypatch):
     frame.speech_backend_choice.SetSelection(1)
     frame._on_speech_backend_change(None)
     assert controller.speech_backend_calls == ["pyttsx3"]
+
+
+def test_access8graph_main_build_runtime_injects_tone_output(monkeypatch):
+    install_fake_wx(monkeypatch)
+    access8graph_main = importlib.import_module("apps.access8graph.main")
+
+    class FakeOutputScheduler:
+        pass
+
+    class FakeSpeechService:
+        def __init__(self, *, backend_options, selected_backend_id, scheduler=None):
+            self.backend_options = backend_options
+            self.selected_backend_id = selected_backend_id
+            self.scheduler = scheduler
+
+    class FakeQueuedOutputService:
+        def __init__(self, *, speech):
+            self.speech = speech
+
+    class FakeKeyboardCapture:
+        pass
+
+    class FakeHotkeyCapture:
+        def __init__(self) -> None:
+            self.started = 0
+
+        def start(self):
+            self.started += 1
+
+    class FakeToneOutput:
+        def __init__(self) -> None:
+            self.calls = []
+
+        def beep(self, hz, length, left=50, right=50):
+            self.calls.append((hz, length, left, right))
+
+    class FakeKeyboardInputService:
+        def __init__(self, capture, handler):
+            self.capture = capture
+            self.handler = handler
+
+    class FakeAppService:
+        enter_usage = HID.F11
+
+        def __init__(self, *, hotkey_capture, input_capture, outputs, main_thread_dispatch):
+            self.hotkey_capture = hotkey_capture
+            self.input_capture = input_capture
+            self._outputs = outputs
+            self.main_thread_dispatch = main_thread_dispatch
+            self.attached_input_service = None
+            self.bind_calls = 0
+
+        def attach_input_service(self, input_service):
+            self.attached_input_service = input_service
+
+        def bind(self):
+            self.bind_calls += 1
+
+    class FakeApp:
+        dispatch = staticmethod(lambda callback: callback())
+
+        def __init__(self, controller):
+            self.controller = controller
+
+    tone_output = FakeToneOutput()
+
+    monkeypatch.setattr(access8graph_main, "OutputScheduler", FakeOutputScheduler)
+    monkeypatch.setattr(access8graph_main, "SpeechService", FakeSpeechService)
+    monkeypatch.setattr(access8graph_main, "QueuedOutputService", FakeQueuedOutputService)
+    monkeypatch.setattr(access8graph_main, "KeyboardInputService", FakeKeyboardInputService)
+    monkeypatch.setattr(access8graph_main, "Access8GraphAppService", FakeAppService)
+    monkeypatch.setattr(access8graph_main, "create_input_capture", lambda: FakeKeyboardCapture())
+    monkeypatch.setattr(access8graph_main, "create_hotkey_capture", lambda usage=HID.F11: FakeHotkeyCapture())
+    monkeypatch.setattr(access8graph_main, "create_tone_output", lambda: tone_output)
+    monkeypatch.setattr(access8graph_main, "default_speech_backend_options", lambda scheduler: ("backend",))
+    monkeypatch.setattr(access8graph_main, "default_speech_backend_id", lambda: "pyttsx3")
+    monkeypatch.setitem(
+        sys.modules,
+        "ui.access8graph.app",
+        types.SimpleNamespace(Access8GraphApp=FakeApp),
+    )
+
+    runtime = access8graph_main.build_runtime()
+
+    assert runtime.app_service._outputs.speech is runtime.output_service
+    assert runtime.app_service._outputs.tone is tone_output
+    assert runtime.tone_output is tone_output
+    assert runtime.hotkey_capture.started == 1
+    assert runtime.app_service.bind_calls == 1
+    assert runtime.app.controller is runtime.app_service

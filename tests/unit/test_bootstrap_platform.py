@@ -9,6 +9,7 @@ from bootstrap.platform import (
     create_input_capture,
     create_hotkey_capture,
     create_clipboard_service,
+    create_tone_output,
     default_speech_backend_id,
     default_speech_backend_options,
 )
@@ -252,3 +253,12 @@ class TestMacOSFactoriesWithColdGlobals:
         assert _bp._macos_event_tap_manager_instance is not None
         assert capture_a is not None
         assert capture_b is not None
+
+
+class TestCreateToneOutput:
+    def test_returns_default_tone_output(self):
+        from adapters.outputs.tone import DefaultToneOutput
+
+        tone = create_tone_output()
+
+        assert isinstance(tone, DefaultToneOutput)

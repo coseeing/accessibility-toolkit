@@ -5,6 +5,7 @@ from typing import Any
 
 from adapters.inputs.base import HotkeyCapture, InputCapture
 from adapters.outputs.drivers.pyttsx3 import Pyttsx3SpeechOutput
+from adapters.outputs.tone import DefaultToneOutput
 from application.output_scheduler import OutputScheduler
 from application.services import ClipboardService
 from application.speech_backends import SpeechBackendOption
@@ -207,6 +208,10 @@ def create_clipboard_service() -> ClipboardService:
     if sys.platform == "win32":
         return _get_windows_clipboard_service_class()()
     return _UnsupportedClipboardService()
+
+
+def create_tone_output() -> DefaultToneOutput:
+    return DefaultToneOutput.load_default()
 
 
 def default_speech_backend_options(
