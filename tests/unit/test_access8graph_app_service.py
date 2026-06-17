@@ -108,6 +108,30 @@ def build_service():
     return service, input_capture, hotkey_capture, speech
 
 
+def test_service_dispatches_status_updates_through_main_thread_callback() -> None:
+    pending = []
+    delivered = []
+    input_capture = FakeCapture()
+    hotkey_capture = FakeHotkeyCapture()
+    speech = FakeSpeech()
+    service = Access8GraphAppService(
+        hotkey_capture=hotkey_capture,
+        input_capture=input_capture,
+        outputs=OutputCapabilities(speech=speech),
+        main_thread_dispatch=pending.append,
+    )
+    service.set_status_listener(delivered.append)
+
+    service.set_speech_backend("default")
+
+    assert delivered == []
+    assert len(pending) == 1
+
+    pending.pop()()
+
+    assert delivered == [{"kind": "speech_backend", "backend_id": "default"}]
+
+
 def test_service_cannot_start_without_selected_graphml() -> None:
     service, input_capture, _hotkey_capture, _speech = build_service()
 
@@ -162,6 +186,62 @@ def test_service_handles_key_event_while_navigation_running() -> None:
         send_to_system=False,
         app_result=AppKeyEventResult.HANDLED_STOP,
     )
+
+
+@pytest.mark.parametrize("pressed", [True, False])
+def test_service_suppresses_unsupported_key_events_while_navigation_running(
+    pressed: bool,
+) -> None:
+    service, _input_capture, _hotkey_capture, _speech = build_service()
+    service.choose_graphml(str(FIXTURE))
+    service.start_navigation()
+
+    result = service.handle_key_event(
+        CapturedKeyEvent(
+            key_event=KeyEvent(
+                usage_page=HID.KEYBOARD_PAGE,
+                usage=HID.F1,
+                pressed=pressed,
+            )
+        )
+    )
+
+    assert result == KeyboardPipelineResult(
+        send_to_system=False,
+        app_result=AppKeyEventResult.HANDLED_STOP,
+    )
+    assert service.is_navigation_running() is True
+
+
+def test_service_stops_navigation_and_reports_flow_dispatch_exception() -> None:
+    class FailingFlow:
+        def enter(self, command):
+            raise RuntimeError("flow dispatch failed")
+
+    statuses = []
+    service, input_capture, _hotkey_capture, _speech = build_service()
+    service.set_status_listener(statuses.append)
+    service.choose_graphml(str(FIXTURE))
+    service.start_navigation()
+    service._flow = FailingFlow()
+
+    result = service.handle_key_event(
+        CapturedKeyEvent(
+            key_event=KeyEvent(
+                usage_page=HID.KEYBOARD_PAGE,
+                usage=HID.DOWN,
+                pressed=True,
+            )
+        )
+    )
+
+    assert result == KeyboardPipelineResult(
+        send_to_system=False,
+        app_result=AppKeyEventResult.HANDLED_STOP,
+    )
+    assert service.is_navigation_running() is False
+    assert input_capture.running is False
+    assert {"kind": "error", "message": "flow dispatch failed"} in statuses
 
 
 def test_service_escape_stops_navigation() -> None:

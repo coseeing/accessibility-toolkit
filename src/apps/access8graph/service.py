@@ -50,7 +50,7 @@ class Access8GraphNavigationMode:
         translator = Access8GraphKeyTranslator()
         command = translator.translate(event)
         if command is None:
-            return AppKeyEventResult.UNHANDLED
+            return AppKeyEventResult.HANDLED_STOP
         flow = self._service._flow
         if flow is None:
             return AppKeyEventResult.UNHANDLED
@@ -209,15 +209,26 @@ class Access8GraphAppService(KeyEventHandler):
         self._outputs.speech.shutdown()
 
     def handle_key_event(self, event: CapturedKeyEvent) -> KeyboardPipelineResult:
-        send_to_system = should_pass_through_system_toggle(event)
-        app_result = self._mode_manager.handle_key_event(event.key_event)
+        try:
+            app_result = self._mode_manager.handle_key_event(event.key_event)
+        except Exception as error:
+            self._notify_status_listener({"kind": "error", "message": str(error)})
+            self.stop_navigation()
+            return KeyboardPipelineResult(
+                send_to_system=False,
+                app_result=AppKeyEventResult.HANDLED_STOP,
+            )
+        send_to_system = (
+            should_pass_through_system_toggle(event)
+            and app_result is not AppKeyEventResult.HANDLED_STOP
+        )
         return assemble_pipeline_result(
             send_to_system=send_to_system, app_result=app_result
         )
 
     def _notify_status_listener(self, status: dict[str, str]) -> None:
         if self._status_listener is not None:
-            self._status_listener(status)
+            self._main_thread_dispatch(lambda: self._status_listener(status))
 
     def _handle_idle_hotkey(self) -> None:
         if self.is_navigation_running():
