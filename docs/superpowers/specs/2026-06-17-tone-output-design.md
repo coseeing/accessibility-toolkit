@@ -65,7 +65,7 @@ Replace the logging stub in `src/adapters/outputs/tone.py` with a real implement
 Design constraints:
 
 - No dependency on NVDA runtime modules such as `config`, `extensionPoints`, `nvwave`, or `NVDAHelper.localLib`.
-- The implementation may reuse the high-level algorithm from `/workspace/nvda/source/tones.py`, but the runtime integration must be rewritten for this repository.
+- The implementation may reuse the high-level algorithm from `ref/nvda/source/tones.py`, but the runtime integration must be rewritten for this repository.
 - The output device is always the default device. No tone output device setting is added.
 - The implementation should support stereo balance via `left` and `right`.
 - Invalid or edge-case values should be normalized defensively before playback.
