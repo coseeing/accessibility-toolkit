@@ -48,6 +48,12 @@ def normalize_beep_parameters(
         clamped_hz = min(clamped_hz, MAX_TONE_HZ)
     else:
         clamped_hz = 0.0
+    if isinstance(length, float) and not math.isfinite(length):
+        length = 0
+    if isinstance(left, float) and not math.isfinite(left):
+        left = 0
+    if isinstance(right, float) and not math.isfinite(right):
+        right = 0
     return BeepParameters(
         hz=clamped_hz,
         length=_clamp_int(int(length), 0, MAX_TONE_LENGTH_MS),
@@ -133,7 +139,7 @@ class DefaultToneOutput:
     ) -> None:
         try:
             params = normalize_beep_parameters(hz, length, left, right)
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, OverflowError):
             self._logger.warning(
                 "Invalid tone parameters",
                 extra={"hz": hz, "length": length, "left": left, "right": right},

@@ -17,12 +17,17 @@ def _coerce_float(payload: dict[str, Any], field_name: str) -> float:
     value = payload.get(field_name)
     if isinstance(value, bool):
         raise ValueError(field_name)
-    return float(value)
+    result = float(value)
+    if not math.isfinite(result):
+        raise ValueError(field_name)
+    return result
 
 
 def _coerce_int(payload: dict[str, Any], field_name: str) -> int:
     value = payload.get(field_name)
     if isinstance(value, bool):
+        raise ValueError(field_name)
+    if isinstance(value, float) and not math.isfinite(value):
         raise ValueError(field_name)
     return int(value)
 
@@ -93,14 +98,11 @@ class MessageRouter:
 
     def _handle_tone_message(self, payload: dict[str, Any]) -> None:
         try:
-            hz = _coerce_float(payload, "hz")
-            if not math.isfinite(hz):
-                raise ValueError("hz")
-            hz = min(max(0.0, hz), _MAX_TONE_HZ)
+            hz = min(max(0.0, _coerce_float(payload, "hz")), _MAX_TONE_HZ)
             length = _clamp_int(max(0, _coerce_int(payload, "length")), 0, _MAX_TONE_LENGTH_MS)
             left = _clamp_int(_coerce_int(payload, "left"), 0, 100)
             right = _clamp_int(_coerce_int(payload, "right"), 0, 100)
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, OverflowError):
             self._on_status(
                 {
                     "kind": "invalid_message",

@@ -100,3 +100,30 @@ def test_default_tone_output_skips_zero_hz_tone() -> None:
     output.beep(0, 100, 50, 50)
 
     assert playback.calls == []
+
+
+def test_normalize_beep_parameters_zeros_inf_length() -> None:
+    params = normalize_beep_parameters(440, float("inf"), 50, 50)
+
+    assert params.length == 0
+
+
+def test_normalize_beep_parameters_zeros_inf_left() -> None:
+    params = normalize_beep_parameters(440, 100, float("inf"), 50)
+
+    assert params.left == 0
+
+
+def test_normalize_beep_parameters_zeros_inf_right() -> None:
+    params = normalize_beep_parameters(440, 100, 50, float("inf"))
+
+    assert params.right == 0
+
+
+def test_default_tone_output_noops_on_inf_length() -> None:
+    playback = FakePlaybackBackend()
+    output = DefaultToneOutput(playback=playback)
+
+    output.beep(440, float("inf"), 50, 50)
+
+    assert playback.calls == []

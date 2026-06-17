@@ -269,21 +269,79 @@ def test_router_reports_invalid_pause_payload():
     ]
 
 
-def test_router_clamps_tone_hz_and_length_to_maximum_bounds() -> None:
+def test_router_reports_infinity_tone_length_as_invalid_message() -> None:
     seen = []
     router = build_router(seen)
+    payload = {
+        "type": "tone",
+        "hz": 440,
+        "length": float("inf"),
+        "left": 50,
+        "right": 50,
+    }
 
-    router.handle_message(
-        {
-            "type": "tone",
-            "hz": 50000,
-            "length": 30000,
-            "left": 50,
-            "right": 50,
-        }
-    )
+    router.handle_message(payload)
 
-    assert seen == [("tone", 20000.0, 5000, 50, 50)]
+    assert seen == [
+        (
+            "status",
+            {
+                "kind": "invalid_message",
+                "reason": "tone_fields_must_be_numeric",
+                "payload": payload,
+            },
+        )
+    ]
+
+
+def test_router_reports_infinity_tone_left_as_invalid_message() -> None:
+    seen = []
+    router = build_router(seen)
+    payload = {
+        "type": "tone",
+        "hz": 440,
+        "length": 80,
+        "left": float("inf"),
+        "right": 50,
+    }
+
+    router.handle_message(payload)
+
+    assert seen == [
+        (
+            "status",
+            {
+                "kind": "invalid_message",
+                "reason": "tone_fields_must_be_numeric",
+                "payload": payload,
+            },
+        )
+    ]
+
+
+def test_router_reports_infinity_tone_right_as_invalid_message() -> None:
+    seen = []
+    router = build_router(seen)
+    payload = {
+        "type": "tone",
+        "hz": 440,
+        "length": 80,
+        "left": 50,
+        "right": float("inf"),
+    }
+
+    router.handle_message(payload)
+
+    assert seen == [
+        (
+            "status",
+            {
+                "kind": "invalid_message",
+                "reason": "tone_fields_must_be_numeric",
+                "payload": payload,
+            },
+        )
+    ]
 
 
 def test_session_reports_connected_after_channel_joined():
