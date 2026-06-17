@@ -34,15 +34,22 @@ class FakeClipboard:
         return self.text
 
 
-def test_router_dispatches_speech_and_clipboard():
-    seen = []
-    router = MessageRouter(
+def build_router(seen):
+    return MessageRouter(
         on_speech=lambda speech: seen.append(("speech", speech)),
         on_cancel=lambda: seen.append(("cancel", None)),
         on_pause=lambda paused: seen.append(("pause", paused)),
         on_clipboard=lambda text: seen.append(("clipboard", text)),
+        on_tone=lambda hz, length, left, right: seen.append(
+            ("tone", hz, length, left, right)
+        ),
         on_status=lambda event: seen.append(("status", event)),
     )
+
+
+def test_router_dispatches_speech_and_clipboard():
+    seen = []
+    router = build_router(seen)
 
     router.handle_message(
         {
@@ -106,6 +113,7 @@ def test_sequence_routes_from_router_to_backend_through_output_manager():
         on_cancel=lambda: None,
         on_pause=lambda paused: None,
         on_clipboard=lambda text: None,
+        on_tone=lambda hz, length, left, right: None,
         on_status=lambda event: None,
     )
 
@@ -123,13 +131,7 @@ def test_sequence_routes_from_router_to_backend_through_output_manager():
 
 def test_router_preserves_already_restored_speech_commands():
     seen = []
-    router = MessageRouter(
-        on_speech=lambda speech: seen.append(("speech", speech)),
-        on_cancel=lambda: seen.append(("cancel", None)),
-        on_pause=lambda paused: seen.append(("pause", paused)),
-        on_clipboard=lambda text: seen.append(("clipboard", text)),
-        on_status=lambda event: seen.append(("status", event)),
-    )
+    router = build_router(seen)
 
     router.handle_message(
         {
@@ -148,13 +150,7 @@ def test_router_preserves_already_restored_speech_commands():
 
 def test_router_dispatches_unknown_messages_to_status():
     seen = []
-    router = MessageRouter(
-        on_speech=lambda speech: seen.append(("speech", speech)),
-        on_cancel=lambda: seen.append(("cancel", None)),
-        on_pause=lambda paused: seen.append(("pause", paused)),
-        on_clipboard=lambda text: seen.append(("clipboard", text)),
-        on_status=lambda event: seen.append(("status", event)),
-    )
+    router = build_router(seen)
     payload = {"type": "motd", "message": "hello"}
 
     router.handle_message(payload)
@@ -169,13 +165,7 @@ def test_router_dispatches_unknown_messages_to_status():
 
 def test_router_reports_missing_clipboard_text_as_invalid_message():
     seen = []
-    router = MessageRouter(
-        on_speech=lambda speech: seen.append(("speech", speech)),
-        on_cancel=lambda: seen.append(("cancel", None)),
-        on_pause=lambda paused: seen.append(("pause", paused)),
-        on_clipboard=lambda text: seen.append(("clipboard", text)),
-        on_status=lambda event: seen.append(("status", event)),
-    )
+    router = build_router(seen)
     payload = {"type": "set_clipboard_text"}
 
     router.handle_message(payload)
@@ -194,13 +184,7 @@ def test_router_reports_missing_clipboard_text_as_invalid_message():
 
 def test_router_reports_none_clipboard_text_as_invalid_message():
     seen = []
-    router = MessageRouter(
-        on_speech=lambda speech: seen.append(("speech", speech)),
-        on_cancel=lambda: seen.append(("cancel", None)),
-        on_pause=lambda paused: seen.append(("pause", paused)),
-        on_clipboard=lambda text: seen.append(("clipboard", text)),
-        on_status=lambda event: seen.append(("status", event)),
-    )
+    router = build_router(seen)
     payload = {"type": "set_clipboard_text", "text": None}
 
     router.handle_message(payload)
@@ -219,13 +203,7 @@ def test_router_reports_none_clipboard_text_as_invalid_message():
 
 def test_router_reports_non_string_clipboard_text_as_invalid_message():
     seen = []
-    router = MessageRouter(
-        on_speech=lambda speech: seen.append(("speech", speech)),
-        on_cancel=lambda: seen.append(("cancel", None)),
-        on_pause=lambda paused: seen.append(("pause", paused)),
-        on_clipboard=lambda text: seen.append(("clipboard", text)),
-        on_status=lambda event: seen.append(("status", event)),
-    )
+    router = build_router(seen)
     payload = {"type": "set_clipboard_text", "text": 123}
 
     router.handle_message(payload)
@@ -261,13 +239,7 @@ def test_session_join_sends_protocol_and_join_messages():
 
 def test_router_dispatches_cancel_and_pause_messages():
     seen = []
-    router = MessageRouter(
-        on_speech=lambda speech: seen.append(("speech", speech)),
-        on_cancel=lambda: seen.append(("cancel", None)),
-        on_pause=lambda paused: seen.append(("pause", paused)),
-        on_clipboard=lambda text: seen.append(("clipboard", text)),
-        on_status=lambda event: seen.append(("status", event)),
-    )
+    router = build_router(seen)
 
     router.handle_message({"type": "cancel"})
     router.handle_message({"type": "pause_speech", "switch": True})
@@ -280,13 +252,7 @@ def test_router_dispatches_cancel_and_pause_messages():
 
 def test_router_reports_invalid_pause_payload():
     seen = []
-    router = MessageRouter(
-        on_speech=lambda speech: seen.append(("speech", speech)),
-        on_cancel=lambda: seen.append(("cancel", None)),
-        on_pause=lambda paused: seen.append(("pause", paused)),
-        on_clipboard=lambda text: seen.append(("clipboard", text)),
-        on_status=lambda event: seen.append(("status", event)),
-    )
+    router = build_router(seen)
     payload = {"type": "pause_speech", "switch": "yes"}
 
     router.handle_message(payload)
@@ -369,3 +335,85 @@ def test_session_disconnect_closes_transport_and_sets_idle_status():
 
     assert transport.closed is True
     assert status_events == [{"kind": "connection", "state": "idle"}]
+
+
+def test_remote_message_type_includes_nvda_remote_tone_value() -> None:
+    assert RemoteMessageType.TONE.value == "tone"
+
+
+def test_router_dispatches_tone_message() -> None:
+    seen = []
+    router = build_router(seen)
+
+    router.handle_message(
+        {
+            "type": "tone",
+            "hz": 440,
+            "length": 80,
+            "left": 25,
+            "right": 75,
+        }
+    )
+
+    assert seen == [("tone", 440.0, 80, 25, 75)]
+
+
+def test_router_clamps_tone_balance_and_non_negative_duration() -> None:
+    seen = []
+    router = build_router(seen)
+
+    router.handle_message(
+        {
+            "type": "tone",
+            "hz": -10,
+            "length": -5,
+            "left": -20,
+            "right": 250,
+        }
+    )
+
+    assert seen == [("tone", 0.0, 0, 0, 100)]
+
+
+def test_router_reports_missing_tone_field_as_invalid_message() -> None:
+    seen = []
+    router = build_router(seen)
+    payload = {"type": "tone", "hz": 440, "length": 80, "left": 50}
+
+    router.handle_message(payload)
+
+    assert seen == [
+        (
+            "status",
+            {
+                "kind": "invalid_message",
+                "reason": "tone_fields_must_be_numeric",
+                "payload": payload,
+            },
+        )
+    ]
+
+
+def test_router_reports_non_numeric_tone_field_as_invalid_message() -> None:
+    seen = []
+    router = build_router(seen)
+    payload = {
+        "type": "tone",
+        "hz": "high",
+        "length": 80,
+        "left": 50,
+        "right": 50,
+    }
+
+    router.handle_message(payload)
+
+    assert seen == [
+        (
+            "status",
+            {
+                "kind": "invalid_message",
+                "reason": "tone_fields_must_be_numeric",
+                "payload": payload,
+            },
+        )
+    ]
