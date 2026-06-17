@@ -15,6 +15,7 @@ class RemoteMessageType(StrEnum):
     SPEAK = "speak"
     CANCEL = "cancel"
     PAUSE_SPEECH = "pause_speech"
+    TONE = "tone"
     SET_CLIPBOARD_TEXT = "set_clipboard_text"
     MOTD = "motd"
     VERSION_MISMATCH = "version_mismatch"

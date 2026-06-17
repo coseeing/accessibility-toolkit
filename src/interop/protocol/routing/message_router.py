@@ -5,6 +5,24 @@ from interop.speech.speech_sequence import SpeechSequence
 from interop.protocol.messages import RemoteMessageType
 
 
+def _clamp_int(value: int, minimum: int, maximum: int) -> int:
+    return max(minimum, min(maximum, value))
+
+
+def _coerce_float(payload: dict[str, Any], field_name: str) -> float:
+    value = payload.get(field_name)
+    if isinstance(value, bool):
+        raise ValueError(field_name)
+    return float(value)
+
+
+def _coerce_int(payload: dict[str, Any], field_name: str) -> int:
+    value = payload.get(field_name)
+    if isinstance(value, bool):
+        raise ValueError(field_name)
+    return int(value)
+
+
 class MessageRouter:
     def __init__(
         self,
@@ -12,12 +30,14 @@ class MessageRouter:
         on_cancel: Callable[[], None],
         on_pause: Callable[[bool], None],
         on_clipboard: Callable[[str], None],
+        on_tone: Callable[[float, int, int, int], None],
         on_status: Callable[[dict[str, Any]], None],
     ) -> None:
         self._on_speech = on_speech
         self._on_cancel = on_cancel
         self._on_pause = on_pause
         self._on_clipboard = on_clipboard
+        self._on_tone = on_tone
         self._on_status = on_status
 
     def handle_message(self, payload: dict[str, Any]) -> None:
@@ -28,6 +48,8 @@ class MessageRouter:
                 self._on_cancel()
             case RemoteMessageType.PAUSE_SPEECH.value:
                 self._handle_pause_message(payload)
+            case RemoteMessageType.TONE.value:
+                self._handle_tone_message(payload)
             case RemoteMessageType.SET_CLIPBOARD_TEXT.value:
                 self._handle_clipboard_message(payload)
             case _:
@@ -64,3 +86,20 @@ class MessageRouter:
             )
             return
         self._on_pause(switch)
+
+    def _handle_tone_message(self, payload: dict[str, Any]) -> None:
+        try:
+            hz = max(0.0, _coerce_float(payload, "hz"))
+            length = max(0, _coerce_int(payload, "length"))
+            left = _clamp_int(_coerce_int(payload, "left"), 0, 100)
+            right = _clamp_int(_coerce_int(payload, "right"), 0, 100)
+        except (TypeError, ValueError):
+            self._on_status(
+                {
+                    "kind": "invalid_message",
+                    "reason": "tone_fields_must_be_numeric",
+                    "payload": payload,
+                }
+            )
+            return
+        self._on_tone(hz, length, left, right)
