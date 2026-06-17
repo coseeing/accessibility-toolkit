@@ -80,6 +80,8 @@ class Access8GraphAppService(KeyEventHandler):
         self._selected_path: str | None = None
         self._navigation_running = False
         self._flow = None
+        self._hotkey_start_in_progress = False
+        self._hotkey_start_reported_error = False
 
         self._flow_output = Access8GraphFlowOutput(outputs=outputs)
         self._speech_settings = SpeechSettingsController(
@@ -227,6 +229,11 @@ class Access8GraphAppService(KeyEventHandler):
         )
 
     def _notify_status_listener(self, status: dict[str, str]) -> None:
+        if (
+            self._hotkey_start_in_progress
+            and status.get("kind") == "error"
+        ):
+            self._hotkey_start_reported_error = True
         if self._status_listener is not None:
             self._main_thread_dispatch(lambda: self._status_listener(status))
 
@@ -236,9 +243,14 @@ class Access8GraphAppService(KeyEventHandler):
         self._main_thread_dispatch(self._start_navigation_from_hotkey)
 
     def _start_navigation_from_hotkey(self) -> None:
+        self._hotkey_start_in_progress = True
+        self._hotkey_start_reported_error = False
         try:
             self.start_navigation()
         except Exception as error:
-            if str(error) == "Failed to start navigation":
+            if self._hotkey_start_reported_error:
                 return
             self._notify_status_listener({"kind": "error", "message": str(error)})
+        finally:
+            self._hotkey_start_in_progress = False
+            self._hotkey_start_reported_error = False

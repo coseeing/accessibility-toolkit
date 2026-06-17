@@ -206,6 +206,37 @@ def test_idle_hotkey_with_malformed_graphml_keeps_specific_error_message(
     ]
 
 
+def test_idle_hotkey_reports_generic_start_failure_when_no_specific_error_preceded() -> None:
+    pending = []
+    delivered = []
+    input_capture = FakeCapture()
+    hotkey_capture = FakeHotkeyCapture()
+    speech = FakeSpeech()
+    service = Access8GraphAppService(
+        hotkey_capture=hotkey_capture,
+        input_capture=input_capture,
+        outputs=OutputCapabilities(speech=speech),
+        main_thread_dispatch=pending.append,
+    )
+    input_service = KeyboardInputService(input_capture, service)
+    service.attach_input_service(input_service)
+    service.bind()
+    service.set_status_listener(delivered.append)
+
+    def fail_start() -> None:
+        raise RuntimeError("Failed to start navigation")
+
+    service.start_navigation = fail_start
+    hotkey_capture.handler()
+
+    while pending:
+        pending.pop(0)()
+
+    assert delivered == [
+        {"kind": "error", "message": "Failed to start navigation"}
+    ]
+
+
 def test_service_cannot_start_without_selected_graphml() -> None:
     service, input_capture, _hotkey_capture, _speech = build_service()
 
