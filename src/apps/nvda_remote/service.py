@@ -89,6 +89,7 @@ class NvdaRemoteAppService(KeyEventHandler):
             on_cancel=self._outputs.speech.cancel,
             on_pause=self._outputs.speech.pause,
             on_clipboard=self.clipboard.set_text,
+            on_tone=self._handle_tone,
             on_status=self._on_status,
         )
 
@@ -253,6 +254,18 @@ class NvdaRemoteAppService(KeyEventHandler):
         mode_result = self._mode_manager.handle_key_event(key_event)
         send_to_system = mode_result == AppKeyEventResult.UNHANDLED
         return assemble_pipeline_result(send_to_system=send_to_system, app_result=mode_result)
+
+    def _handle_tone(
+        self,
+        hz: float,
+        length: int,
+        left: int = 50,
+        right: int = 50,
+    ) -> None:
+        tone = self._outputs.tone
+        if tone is None:
+            return
+        tone.beep(hz, length, left, right)
 
     def _handle_transport_message(self, payload: dict[str, Any]) -> None:
         if payload.get("type") == "transport_disconnected":

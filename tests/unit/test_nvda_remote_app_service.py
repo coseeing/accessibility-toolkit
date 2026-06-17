@@ -4,6 +4,7 @@ from application.input.results import AppKeyEventResult, KeyboardPipelineResult
 from application.output_capabilities import OutputCapabilities
 from interop.key import HID, KeyEvent
 from interop.protocol.messages import RemoteMessageType
+from interop.protocol.routing.message_router import MessageRouter
 
 from apps.nvda_remote.service import NvdaRemoteAppService
 
@@ -77,6 +78,14 @@ class FakeClipboard:
         return "clip"
 
 
+class FakeToneService:
+    def __init__(self) -> None:
+        self.calls = []
+
+    def beep(self, hz: float, length: int, left: int = 50, right: int = 50) -> None:
+        self.calls.append((hz, length, left, right))
+
+
 class FakeSpeechService:
     def __init__(self):
         self.spoken = []
@@ -145,12 +154,13 @@ def build_service(*, dispatch=None):
             return dispatch(callback)
         return callback()
 
+    tone = FakeToneService()
     service = NvdaRemoteAppService(
         transport=transport,
         input_capture=capture,
         hotkey_capture=hotkey,
         clipboard=FakeClipboard(),
-        outputs=OutputCapabilities(speech=FakeSpeechService()),
+        outputs=OutputCapabilities(speech=FakeSpeechService(), tone=tone),
         main_thread_dispatch=dispatch_wrapper,
     )
     return service, transport, capture, hotkey, dispatch_calls
@@ -417,4 +427,45 @@ def test_nvda_remote_service_returns_pipeline_result_while_controlling():
     assert result == KeyboardPipelineResult(
         send_to_system=False,
         app_result=AppKeyEventResult.HANDLED_STOP,
+    )
+
+
+def test_nvda_remote_service_routes_remote_tone_into_tone_output():
+    service, transport, _capture, _hotkey, _dispatch_calls = build_service()
+    service.bind()
+
+    transport.message_handler(
+        {
+            "type": RemoteMessageType.TONE.value,
+            "hz": 440,
+            "length": 80,
+            "left": 25,
+            "right": 75,
+        }
+    )
+
+    assert service._outputs.tone.calls == [(440.0, 80, 25, 75)]
+
+
+def test_nvda_remote_service_ignores_remote_tone_when_tone_output_is_missing():
+    service, transport, _capture, _hotkey, _dispatch_calls = build_service()
+    service._outputs = OutputCapabilities(speech=service._outputs.speech)
+    service.router = MessageRouter(
+        on_speech=service._outputs.speech.speak,
+        on_cancel=service._outputs.speech.cancel,
+        on_pause=service._outputs.speech.pause,
+        on_clipboard=service.clipboard.set_text,
+        on_tone=service._handle_tone,
+        on_status=service._on_status,
+    )
+    service.bind()
+
+    transport.message_handler(
+        {
+            "type": RemoteMessageType.TONE.value,
+            "hz": 440,
+            "length": 80,
+            "left": 25,
+            "right": 75,
+        }
     )

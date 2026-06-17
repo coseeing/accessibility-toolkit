@@ -1,6 +1,6 @@
 from typing import Protocol
 
-from adapters.outputs.interfaces import SpeechOutput
+from adapters.outputs.interfaces import SpeechOutput, ToneOutput
 from interop.speech.speech_sequence import SpeechSequence
 from interop.protocol.messages import RemoteMessageType
 from interop.protocol.transport.base import Transport
@@ -13,9 +13,15 @@ class ClipboardService(Protocol):
 
 
 class OutputManager:
-    def __init__(self, speech_output: SpeechOutput, clipboard: ClipboardService) -> None:
+    def __init__(
+        self,
+        speech_output: SpeechOutput,
+        clipboard: ClipboardService,
+        tone_output: ToneOutput | None = None,
+    ) -> None:
         self.speech_output = speech_output
         self.clipboard = clipboard
+        self.tone_output = tone_output
 
     def set_speech_output(
         self,
@@ -35,6 +41,17 @@ class OutputManager:
 
     def handle_pause(self, is_paused: bool) -> None:
         self.speech_output.pause(is_paused)
+
+    def handle_tone(
+        self,
+        hz: float,
+        length: int,
+        left: int = 50,
+        right: int = 50,
+    ) -> None:
+        if self.tone_output is None:
+            return
+        self.tone_output.beep(hz, length, left, right)
 
     def handle_clipboard(self, text: str) -> None:
         self.clipboard.set_text(text)

@@ -319,6 +319,7 @@ def test_raw_json_speak_payload_reaches_real_pyttsx3_sequence_path():
         on_cancel=manager.handle_cancel,
         on_pause=manager.handle_pause,
         on_clipboard=manager.handle_clipboard,
+        on_tone=lambda hz, length, left, right: None,
         on_status=lambda event: None,
     )
     payload = serializer.deserialize(
@@ -346,6 +347,7 @@ def test_raw_json_speak_payload_reaches_real_nvda_controller_sequence_path():
         on_cancel=manager.handle_cancel,
         on_pause=manager.handle_pause,
         on_clipboard=manager.handle_clipboard,
+        on_tone=lambda hz, length, left, right: None,
         on_status=lambda event: None,
     )
     payload = serializer.deserialize(

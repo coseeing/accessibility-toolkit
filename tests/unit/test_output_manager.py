@@ -88,3 +88,26 @@ def test_output_manager_replaces_speech_output_after_canceling_previous():
 
     assert first.cancel_count == 1
     assert second.cancel_count == 1
+
+
+class FakeTone:
+    def __init__(self) -> None:
+        self.calls = []
+
+    def beep(self, hz: float, length: int, left: int = 50, right: int = 50) -> None:
+        self.calls.append((hz, length, left, right))
+
+
+def test_output_manager_routes_tone_to_tone_output() -> None:
+    tone = FakeTone()
+    manager = OutputManager(FakeSpeechOutput(), FakeClipboard(), tone_output=tone)
+
+    manager.handle_tone(440.0, 80, 25, 75)
+
+    assert tone.calls == [(440.0, 80, 25, 75)]
+
+
+def test_output_manager_tone_is_noop_without_tone_output() -> None:
+    manager = OutputManager(FakeSpeechOutput(), FakeClipboard())
+
+    manager.handle_tone(440.0, 80, 50, 50)
