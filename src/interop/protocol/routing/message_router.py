@@ -1,8 +1,12 @@
+import math
 from collections.abc import Callable
 from typing import Any
 
 from interop.speech.speech_sequence import SpeechSequence
 from interop.protocol.messages import RemoteMessageType
+
+_MAX_TONE_HZ = 20000
+_MAX_TONE_LENGTH_MS = 5000
 
 
 def _clamp_int(value: int, minimum: int, maximum: int) -> int:
@@ -89,8 +93,11 @@ class MessageRouter:
 
     def _handle_tone_message(self, payload: dict[str, Any]) -> None:
         try:
-            hz = max(0.0, _coerce_float(payload, "hz"))
-            length = max(0, _coerce_int(payload, "length"))
+            hz = _coerce_float(payload, "hz")
+            if not math.isfinite(hz):
+                raise ValueError("hz")
+            hz = min(max(0.0, hz), _MAX_TONE_HZ)
+            length = _clamp_int(max(0, _coerce_int(payload, "length")), 0, _MAX_TONE_LENGTH_MS)
             left = _clamp_int(_coerce_int(payload, "left"), 0, 100)
             right = _clamp_int(_coerce_int(payload, "right"), 0, 100)
         except (TypeError, ValueError):

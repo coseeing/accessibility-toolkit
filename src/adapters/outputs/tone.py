@@ -17,6 +17,8 @@ SAMPLE_RATE = 44100
 BITS_PER_SAMPLE = 16
 CHANNELS = 2
 MAX_AMPLITUDE = 32767
+MAX_TONE_HZ = 20000
+MAX_TONE_LENGTH_MS = 5000
 
 
 class WavePlaybackBackend(Protocol):
@@ -41,9 +43,14 @@ def normalize_beep_parameters(
     left: int = 50,
     right: int = 50,
 ) -> BeepParameters:
+    clamped_hz = max(0.0, float(hz))
+    if math.isfinite(clamped_hz):
+        clamped_hz = min(clamped_hz, MAX_TONE_HZ)
+    else:
+        clamped_hz = 0.0
     return BeepParameters(
-        hz=max(0.0, float(hz)),
-        length=max(0, int(length)),
+        hz=clamped_hz,
+        length=_clamp_int(int(length), 0, MAX_TONE_LENGTH_MS),
         left=_clamp_int(int(left), 0, 100),
         right=_clamp_int(int(right), 0, 100),
     )

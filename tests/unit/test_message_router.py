@@ -269,6 +269,23 @@ def test_router_reports_invalid_pause_payload():
     ]
 
 
+def test_router_clamps_tone_hz_and_length_to_maximum_bounds() -> None:
+    seen = []
+    router = build_router(seen)
+
+    router.handle_message(
+        {
+            "type": "tone",
+            "hz": 50000,
+            "length": 30000,
+            "left": 50,
+            "right": 50,
+        }
+    )
+
+    assert seen == [("tone", 20000.0, 5000, 50, 50)]
+
+
 def test_session_reports_connected_after_channel_joined():
     transport = DummyTransport()
     status_events = []
@@ -400,6 +417,73 @@ def test_router_reports_non_numeric_tone_field_as_invalid_message() -> None:
     payload = {
         "type": "tone",
         "hz": "high",
+        "length": 80,
+        "left": 50,
+        "right": 50,
+    }
+
+    router.handle_message(payload)
+
+    assert seen == [
+        (
+            "status",
+            {
+                "kind": "invalid_message",
+                "reason": "tone_fields_must_be_numeric",
+                "payload": payload,
+            },
+        )
+    ]
+
+
+def test_router_clamps_tone_hz_and_length_to_maximum_bounds() -> None:
+    seen = []
+    router = build_router(seen)
+
+    router.handle_message(
+        {
+            "type": "tone",
+            "hz": 50000,
+            "length": 30000,
+            "left": 50,
+            "right": 50,
+        }
+    )
+
+    assert seen == [("tone", 20000.0, 5000, 50, 50)]
+
+
+def test_router_reports_infinity_tone_hz_as_invalid_message() -> None:
+    seen = []
+    router = build_router(seen)
+    payload = {
+        "type": "tone",
+        "hz": float("inf"),
+        "length": 80,
+        "left": 50,
+        "right": 50,
+    }
+
+    router.handle_message(payload)
+
+    assert seen == [
+        (
+            "status",
+            {
+                "kind": "invalid_message",
+                "reason": "tone_fields_must_be_numeric",
+                "payload": payload,
+            },
+        )
+    ]
+
+
+def test_router_reports_nan_tone_hz_as_invalid_message() -> None:
+    seen = []
+    router = build_router(seen)
+    payload = {
+        "type": "tone",
+        "hz": float("nan"),
         "length": 80,
         "left": 50,
         "right": 50,

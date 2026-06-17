@@ -4,6 +4,8 @@ from io import BytesIO
 
 from adapters.outputs.tone import (
     SAMPLE_RATE,
+    MAX_TONE_HZ,
+    MAX_TONE_LENGTH_MS,
     DefaultToneOutput,
     generate_beep_wav,
     normalize_beep_parameters,
@@ -70,3 +72,31 @@ def test_default_tone_output_logs_backend_failures(caplog) -> None:
         output.beep(440, 100, 50, 50)
 
     assert "Failed to play tone" in caplog.text
+
+
+def test_normalize_beep_parameters_clamps_to_maximum_bounds() -> None:
+    params = normalize_beep_parameters(50000, 30000, 50, 50)
+
+    assert params.hz == MAX_TONE_HZ
+    assert params.length == MAX_TONE_LENGTH_MS
+
+
+def test_normalize_beep_parameters_zeros_inf_hz() -> None:
+    params = normalize_beep_parameters(float("inf"), 100, 50, 50)
+
+    assert params.hz == 0.0
+
+
+def test_normalize_beep_parameters_zeros_nan_hz() -> None:
+    params = normalize_beep_parameters(float("nan"), 100, 50, 50)
+
+    assert params.hz == 0.0
+
+
+def test_default_tone_output_skips_zero_hz_tone() -> None:
+    playback = FakePlaybackBackend()
+    output = DefaultToneOutput(playback=playback)
+
+    output.beep(0, 100, 50, 50)
+
+    assert playback.calls == []
