@@ -233,4 +233,12 @@ class Access8GraphAppService(KeyEventHandler):
     def _handle_idle_hotkey(self) -> None:
         if self.is_navigation_running():
             return
-        self._main_thread_dispatch(self.start_navigation)
+        self._main_thread_dispatch(self._start_navigation_from_hotkey)
+
+    def _start_navigation_from_hotkey(self) -> None:
+        try:
+            self.start_navigation()
+        except Exception as error:
+            if str(error) == "Failed to start navigation":
+                return
+            self._notify_status_listener({"kind": "error", "message": str(error)})

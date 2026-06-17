@@ -202,10 +202,6 @@ class ModeState(ListState):
         return result
 
     def enter(self):
-        state = self.flow.background_state
-        if state and self.flow.navigator["direction"].run:
-            if self.open_message != "":
-                self.flow.message.append(self.open_message)
         if self.open_message != "":
             self.flow.message.append(self.open_message)
 

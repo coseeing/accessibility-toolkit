@@ -102,3 +102,25 @@ def test_flow_unsupported_command_beeps_and_returns_false() -> None:
     assert flow.enter({"key": "unknown", "repeat": 0, "pressing": 0}) is False
 
     assert ("beep", None) in output.calls
+
+
+def test_flow_returning_from_direction_run_announces_mode_menu_once() -> None:
+    output = FakeOutput()
+    direction = FakeDirectionNavigator()
+    flow = MrtFlow(
+        navigator={
+            "direction": direction,
+            "undirection": FakeUndirectionNavigator(),
+        },
+        output=output,
+    )
+    direction.run = True
+    flow.background_state = flow.states["direction_run"]
+    flow.state = flow.states["direction_run"]
+    output.calls.clear()
+
+    assert flow.enter({"key": "m", "repeat": 0, "pressing": 0}) is True
+
+    speak_calls = [items for kind, items in output.calls if kind == "speak"]
+    assert len(speak_calls) == 1
+    assert speak_calls[0].count("功能選單開啟") == 1

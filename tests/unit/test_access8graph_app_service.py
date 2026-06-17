@@ -132,6 +132,80 @@ def test_service_dispatches_status_updates_through_main_thread_callback() -> Non
     assert delivered == [{"kind": "speech_backend", "backend_id": "default"}]
 
 
+def test_idle_hotkey_without_selected_graphml_reports_error_without_starting_capture() -> None:
+    pending = []
+    delivered = []
+    input_capture = FakeCapture()
+    hotkey_capture = FakeHotkeyCapture()
+    speech = FakeSpeech()
+    service = Access8GraphAppService(
+        hotkey_capture=hotkey_capture,
+        input_capture=input_capture,
+        outputs=OutputCapabilities(speech=speech),
+        main_thread_dispatch=pending.append,
+    )
+    input_service = KeyboardInputService(input_capture, service)
+    service.attach_input_service(input_service)
+    service.bind()
+    service.set_status_listener(delivered.append)
+
+    hotkey_capture.handler()
+
+    assert service.is_navigation_running() is False
+    assert input_capture.running is False
+    assert len(pending) == 1
+
+    pending.pop(0)()
+
+    assert service.is_navigation_running() is False
+    assert input_capture.running is False
+    assert len(pending) == 1
+
+    pending.pop(0)()
+
+    assert delivered == [{"kind": "error", "message": "No GraphML file selected"}]
+
+
+def test_idle_hotkey_with_malformed_graphml_keeps_specific_error_message(
+    tmp_path: Path,
+) -> None:
+    pending = []
+    delivered = []
+    input_capture = FakeCapture()
+    hotkey_capture = FakeHotkeyCapture()
+    speech = FakeSpeech()
+    service = Access8GraphAppService(
+        hotkey_capture=hotkey_capture,
+        input_capture=input_capture,
+        outputs=OutputCapabilities(speech=speech),
+        main_thread_dispatch=pending.append,
+    )
+    input_service = KeyboardInputService(input_capture, service)
+    service.attach_input_service(input_service)
+    service.bind()
+    service.set_status_listener(delivered.append)
+
+    path = tmp_path / "bad.graphml"
+    path.write_text("not valid xml <<<", encoding="utf-8")
+    service.choose_graphml(str(path))
+    hotkey_capture.start()
+
+    hotkey_capture.handler()
+
+    while pending:
+        pending.pop(0)()
+
+    assert service.is_navigation_running() is False
+    assert input_capture.running is False
+    assert hotkey_capture.running is True
+    assert delivered == [
+        {
+            "kind": "error",
+            "message": "Failed to parse GraphML file: syntax error: line 1, column 0",
+        }
+    ]
+
+
 def test_service_cannot_start_without_selected_graphml() -> None:
     service, input_capture, _hotkey_capture, _speech = build_service()
 
