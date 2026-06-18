@@ -23,8 +23,6 @@ class InputActivationUseCase:
         if self._is_active():
             return True
         hotkey_was_running = self._hotkey_capture.running
-        if hotkey_was_running:
-            self._hotkey_capture.stop()
         try:
             if not self._input_capture.running:
                 self._input_capture.start()
@@ -36,14 +34,14 @@ class InputActivationUseCase:
                     pass
             self._notify_error(str(error))
             return False
+        if hotkey_was_running:
+            self._hotkey_capture.stop()
         self._set_active(True)
         return True
 
     def exit_active(self) -> bool:
         if not self._is_active():
             return True
-        if self._input_capture.running:
-            self._input_capture.stop()
         try:
             if not self._hotkey_capture.running:
                 self._hotkey_capture.start()
@@ -56,5 +54,7 @@ class InputActivationUseCase:
                 return False
             self._notify_error(str(error))
             return False
+        if self._input_capture.running:
+            self._input_capture.stop()
         self._set_active(False)
         return True
