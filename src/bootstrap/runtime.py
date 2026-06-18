@@ -38,7 +38,7 @@ def configure_logging(
 ) -> Path:
     if log_path is None:
         log_path = default_log_path(app_name)
-    if os.getenv("NVDA_REMOTE_CLIENT_LOGGING", "").strip().lower() not in {
+    if os.getenv("ACCESSIBILITY_TOOLKIT_LOGGING", "").strip().lower() not in {
         "1",
         "true",
         "yes",

@@ -105,6 +105,12 @@ Start `access8graph`:
 PYTHONPATH=src python -m apps.access8graph.main
 ```
 
+Enable file logging while starting `access8graph`:
+
+```bash
+ACCESSIBILITY_TOOLKIT_LOGGING=1 PYTHONPATH=src python -m apps.access8graph.main
+```
+
 On Windows PowerShell:
 
 ```powershell
@@ -112,9 +118,25 @@ $env:PYTHONPATH="src"
 python -m apps.access8graph.main
 ```
 
+Enable file logging in Windows PowerShell:
+
+```powershell
+$env:ACCESSIBILITY_TOOLKIT_LOGGING="1"
+$env:PYTHONPATH="src"
+python -m apps.access8graph.main
+```
+
 On Windows `cmd.exe`:
 
 ```cmd
+set PYTHONPATH=src
+python -m apps.access8graph.main
+```
+
+Enable file logging in Windows `cmd.exe`:
+
+```cmd
+set ACCESSIBILITY_TOOLKIT_LOGGING=1
 set PYTHONPATH=src
 python -m apps.access8graph.main
 ```
@@ -125,9 +147,23 @@ Start `key_echo`:
 PYTHONPATH=src python -m apps.key_echo.main
 ```
 
+Enable file logging while starting `key_echo`:
+
+```bash
+ACCESSIBILITY_TOOLKIT_LOGGING=1 PYTHONPATH=src python -m apps.key_echo.main
+```
+
 On Windows PowerShell:
 
 ```powershell
+$env:PYTHONPATH="src"
+python -m apps.key_echo.main
+```
+
+Enable file logging in Windows PowerShell:
+
+```powershell
+$env:ACCESSIBILITY_TOOLKIT_LOGGING="1"
 $env:PYTHONPATH="src"
 python -m apps.key_echo.main
 ```
@@ -139,10 +175,24 @@ set PYTHONPATH=src
 python -m apps.key_echo.main
 ```
 
+Enable file logging in Windows `cmd.exe`:
+
+```cmd
+set ACCESSIBILITY_TOOLKIT_LOGGING=1
+set PYTHONPATH=src
+python -m apps.key_echo.main
+```
+
 Start `nvda_remote`:
 
 ```bash
 PYTHONPATH=src python -m apps.nvda_remote.main
+```
+
+Enable file logging while starting `nvda_remote`:
+
+```bash
+ACCESSIBILITY_TOOLKIT_LOGGING=1 PYTHONPATH=src python -m apps.nvda_remote.main
 ```
 
 On Windows PowerShell:
@@ -152,9 +202,25 @@ $env:PYTHONPATH="src"
 python -m apps.nvda_remote.main
 ```
 
+Enable file logging in Windows PowerShell:
+
+```powershell
+$env:ACCESSIBILITY_TOOLKIT_LOGGING="1"
+$env:PYTHONPATH="src"
+python -m apps.nvda_remote.main
+```
+
 On Windows `cmd.exe`:
 
 ```cmd
+set PYTHONPATH=src
+python -m apps.nvda_remote.main
+```
+
+Enable file logging in Windows `cmd.exe`:
+
+```cmd
+set ACCESSIBILITY_TOOLKIT_LOGGING=1
 set PYTHONPATH=src
 python -m apps.nvda_remote.main
 ```

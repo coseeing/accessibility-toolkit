@@ -103,6 +103,12 @@ pip install -e .
 PYTHONPATH=src python -m apps.access8graph.main
 ```
 
+啟動 `access8graph` 並開啟檔案 logging：
+
+```bash
+ACCESSIBILITY_TOOLKIT_LOGGING=1 PYTHONPATH=src python -m apps.access8graph.main
+```
+
 Windows PowerShell：
 
 ```powershell
@@ -110,9 +116,25 @@ $env:PYTHONPATH="src"
 python -m apps.access8graph.main
 ```
 
+在 Windows PowerShell 開啟檔案 logging：
+
+```powershell
+$env:ACCESSIBILITY_TOOLKIT_LOGGING="1"
+$env:PYTHONPATH="src"
+python -m apps.access8graph.main
+```
+
 Windows `cmd.exe`：
 
 ```cmd
+set PYTHONPATH=src
+python -m apps.access8graph.main
+```
+
+在 Windows `cmd.exe` 開啟檔案 logging：
+
+```cmd
+set ACCESSIBILITY_TOOLKIT_LOGGING=1
 set PYTHONPATH=src
 python -m apps.access8graph.main
 ```
@@ -123,9 +145,23 @@ python -m apps.access8graph.main
 PYTHONPATH=src python -m apps.key_echo.main
 ```
 
+啟動 `key_echo` 並開啟檔案 logging：
+
+```bash
+ACCESSIBILITY_TOOLKIT_LOGGING=1 PYTHONPATH=src python -m apps.key_echo.main
+```
+
 Windows PowerShell：
 
 ```powershell
+$env:PYTHONPATH="src"
+python -m apps.key_echo.main
+```
+
+在 Windows PowerShell 開啟檔案 logging：
+
+```powershell
+$env:ACCESSIBILITY_TOOLKIT_LOGGING="1"
 $env:PYTHONPATH="src"
 python -m apps.key_echo.main
 ```
@@ -137,10 +173,24 @@ set PYTHONPATH=src
 python -m apps.key_echo.main
 ```
 
+在 Windows `cmd.exe` 開啟檔案 logging：
+
+```cmd
+set ACCESSIBILITY_TOOLKIT_LOGGING=1
+set PYTHONPATH=src
+python -m apps.key_echo.main
+```
+
 啟動 `nvda_remote`：
 
 ```bash
 PYTHONPATH=src python -m apps.nvda_remote.main
+```
+
+啟動 `nvda_remote` 並開啟檔案 logging：
+
+```bash
+ACCESSIBILITY_TOOLKIT_LOGGING=1 PYTHONPATH=src python -m apps.nvda_remote.main
 ```
 
 Windows PowerShell：
@@ -150,9 +200,25 @@ $env:PYTHONPATH="src"
 python -m apps.nvda_remote.main
 ```
 
+在 Windows PowerShell 開啟檔案 logging：
+
+```powershell
+$env:ACCESSIBILITY_TOOLKIT_LOGGING="1"
+$env:PYTHONPATH="src"
+python -m apps.nvda_remote.main
+```
+
 Windows `cmd.exe`：
 
 ```cmd
+set PYTHONPATH=src
+python -m apps.nvda_remote.main
+```
+
+在 Windows `cmd.exe` 開啟檔案 logging：
+
+```cmd
+set ACCESSIBILITY_TOOLKIT_LOGGING=1
 set PYTHONPATH=src
 python -m apps.nvda_remote.main
 ```

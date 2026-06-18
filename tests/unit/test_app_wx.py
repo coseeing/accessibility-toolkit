@@ -262,16 +262,25 @@ def install_fake_wx(monkeypatch):
     fake_wx.CallAfter = CallAfter
 
     fake_adv = types.ModuleType("wx.adv")
+    fake_adv.EVT_TASKBAR_LEFT_DOWN = object()
+    fake_adv.EVT_TASKBAR_RIGHT_DOWN = object()
 
     class TaskBarIcon:
         def __init__(self, iconType=None):
             self.iconType = iconType
             self.destroyed = False
+            self.bindings = {}
 
         def Destroy(self):
             self.destroyed = True
 
         def SetIcon(self, icon, tooltip=""):
+            return True
+
+        def Bind(self, event, handler):
+            self.bindings[event] = handler
+
+        def PopupMenu(self, menu):
             return True
 
     fake_adv.TaskBarIcon = TaskBarIcon
@@ -1349,7 +1358,7 @@ def test_nvda_remote_configure_logging_preserves_existing_handlers(monkeypatch):
 
     monkeypatch.setattr(bootstrap.runtime, "default_log_path", lambda _app_name=None: "nvda.log")
     monkeypatch.setattr(nvda_remote_main.logging, "FileHandler", FakeFileHandler)
-    monkeypatch.setenv("NVDA_REMOTE_CLIENT_LOGGING", "1")
+    monkeypatch.setenv("ACCESSIBILITY_TOOLKIT_LOGGING", "1")
     monkeypatch.setattr(
         root_logger,
         "addHandler",

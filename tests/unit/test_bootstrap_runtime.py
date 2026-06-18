@@ -77,7 +77,7 @@ class TestConfigureLogging:
     def test_defaults_to_disabled_without_env_var(self, tmp_path, monkeypatch):
         monkeypatch.setattr(sys, "frozen", False, raising=False)
         log_path = tmp_path / "test.log"
-        monkeypatch.delenv("NVDA_REMOTE_CLIENT_LOGGING", raising=False)
+        monkeypatch.delenv("ACCESSIBILITY_TOOLKIT_LOGGING", raising=False)
 
         result = configure_logging(log_path=log_path)
 
@@ -87,7 +87,7 @@ class TestConfigureLogging:
     def test_enables_file_logging_when_env_var_is_set(self, tmp_path, monkeypatch):
         monkeypatch.setattr(sys, "frozen", False, raising=False)
         log_path = tmp_path / "test.log"
-        monkeypatch.setenv("NVDA_REMOTE_CLIENT_LOGGING", "1")
+        monkeypatch.setenv("ACCESSIBILITY_TOOLKIT_LOGGING", "1")
 
         result = configure_logging(log_path=log_path)
 
@@ -97,7 +97,7 @@ class TestConfigureLogging:
     def test_uses_warning_level_when_enabled(self, tmp_path, monkeypatch, caplog):
         monkeypatch.setattr(sys, "frozen", False, raising=False)
         log_path = tmp_path / "test.log"
-        monkeypatch.setenv("NVDA_REMOTE_CLIENT_LOGGING", "true")
+        monkeypatch.setenv("ACCESSIBILITY_TOOLKIT_LOGGING", "true")
 
         configure_logging(log_path=log_path)
 
