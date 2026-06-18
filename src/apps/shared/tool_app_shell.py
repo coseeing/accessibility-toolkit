@@ -26,6 +26,7 @@ class ToolAppShell:
             on_exit=self.shutdown,
             app_name=self.app_name,
         )
+        self.panel_controller.show("main")
 
     def shutdown(self):
         if self.tray_icon is not None:

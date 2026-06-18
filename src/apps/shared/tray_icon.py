@@ -14,6 +14,8 @@ class ToolTrayIcon(wx.adv.TaskBarIcon):
             ),
             app_name,
         )
+        self.Bind(wx.adv.EVT_TASKBAR_LEFT_DOWN, self._on_activate)
+        self.Bind(wx.adv.EVT_TASKBAR_RIGHT_DOWN, self._on_activate)
 
     def CreatePopupMenu(self):
         menu = wx.Menu()
@@ -24,3 +26,6 @@ class ToolTrayIcon(wx.adv.TaskBarIcon):
         menu.Bind(wx.EVT_MENU, lambda _event: self._on_open_speech(), speech_item)
         menu.Bind(wx.EVT_MENU, lambda _event: self._on_exit(), exit_item)
         return menu
+
+    def _on_activate(self, _event):
+        self.PopupMenu(self.CreatePopupMenu())

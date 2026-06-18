@@ -62,11 +62,15 @@ def install_fake_wx(monkeypatch):
             return self.label
 
     fake_adv = types.ModuleType("wx.adv")
+    fake_adv.EVT_TASKBAR_LEFT_DOWN = object()
+    fake_adv.EVT_TASKBAR_RIGHT_DOWN = object()
 
     class TaskBarIcon:
         def __init__(self, iconType=None):
             self.iconType = iconType
             self.destroyed = False
+            self.bindings = {}
+            self.popup_menus = []
 
         def Destroy(self):
             self.destroyed = True
@@ -74,6 +78,13 @@ def install_fake_wx(monkeypatch):
         def SetIcon(self, icon, tooltip=""):
             self.icon = icon
             self.tooltip = tooltip
+            return True
+
+        def Bind(self, event, handler):
+            self.bindings[event] = handler
+
+        def PopupMenu(self, menu):
+            self.popup_menus.append(menu)
             return True
 
     fake_adv.TaskBarIcon = TaskBarIcon
@@ -100,3 +111,24 @@ def test_tray_icon_builds_main_menu_items(monkeypatch):
     menu = tray.CreatePopupMenu()
     labels = [item.GetItemLabelText() for item in menu.GetMenuItems()]
     assert labels == ["Main Panel", "Speech Settings", "Exit"]
+
+
+def test_tray_icon_left_and_right_down_open_popup_menu(monkeypatch):
+    fake_wx = install_fake_wx(monkeypatch)
+    from apps.shared.tray_icon import ToolTrayIcon
+
+    tray = ToolTrayIcon(
+        on_open_main=lambda: None,
+        on_open_speech=lambda: None,
+        on_exit=lambda: None,
+    )
+
+    tray.bindings[fake_wx.adv.EVT_TASKBAR_LEFT_DOWN](None)
+    tray.bindings[fake_wx.adv.EVT_TASKBAR_RIGHT_DOWN](None)
+
+    assert len(tray.popup_menus) == 2
+    assert [item.GetItemLabelText() for item in tray.popup_menus[0].GetMenuItems()] == [
+        "Main Panel",
+        "Speech Settings",
+        "Exit",
+    ]

@@ -66,16 +66,25 @@ def install_fake_wx(monkeypatch):
             return self.items
 
     fake_adv = types.ModuleType("wx.adv")
+    fake_adv.EVT_TASKBAR_LEFT_DOWN = object()
+    fake_adv.EVT_TASKBAR_RIGHT_DOWN = object()
 
     class TaskBarIcon:
         def __init__(self, iconType=None):
             self.iconType = iconType
             self.destroyed = False
+            self.bindings = {}
 
         def Destroy(self):
             self.destroyed = True
 
         def SetIcon(self, icon, tooltip=""):
+            return True
+
+        def Bind(self, event, handler):
+            self.bindings[event] = handler
+
+        def PopupMenu(self, menu):
             return True
 
     fake_adv.TaskBarIcon = TaskBarIcon
@@ -113,21 +122,26 @@ class FakeFrame:
         self.raised += 1
 
 
-def test_tool_app_shell_creates_hidden_main_and_speech_panels(monkeypatch):
+def test_tool_app_shell_creates_tray_and_shows_main_panel_on_startup(monkeypatch):
     install_fake_wx(monkeypatch)
     from apps.shared.tool_app_shell import ToolAppShell
 
     controller = FakeController()
+    main_frame = FakeFrame(controller)
+    speech_frame = FakeFrame(controller)
     shell = ToolAppShell(
         controller=controller,
-        main_frame_factory=lambda ctrl: FakeFrame(ctrl),
-        speech_frame_factory=lambda ctrl: FakeFrame(ctrl),
+        main_frame_factory=lambda ctrl: main_frame,
+        speech_frame_factory=lambda ctrl: speech_frame,
     )
 
     shell.initialize()
 
     assert shell.panel_controller is not None
     assert shell.tray_icon is not None
+    assert main_frame.shown == 1
+    assert main_frame.raised == 1
+    assert speech_frame.shown == 0
 
 
 def test_tool_app_shell_menu_triggers_show_main(monkeypatch):
@@ -145,8 +159,8 @@ def test_tool_app_shell_menu_triggers_show_main(monkeypatch):
     shell.initialize()
     shell.panel_controller.show("main")
 
-    assert main_frame.shown == 1
-    assert main_frame.raised == 1
+    assert main_frame.shown == 2
+    assert main_frame.raised == 2
 
 
 def test_tool_app_shell_shutdown_destroys_tray_and_calls_controller(monkeypatch):
