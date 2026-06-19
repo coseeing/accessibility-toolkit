@@ -189,6 +189,102 @@ class PoisonableEngine:
         self.poisoned = True
 
 
+class SameThreadStopEngine:
+    def __init__(self) -> None:
+        self.say_calls: list[str] = []
+        self.started = threading.Event()
+        self.finished = threading.Event()
+        self.stop_count = 0
+        self.properties: dict[str, object] = {}
+        self._speech_thread_id: int | None = None
+        self._stopped = False
+
+    def say(self, text: str) -> None:
+        self.say_calls.append(text)
+
+    def setProperty(self, name: str, value: object) -> None:
+        self.properties[name] = value
+
+    def getProperty(self, name: str) -> object:
+        return self.properties.get(name, [])
+
+    def startLoop(self, useDriverLoop: bool = True) -> None:
+        return None
+
+    def iterate(self) -> None:
+        self.started.set()
+        if self._speech_thread_id is None:
+            self._speech_thread_id = threading.get_ident()
+        if self._stopped:
+            self.finished.set()
+            return
+        time.sleep(0.01)
+
+    def isBusy(self) -> bool:
+        return not self._stopped
+
+    def endLoop(self) -> None:
+        return None
+
+    def runAndWait(self) -> None:
+        self.started.set()
+        if self._speech_thread_id is None:
+            self._speech_thread_id = threading.get_ident()
+        deadline = time.time() + 0.5
+        while time.time() < deadline:
+            if self._stopped:
+                self.finished.set()
+                return
+            time.sleep(0.01)
+
+    def stop(self) -> None:
+        self.stop_count += 1
+        if self._speech_thread_id == threading.get_ident():
+            self._stopped = True
+
+
+class BusyLoopEngine:
+    def __init__(self) -> None:
+        self.say_calls: list[str] = []
+        self.finished = threading.Event()
+        self.properties: dict[str, object] = {}
+        self._loop_started = False
+        self._busy_cycles_remaining = 3
+        self.iterate_calls = 0
+
+    def say(self, text: str) -> None:
+        self.say_calls.append(text)
+        self._busy_cycles_remaining = 3
+        self.finished.clear()
+
+    def setProperty(self, name: str, value: object) -> None:
+        self.properties[name] = value
+
+    def getProperty(self, name: str) -> object:
+        return self.properties.get(name, [])
+
+    def startLoop(self, useDriverLoop: bool = True) -> None:
+        self._loop_started = True
+
+    def iterate(self) -> None:
+        self.iterate_calls += 1
+        time.sleep(0.005)
+        if self._busy_cycles_remaining > 0:
+            self._busy_cycles_remaining -= 1
+        if self._busy_cycles_remaining == 0:
+            self.finished.set()
+
+    def isBusy(self) -> bool:
+        return self._busy_cycles_remaining > 0
+
+    def endLoop(self) -> None:
+        self._loop_started = False
+
+    def stop(self) -> None:
+        self._busy_cycles_remaining = 0
+        self.finished.set()
+
+
 class FakeTaskManager:
     def __init__(self) -> None:
         self.calls: list[tuple[str, object]] = []
@@ -601,6 +697,30 @@ def test_pyttsx3_speech_output_uses_fresh_engine_after_cancel():
     assert engines[0].say_calls == ["first"]
     assert engines[0].stop_count == 0
     assert engines[1].say_calls == ["second"]
+
+
+def test_pyttsx3_speech_output_cancel_interrupts_when_engine_requires_same_thread_stop():
+    engine = SameThreadStopEngine()
+    output = Pyttsx3SpeechOutput(engine=engine)
+    sequence = SpeechSequence(items=("interrupt me",))
+
+    output.speak(sequence)
+    assert engine.started.wait(timeout=0.5)
+
+    output.cancel()
+
+    assert engine.stop_count >= 1
+    assert engine.finished.wait(timeout=0.5)
+
+
+def test_pyttsx3_speech_output_waits_for_busy_loop_completion_before_finishing():
+    engine = BusyLoopEngine()
+    output = Pyttsx3SpeechOutput(engine=engine)
+
+    output.speak(SpeechSequence(items=("first",)))
+    assert engine.finished.wait(timeout=0.5)
+
+    assert engine.iterate_calls >= 3
 
 
 def test_speech_backend_config_store_loads_and_saves_backend_id(tmp_path):

@@ -1,5 +1,6 @@
 import logging
 import threading
+import time
 from typing import Any
 
 from application.output_scheduler import OutputScheduler
@@ -31,6 +32,7 @@ class Pyttsx3SpeechOutput:
         self._scheduler = scheduler or task_manager or OutputScheduler()
         self._active_engine: Any | None = None
         self._lock = threading.Lock()
+        self._cancel_requested = False
         self._voice_id: str | None = None
         self._rate = 100
         self._pitch = 0
@@ -78,13 +80,13 @@ class Pyttsx3SpeechOutput:
 
     def cancel(self) -> None:
         self._scheduler.cancel_all()
+        with self._lock:
+            self._cancel_requested = True
         logger.debug("pyttsx3 stop requested")
 
     def stop(self) -> None:
         with self._lock:
             active_engine = self._active_engine
-            if self._recreate_engine_per_utterance:
-                self._engine = None
         if active_engine is not None:
             active_engine.stop()
 
@@ -148,6 +150,7 @@ class Pyttsx3SpeechOutput:
         engine = self._acquire_engine()
         with self._lock:
             self._active_engine = engine
+            self._cancel_requested = False
         try:
             if self._voice_id is not None:
                 engine.setProperty("voice", self._voice_id)
@@ -158,7 +161,7 @@ class Pyttsx3SpeechOutput:
                 logger.debug("pyttsx3 engine does not support pitch property")
             engine.setProperty("volume", self._volume / 100.0)
             engine.say(text)
-            engine.runAndWait()
+            self._run_until_done(engine)
         finally:
             with self._lock:
                 if self._active_engine is engine:
@@ -176,6 +179,34 @@ class Pyttsx3SpeechOutput:
             self._engine = self._engine_factory()
             logger.debug("Initialized pyttsx3 speech engine")
             return self._engine
+
+    def _run_until_done(self, engine: Any) -> None:
+        start_loop = getattr(engine, "startLoop", None)
+        iterate = getattr(engine, "iterate", None)
+        is_busy = getattr(engine, "isBusy", None)
+        end_loop = getattr(engine, "endLoop", None)
+        if (
+            not callable(start_loop)
+            or not callable(iterate)
+            or not callable(is_busy)
+            or not callable(end_loop)
+        ):
+            engine.runAndWait()
+            return
+
+        start_loop(False)
+        try:
+            while True:
+                with self._lock:
+                    cancel_requested = self._cancel_requested
+                if cancel_requested:
+                    engine.stop()
+                iterate()
+                if not is_busy():
+                    break
+                time.sleep(0.001)
+        finally:
+            end_loop()
 
     @staticmethod
     def _list_voices_from_engine_fallback(engine: Any) -> tuple[tuple[str, str], ...]:
