@@ -1,7 +1,10 @@
 from collections.abc import Callable
+import logging
 from typing import Any
 
 from adapters.macos.event_tap import RawMacKeyEvent
+
+_logger = logging.getLogger(__name__)
 
 
 F11_KEY_CODE = 103
@@ -21,6 +24,11 @@ class MacOSHotkeyCapture:
         self._handler = handler
 
     def start(self) -> None:
+        _logger.debug(
+            "MacOSHotkeyCapture.start key_code=%s manager_running=%s",
+            self._key_code,
+            self._manager.running,
+        )
         self._manager.set_hotkey_handler(self._handle_raw_event)
         try:
             self._manager.start()
@@ -29,6 +37,11 @@ class MacOSHotkeyCapture:
             raise
 
     def stop(self) -> None:
+        _logger.debug(
+            "MacOSHotkeyCapture.stop key_code=%s manager_running=%s",
+            self._key_code,
+            self._manager.running,
+        )
         self._manager.set_hotkey_handler(None)
         self._manager.stop()
 

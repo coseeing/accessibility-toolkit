@@ -1,3 +1,5 @@
+import logging
+
 from application.input.activation import InputActivationUseCase
 
 
@@ -152,3 +154,42 @@ def test_activation_exit_keeps_shared_tap_running_during_keyboard_to_hotkey_hand
     assert manager.stops == 0
     assert manager.active_registrations == 1
     assert states == [False]
+
+
+def test_activation_enter_logs_handoff_progress(caplog):
+    keyboard = FakeCapture(running=False)
+    hotkey = FakeCapture(running=True)
+    activation = InputActivationUseCase(
+        input_capture=keyboard,
+        hotkey_capture=hotkey,
+        is_active=lambda: False,
+        set_active=lambda active: None,
+        notify_error=lambda message: None,
+    )
+
+    with caplog.at_level(logging.DEBUG):
+        assert activation.enter_active() is True
+
+    assert "InputActivation.enter_active begin" in caplog.text
+    assert "hotkey_running=True" in caplog.text
+    assert "InputActivation.enter_active input capture started" in caplog.text
+    assert "InputActivation.enter_active input capture start returned" in caplog.text
+    assert "InputActivation.enter_active stopping hotkey capture after handoff" in caplog.text
+
+
+def test_activation_exit_logs_input_capture_stop_completion(caplog):
+    keyboard = FakeCapture(running=True)
+    hotkey = FakeCapture(running=False)
+    activation = InputActivationUseCase(
+        input_capture=keyboard,
+        hotkey_capture=hotkey,
+        is_active=lambda: True,
+        set_active=lambda active: None,
+        notify_error=lambda message: None,
+    )
+
+    with caplog.at_level(logging.DEBUG):
+        assert activation.exit_active() is True
+
+    assert "InputActivation.exit_active stopping input capture after handoff" in caplog.text
+    assert "InputActivation.exit_active input capture stop returned" in caplog.text

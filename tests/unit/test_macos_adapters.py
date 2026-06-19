@@ -1,3 +1,5 @@
+import logging
+
 import pytest
 
 from adapters.inputs.captured_event import CapturedKeyEvent
@@ -513,6 +515,61 @@ def test_macos_hotkey_capture_stop_preserves_active_keyboard_capture():
     assert backend.stop_calls == 0
     assert decision == KeyboardPipelineResult(send_to_system=False, app_result=AppKeyEventResult.UNHANDLED)
     assert seen == [CapturedKeyEvent(key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.A, pressed=True), native_context=None)]
+
+
+def test_macos_hotkey_capture_logs_shared_manager_handoff(caplog):
+    from adapters.macos.hotkey import MacOSHotkeyCapture
+    from adapters.macos.keyboard_hook import MacOSKeyboardCapture
+
+    backend = FakeQuartzBackend()
+    manager = MacOSEventTapManager(
+        permissions=FakePermissions(),
+        backend=backend,
+        start_thread=False,
+    )
+    hotkey = MacOSHotkeyCapture(manager=manager)
+    keyboard = MacOSKeyboardCapture(manager=manager)
+    keyboard.set_listener(
+        lambda event: KeyboardPipelineResult(
+            send_to_system=False,
+            app_result=AppKeyEventResult.UNHANDLED,
+        )
+    )
+    hotkey.set_handler(lambda: None)
+
+    with caplog.at_level(logging.DEBUG):
+        keyboard.start()
+        hotkey.start()
+        hotkey.stop()
+
+    assert "MacOSKeyboardCapture.start manager_running=False" in caplog.text
+    assert "MacOSKeyboardCapture.start completed" in caplog.text
+    assert "MacOSHotkeyCapture.start key_code=103" in caplog.text
+    assert "MacOSHotkeyCapture.stop key_code=103" in caplog.text
+    assert "MacOSKeyboardCapture.stop completed" not in caplog.text
+    assert "MacOSEventTapManager.stop skipped because registrations remain" in caplog.text
+
+
+def test_macos_keyboard_capture_logs_start_and_stop_completion(caplog):
+    from adapters.macos.keyboard_hook import MacOSKeyboardCapture
+
+    manager = FakeManager()
+    capture = MacOSKeyboardCapture(manager=manager)
+    capture.set_listener(
+        lambda event: KeyboardPipelineResult(
+            send_to_system=False,
+            app_result=AppKeyEventResult.UNHANDLED,
+        )
+    )
+
+    with caplog.at_level(logging.DEBUG):
+        capture.start()
+        capture.stop()
+
+    assert "MacOSKeyboardCapture.start manager_running=False" in caplog.text
+    assert "MacOSKeyboardCapture.start completed" in caplog.text
+    assert "MacOSKeyboardCapture.stop manager_running=True" in caplog.text
+    assert "MacOSKeyboardCapture.stop completed" in caplog.text
 
 
 class FakeQuartzModule:

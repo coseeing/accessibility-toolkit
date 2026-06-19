@@ -1,4 +1,5 @@
 from collections.abc import Callable
+import logging
 from typing import Any
 
 from adapters.inputs.captured_event import CapturedKeyEvent
@@ -6,6 +7,8 @@ from adapters.macos.event_tap import RawMacKeyEvent
 from adapters.macos.keymap import key_event_from_macos
 from application.input.results import AppKeyEventResult, KeyboardPipelineResult
 from interop.key.key_event import KeyEvent
+
+_logger = logging.getLogger(__name__)
 
 
 class MacOSKeyboardCapture:
@@ -21,16 +24,26 @@ class MacOSKeyboardCapture:
         self._listener = listener
 
     def start(self) -> None:
+        _logger.debug(
+            "MacOSKeyboardCapture.start manager_running=%s",
+            self._manager.running,
+        )
         self._manager.set_keyboard_listener(self._handle_raw_event)
         try:
             self._manager.start()
+            _logger.debug("MacOSKeyboardCapture.start completed")
         except Exception:
             self._manager.set_keyboard_listener(None)
             raise
 
     def stop(self) -> None:
+        _logger.debug(
+            "MacOSKeyboardCapture.stop manager_running=%s",
+            self._manager.running,
+        )
         self._manager.set_keyboard_listener(None)
         self._manager.stop()
+        _logger.debug("MacOSKeyboardCapture.stop completed")
 
     def _handle_raw_event(self, event: RawMacKeyEvent) -> KeyboardPipelineResult:
         if self._listener is None:

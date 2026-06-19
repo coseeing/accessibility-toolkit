@@ -1,9 +1,12 @@
 from collections.abc import Callable
 from dataclasses import dataclass
+import logging
 import threading
 from typing import Any
 
 from application.input.results import AppKeyEventResult, KeyboardPipelineResult
+
+_logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, slots=True)
@@ -42,16 +45,32 @@ class MacOSEventTapManager:
 
     def set_keyboard_listener(self, listener: RawListener | None) -> None:
         self._keyboard_listener = listener
+        _logger.debug(
+            "MacOSEventTapManager.set_keyboard_listener active=%s hotkey_registered=%s",
+            listener is not None,
+            self._hotkey_handler is not None,
+        )
 
     def set_hotkey_handler(self, handler: HotkeyHandler | None) -> None:
         self._hotkey_handler = handler
+        _logger.debug(
+            "MacOSEventTapManager.set_hotkey_handler active=%s keyboard_registered=%s",
+            handler is not None,
+            self._keyboard_listener is not None,
+        )
 
     def _has_active_registrations(self) -> bool:
         return self._keyboard_listener is not None or self._hotkey_handler is not None
 
     def start(self) -> None:
         if self._running:
+            _logger.debug("MacOSEventTapManager.start skipped because tap is already running")
             return
+        _logger.debug(
+            "MacOSEventTapManager.start begin keyboard_registered=%s hotkey_registered=%s",
+            self._keyboard_listener is not None,
+            self._hotkey_handler is not None,
+        )
         if not self._permissions.is_trusted(prompt=False) and not self._permissions.is_trusted(
             prompt=True
         ):
@@ -97,12 +116,20 @@ class MacOSEventTapManager:
             self._backend.add_source(self._source)
             self._backend.enable_tap(self._tap, True)
         self._running = True
+        _logger.debug("MacOSEventTapManager.start completed")
 
     def stop(self) -> None:
         if not self._running:
+            _logger.debug("MacOSEventTapManager.stop skipped because tap is not running")
             return
         if self._has_active_registrations():
+            _logger.debug(
+                "MacOSEventTapManager.stop skipped because registrations remain keyboard_registered=%s hotkey_registered=%s",
+                self._keyboard_listener is not None,
+                self._hotkey_handler is not None,
+            )
             return
+        _logger.debug("MacOSEventTapManager.stop begin")
         self._backend.run_loop_stop()
         if self._thread is not None and self._thread is not threading.current_thread():
             self._thread.join()
@@ -117,6 +144,7 @@ class MacOSEventTapManager:
         self._tap = None
         self._thread = None
         self._running = False
+        _logger.debug("MacOSEventTapManager.stop completed")
 
     def _release_startup_resources(self) -> None:
         if self._source is not None:
