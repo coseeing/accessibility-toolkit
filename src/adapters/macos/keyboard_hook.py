@@ -15,10 +15,11 @@ class MacOSKeyboardCapture:
     def __init__(self, *, manager: Any) -> None:
         self._manager = manager
         self._listener: Callable[[CapturedKeyEvent], KeyboardPipelineResult] | None = None
+        self._registered = False
 
     @property
     def running(self) -> bool:
-        return bool(self._manager.running)
+        return self._registered
 
     def set_listener(self, listener: Callable[[CapturedKeyEvent], KeyboardPipelineResult]) -> None:
         self._listener = listener
@@ -31,6 +32,7 @@ class MacOSKeyboardCapture:
         self._manager.set_keyboard_listener(self._handle_raw_event)
         try:
             self._manager.start()
+            self._registered = True
             _logger.debug("MacOSKeyboardCapture.start completed")
         except Exception:
             self._manager.set_keyboard_listener(None)
@@ -43,6 +45,7 @@ class MacOSKeyboardCapture:
         )
         self._manager.set_keyboard_listener(None)
         self._manager.stop()
+        self._registered = False
         _logger.debug("MacOSKeyboardCapture.stop completed")
 
     def _handle_raw_event(self, event: RawMacKeyEvent) -> KeyboardPipelineResult:

@@ -141,37 +141,3 @@ class WindowsHotkeyCapture:
     def _emit_for_tests(self) -> None:
         if self._handler is not None:
             self._handler()
-
-
-class WindowsKeyPressHotkeyCapture:
-    def __init__(
-        self,
-        *,
-        keyboard_capture: WindowsKeyboardCapture | None = None,
-        usage: int,
-    ) -> None:
-        self._keyboard_capture = keyboard_capture or WindowsKeyboardCapture()
-        self._handler = None
-        self._usage = usage
-
-    @property
-    def running(self) -> bool:
-        return self._keyboard_capture.running
-
-    def set_handler(self, handler) -> None:
-        self._handler = handler
-        self._keyboard_capture.set_listener(self._handle_key_event)
-
-    def start(self) -> None:
-        self._keyboard_capture.start()
-
-    def stop(self) -> None:
-        self._keyboard_capture.stop()
-
-    def _handle_key_event(self, event) -> KeyboardPipelineResult:
-        key_event = event.key_event
-        if key_event.usage != self._usage or not key_event.pressed:
-            return KeyboardPipelineResult(send_to_system=True, app_result=AppKeyEventResult.UNHANDLED)
-        if self._handler is not None:
-            self._handler()
-        return KeyboardPipelineResult(send_to_system=False, app_result=AppKeyEventResult.HANDLED_STOP)

@@ -15,10 +15,11 @@ class MacOSHotkeyCapture:
         self._manager = manager
         self._handler: Callable[[], None] | None = None
         self._key_code = key_code
+        self._registered = False
 
     @property
     def running(self) -> bool:
-        return bool(self._manager.running)
+        return self._registered
 
     def set_handler(self, handler: Callable[[], None]) -> None:
         self._handler = handler
@@ -32,6 +33,7 @@ class MacOSHotkeyCapture:
         self._manager.set_hotkey_handler(self._handle_raw_event)
         try:
             self._manager.start()
+            self._registered = True
         except Exception:
             self._manager.set_hotkey_handler(None)
             raise
@@ -44,6 +46,7 @@ class MacOSHotkeyCapture:
         )
         self._manager.set_hotkey_handler(None)
         self._manager.stop()
+        self._registered = False
 
     def _handle_raw_event(self, event: RawMacKeyEvent) -> bool:
         if event.key_code != self._key_code:

@@ -381,6 +381,22 @@ def test_macos_keyboard_capture_proxies_lifecycle():
     assert capture.running is False
 
 
+def test_macos_keyboard_capture_running_tracks_own_registration_not_manager_state():
+    from adapters.macos.hotkey import MacOSHotkeyCapture
+    from adapters.macos.keyboard_hook import MacOSKeyboardCapture
+
+    manager = FakeManager()
+    keyboard = MacOSKeyboardCapture(manager=manager)
+    hotkey = MacOSHotkeyCapture(manager=manager, key_code=109)
+    hotkey.set_handler(lambda: None)
+
+    hotkey.start()
+
+    assert manager.running is True
+    assert hotkey.running is True
+    assert keyboard.running is False
+
+
 def test_macos_keyboard_capture_clears_listener_when_start_fails():
     from adapters.macos.keyboard_hook import MacOSKeyboardCapture
 
@@ -515,6 +531,27 @@ def test_macos_hotkey_capture_stop_preserves_active_keyboard_capture():
     assert backend.stop_calls == 0
     assert decision == KeyboardPipelineResult(send_to_system=False, app_result=AppKeyEventResult.UNHANDLED)
     assert seen == [CapturedKeyEvent(key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.A, pressed=True), native_context=None)]
+
+
+def test_macos_hotkey_capture_running_tracks_own_registration_not_manager_state():
+    from adapters.macos.hotkey import MacOSHotkeyCapture
+    from adapters.macos.keyboard_hook import MacOSKeyboardCapture
+
+    manager = FakeManager()
+    keyboard = MacOSKeyboardCapture(manager=manager)
+    keyboard.set_listener(
+        lambda event: KeyboardPipelineResult(
+            send_to_system=False,
+            app_result=AppKeyEventResult.UNHANDLED,
+        )
+    )
+    hotkey = MacOSHotkeyCapture(manager=manager, key_code=109)
+
+    keyboard.start()
+
+    assert manager.running is True
+    assert keyboard.running is True
+    assert hotkey.running is False
 
 
 def test_macos_hotkey_capture_logs_shared_manager_handoff(caplog):

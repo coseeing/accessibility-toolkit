@@ -11,7 +11,6 @@ from adapters.windows.nvda_controller import (
     VENDORED_X64_DLL,
     NvdaControllerSpeechOutput,
 )
-from adapters.windows.hotkey import WindowsKeyPressHotkeyCapture
 from interop.key import HID, KeyEvent
 from adapters.inputs.captured_event import CapturedKeyEvent
 from adapters.windows.native_key_context import WindowsNativeKeyContext
@@ -509,68 +508,6 @@ def test_windows_hotkey_capture_stop_does_not_double_stop():
 
     assert capture.running is False
     assert len(user32.unregistered) == 1
-
-
-class FakeKeyboardCaptureForHotkey:
-    def __init__(self):
-        self.listener = None
-        self.start_calls = 0
-        self.stop_calls = 0
-
-    @property
-    def running(self):
-        return self.start_calls > self.stop_calls
-
-    def set_listener(self, listener):
-        self.listener = listener
-
-    def start(self):
-        self.start_calls += 1
-
-    def stop(self):
-        self.stop_calls += 1
-
-
-def test_windows_keypress_hotkey_capture_triggers_handler_on_matching_keydown():
-    keyboard = FakeKeyboardCaptureForHotkey()
-    seen = []
-    capture = WindowsKeyPressHotkeyCapture(
-        keyboard_capture=keyboard,
-        usage=HID.ENTER,
-    )
-    capture.set_handler(lambda: seen.append("enter"))
-
-    capture.start()
-    decision = keyboard.listener(
-        CapturedKeyEvent(
-            key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.ENTER, pressed=True),
-            native_context=None,
-        )
-    )
-
-    assert decision == KeyboardPipelineResult(send_to_system=False, app_result=AppKeyEventResult.HANDLED_STOP)
-    assert seen == ["enter"]
-
-
-def test_windows_keypress_hotkey_capture_ignores_non_matching_keys():
-    keyboard = FakeKeyboardCaptureForHotkey()
-    seen = []
-    capture = WindowsKeyPressHotkeyCapture(
-        keyboard_capture=keyboard,
-        usage=HID.ENTER,
-    )
-    capture.set_handler(lambda: seen.append("enter"))
-
-    capture.start()
-    decision = keyboard.listener(
-        CapturedKeyEvent(
-            key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.A, pressed=True),
-            native_context=None,
-        )
-    )
-
-    assert decision == KeyboardPipelineResult(send_to_system=True, app_result=AppKeyEventResult.UNHANDLED)
-    assert seen == []
 
 
 def test_windows_keyboard_hook_emits_hid_for_semicolon_and_quote():
