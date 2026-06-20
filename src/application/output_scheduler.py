@@ -1,9 +1,12 @@
+import logging
 import queue
 import threading
 import time
 from concurrent.futures import Future
 from dataclasses import dataclass, field
 from typing import Callable
+
+_logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -100,6 +103,14 @@ class OutputScheduler:
         timeout: float | None = None,
     ) -> OutputFuture:
         future = OutputFuture()
+        _logger.debug(
+            "OutputScheduler.schedule owner=%s wait_done=%s token=%s timeout=%s future_id=%s",
+            type(owner).__name__,
+            wait_done,
+            cancel_token is not None,
+            timeout,
+            id(future),
+        )
         self._queue.put(
             _ScheduledJob(owner, action, wait_done, future, cancel_token, timeout)
         )
@@ -122,6 +133,14 @@ class OutputScheduler:
             done = self._current_done_event
             future = self._current_future
 
+        _logger.debug(
+            "OutputScheduler.cancel_current owner=%s token=%s done_event=%s future_id=%s",
+            type(owner).__name__ if owner is not None else None,
+            token is not None,
+            done is not None,
+            id(future) if future is not None else None,
+        )
+
         if token is not None:
             token.cancel()
 
@@ -130,24 +149,36 @@ class OutputScheduler:
 
         if owner is not None and hasattr(owner, "stop"):
             try:
+                _logger.debug(
+                    "OutputScheduler.cancel_current calling owner.stop owner=%s",
+                    type(owner).__name__,
+                )
                 owner.stop()
             except Exception:
+                _logger.debug(
+                    "OutputScheduler.cancel_current owner.stop raised",
+                    exc_info=True,
+                )
                 pass
 
         if done is not None:
             done.set()
 
     def cancel_all(self) -> None:
+        _logger.debug("OutputScheduler.cancel_all begin")
         self.cancel_current()
 
+        cancelled_jobs = 0
         try:
             while True:
                 job = self._queue.get_nowait()
                 if isinstance(job, _ScheduledJob):
                     job.future.cancel()
+                    cancelled_jobs += 1
                 self._queue.task_done()
         except queue.Empty:
             pass
+        _logger.debug("OutputScheduler.cancel_all completed cancelled_jobs=%d", cancelled_jobs)
 
     def shutdown(self) -> None:
         self.cancel_all()
@@ -211,11 +242,25 @@ class OutputScheduler:
         future.set_exception(exc)
 
     def _run_one(self, job: _ScheduledJob) -> None:
+        _logger.debug(
+            "OutputScheduler._run_one begin owner=%s wait_done=%s future_id=%s",
+            type(job.owner).__name__,
+            job.wait_done,
+            id(job.future),
+        )
         if job.future.cancelled():
+            _logger.debug(
+                "OutputScheduler._run_one skipped because future already cancelled future_id=%s",
+                id(job.future),
+            )
             return
 
         if job.token is not None and job.token.is_cancelled():
             job.future.cancel()
+            _logger.debug(
+                "OutputScheduler._run_one cancelled before start via token future_id=%s",
+                id(job.future),
+            )
             return
 
         with self._state_lock:
@@ -230,8 +275,16 @@ class OutputScheduler:
                 if job.token is not None and job.token.is_cancelled():
                     if not job.future.done():
                         job.future.cancel()
+                    _logger.debug(
+                        "OutputScheduler._run_one cancelled after run via token future_id=%s",
+                        id(job.future),
+                    )
                     return
                 self._try_set_result(job.future, result)
+                _logger.debug(
+                    "OutputScheduler._run_one completed without wait_done future_id=%s",
+                    id(job.future),
+                )
                 return
 
             done = threading.Event()
@@ -239,6 +292,11 @@ class OutputScheduler:
                 self._current_done_event = done
 
             job.run()
+            _logger.debug(
+                "OutputScheduler._run_one owner.run returned wait_done=%s future_id=%s",
+                job.wait_done,
+                id(job.future),
+            )
             start = time.monotonic()
 
             while True:
@@ -249,10 +307,18 @@ class OutputScheduler:
                 if job.token is not None and job.token.is_cancelled():
                     if not job.future.done():
                         job.future.cancel()
+                    _logger.debug(
+                        "OutputScheduler._run_one cancelled while waiting via token future_id=%s",
+                        id(job.future),
+                    )
                     return
 
                 if done.wait(timeout=0.01):
                     self._try_set_result(job.future, None)
+                    _logger.debug(
+                        "OutputScheduler._run_one observed done event future_id=%s",
+                        id(job.future),
+                    )
                     return
 
                 if job.timeout is not None and time.monotonic() - start >= job.timeout:
@@ -262,6 +328,11 @@ class OutputScheduler:
                     return
         except Exception as exc:
             self._try_set_exception(job.future, exc)
+            _logger.debug(
+                "OutputScheduler._run_one raised exception future_id=%s",
+                id(job.future),
+                exc_info=True,
+            )
         finally:
             with self._state_lock:
                 self._current_owner = None
@@ -269,3 +340,7 @@ class OutputScheduler:
                 self._current_token = None
                 self._current_done_event = None
                 self._current_future = None
+            _logger.debug(
+                "OutputScheduler._run_one end future_id=%s",
+                id(job.future),
+            )

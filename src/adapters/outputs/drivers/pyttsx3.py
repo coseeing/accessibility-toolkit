@@ -15,6 +15,10 @@ from interop.speech.speech_sequence import SpeechSequence
 
 logger = logging.getLogger(__name__)
 
+_RUN_AND_WAIT = "run_and_wait"
+_EXTERNAL_LOOP = "external_loop"
+_AUTO = "auto"
+
 
 class Pyttsx3SpeechOutput:
     def __init__(
@@ -33,6 +37,7 @@ class Pyttsx3SpeechOutput:
         self._active_engine: Any | None = None
         self._lock = threading.Lock()
         self._cancel_requested = False
+        self._utterance_counter = 0
         self._voice_id: str | None = None
         self._rate = 100
         self._pitch = 0
@@ -61,9 +66,17 @@ class Pyttsx3SpeechOutput:
         logger.debug("pyttsx3 speak requested: items=%d", len(sequence.items))
         for item in sequence.items:
             if isinstance(item, str) and item:
+                with self._lock:
+                    self._utterance_counter += 1
+                    utterance_id = self._utterance_counter
+                logger.debug(
+                    "pyttsx3 enqueue utterance utterance_id=%s text=%r",
+                    utterance_id,
+                    item,
+                )
                 self._scheduler.add_speak_task(
                     self,
-                    lambda text=item: self._speak_text(text),
+                    lambda text=item, _utterance_id=utterance_id: self._speak_text(text, _utterance_id),
                 )
                 continue
             if isinstance(item, BreakCommand):
@@ -79,6 +92,14 @@ class Pyttsx3SpeechOutput:
                 self._volume = int(item.multiplier * 100)
 
     def cancel(self) -> None:
+        with self._lock:
+            active_engine = self._active_engine
+            cancel_requested = self._cancel_requested
+        logger.debug(
+            "pyttsx3 cancel requested active_engine=%s cancel_requested=%s",
+            active_engine is not None,
+            cancel_requested,
+        )
         self._scheduler.cancel_all()
         with self._lock:
             self._cancel_requested = True
@@ -87,6 +108,10 @@ class Pyttsx3SpeechOutput:
     def stop(self) -> None:
         with self._lock:
             active_engine = self._active_engine
+        logger.debug(
+            "pyttsx3 stop invoked on speech thread active_engine=%s",
+            active_engine is not None,
+        )
         if active_engine is not None:
             active_engine.stop()
 
@@ -146,11 +171,17 @@ class Pyttsx3SpeechOutput:
     def set_volume(self, value: int) -> None:
         self._volume = value
 
-    def _speak_text(self, text: str) -> None:
+    def _speak_text(self, text: str, utterance_id: int) -> None:
         engine = self._acquire_engine()
         with self._lock:
             self._active_engine = engine
             self._cancel_requested = False
+        logger.debug(
+            "pyttsx3 utterance begin utterance_id=%s text=%r engine_id=%s",
+            utterance_id,
+            text,
+            id(engine),
+        )
         try:
             if self._voice_id is not None:
                 engine.setProperty("voice", self._voice_id)
@@ -161,13 +192,23 @@ class Pyttsx3SpeechOutput:
                 logger.debug("pyttsx3 engine does not support pitch property")
             engine.setProperty("volume", self._volume / 100.0)
             engine.say(text)
-            self._run_until_done(engine)
+            logger.debug(
+                "pyttsx3 utterance submitted utterance_id=%s engine_id=%s",
+                utterance_id,
+                id(engine),
+            )
+            self._run_until_done(engine, utterance_id)
         finally:
             with self._lock:
                 if self._active_engine is engine:
                     self._active_engine = None
                 if self._recreate_engine_per_utterance:
                     self._engine = None
+            logger.debug(
+                "pyttsx3 utterance end utterance_id=%s engine_id=%s",
+                utterance_id,
+                id(engine),
+            )
             self._scheduler.notify_done()
 
     def _acquire_engine(self) -> Any:
@@ -180,33 +221,86 @@ class Pyttsx3SpeechOutput:
             logger.debug("Initialized pyttsx3 speech engine")
             return self._engine
 
-    def _run_until_done(self, engine: Any) -> None:
+    def _run_until_done(self, engine: Any, utterance_id: int) -> None:
+        execution_strategy = self._driver_execution_strategy(engine)
         start_loop = getattr(engine, "startLoop", None)
         iterate = getattr(engine, "iterate", None)
         is_busy = getattr(engine, "isBusy", None)
         end_loop = getattr(engine, "endLoop", None)
         if (
-            not callable(start_loop)
-            or not callable(iterate)
-            or not callable(is_busy)
-            or not callable(end_loop)
+            execution_strategy == _RUN_AND_WAIT
+            or (
+                execution_strategy == _AUTO
+                and (
+                    not callable(start_loop)
+                    or not callable(iterate)
+                    or not callable(is_busy)
+                    or not callable(end_loop)
+                )
+            )
         ):
+            logger.debug(
+                "pyttsx3 utterance runAndWait path utterance_id=%s engine_id=%s",
+                utterance_id,
+                id(engine),
+            )
             engine.runAndWait()
             return
 
+        logger.debug(
+            "pyttsx3 utterance external loop begin utterance_id=%s engine_id=%s",
+            utterance_id,
+            id(engine),
+        )
         start_loop(False)
         try:
             while True:
                 with self._lock:
                     cancel_requested = self._cancel_requested
                 if cancel_requested:
+                    logger.debug(
+                        "pyttsx3 utterance stop during loop utterance_id=%s engine_id=%s",
+                        utterance_id,
+                        id(engine),
+                    )
                     engine.stop()
                 iterate()
                 if not is_busy():
+                    logger.debug(
+                        "pyttsx3 utterance external loop not busy utterance_id=%s engine_id=%s",
+                        utterance_id,
+                        id(engine),
+                    )
                     break
                 time.sleep(0.001)
         finally:
             end_loop()
+            logger.debug(
+                "pyttsx3 utterance external loop end utterance_id=%s engine_id=%s",
+                utterance_id,
+                id(engine),
+            )
+
+    @staticmethod
+    def _driver_execution_strategy(engine: Any) -> str:
+        driver_name = getattr(engine, "driver_name", None)
+        if isinstance(driver_name, str):
+            normalized_driver_name = driver_name.lower()
+            if normalized_driver_name == "nsss":
+                return _EXTERNAL_LOOP
+            if normalized_driver_name == "sapi5":
+                return _RUN_AND_WAIT
+
+        proxy = getattr(engine, "proxy", None)
+        module = getattr(proxy, "_module", None)
+        module_name = getattr(module, "__name__", None)
+        if isinstance(module_name, str):
+            if module_name.endswith(".nsss"):
+                return _EXTERNAL_LOOP
+            if module_name.endswith(".sapi5"):
+                return _RUN_AND_WAIT
+
+        return _AUTO
 
     @staticmethod
     def _list_voices_from_engine_fallback(engine: Any) -> tuple[tuple[str, str], ...]:

@@ -1,9 +1,12 @@
 from collections.abc import Callable
+import logging
 
 from application.input.results import AppKeyEventResult
 from interop.key import HID
 from interop.key.key_event import KeyEvent
 from interop.speech.speech_sequence import SpeechSequence
+
+_logger = logging.getLogger(__name__)
 
 
 class KeyEchoInputUseCase:
@@ -18,6 +21,11 @@ class KeyEchoInputUseCase:
 
     def handle(self, event: KeyEvent) -> AppKeyEventResult:
         if event.pressed:
+            _logger.debug(
+                "KeyEchoInput.handle pressed usage=0x%02X page=0x%02X -> cancel then speak",
+                event.usage,
+                event.usage_page,
+            )
             self._cancel()
             self._speak(
                 SpeechSequence(

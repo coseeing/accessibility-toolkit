@@ -285,6 +285,177 @@ class BusyLoopEngine:
         self.finished.set()
 
 
+class RestartableBusyLoopEngine:
+    def __init__(self) -> None:
+        self.say_calls: list[str] = []
+        self.finished_events: list[threading.Event] = []
+        self.properties: dict[str, object] = {}
+        self._busy_cycles_remaining = 0
+        self._current_finished: threading.Event | None = None
+        self.iterate_calls = 0
+
+    def say(self, text: str) -> None:
+        self.say_calls.append(text)
+        self._busy_cycles_remaining = 3
+        self._current_finished = threading.Event()
+        self.finished_events.append(self._current_finished)
+
+    def setProperty(self, name: str, value: object) -> None:
+        self.properties[name] = value
+
+    def getProperty(self, name: str) -> object:
+        return self.properties.get(name, [])
+
+    def startLoop(self, useDriverLoop: bool = True) -> None:
+        return None
+
+    def iterate(self) -> None:
+        self.iterate_calls += 1
+        time.sleep(0.005)
+        if self._busy_cycles_remaining > 0:
+            self._busy_cycles_remaining -= 1
+        if self._busy_cycles_remaining == 0 and self._current_finished is not None:
+            self._current_finished.set()
+
+    def isBusy(self) -> bool:
+        return self._busy_cycles_remaining > 0
+
+    def endLoop(self) -> None:
+        return None
+
+    def stop(self) -> None:
+        self._busy_cycles_remaining = 0
+        if self._current_finished is not None:
+            self._current_finished.set()
+
+
+class InterruptibleSequenceEngine:
+    def __init__(self) -> None:
+        self.say_calls: list[str] = []
+        self.started_events: list[threading.Event] = []
+        self.finished_events: list[threading.Event] = []
+        self.properties: dict[str, object] = {}
+        self._busy_cycles_remaining = 0
+        self._current_started: threading.Event | None = None
+        self._current_finished: threading.Event | None = None
+
+    def say(self, text: str) -> None:
+        self.say_calls.append(text)
+        self._busy_cycles_remaining = 20
+        self._current_started = threading.Event()
+        self._current_finished = threading.Event()
+        self.started_events.append(self._current_started)
+        self.finished_events.append(self._current_finished)
+
+    def setProperty(self, name: str, value: object) -> None:
+        self.properties[name] = value
+
+    def getProperty(self, name: str) -> object:
+        return self.properties.get(name, [])
+
+    def startLoop(self, useDriverLoop: bool = True) -> None:
+        return None
+
+    def iterate(self) -> None:
+        if self._current_started is not None:
+            self._current_started.set()
+        time.sleep(0.005)
+        if self._busy_cycles_remaining > 0:
+            self._busy_cycles_remaining -= 1
+        if self._busy_cycles_remaining == 0 and self._current_finished is not None:
+            self._current_finished.set()
+
+    def isBusy(self) -> bool:
+        return self._busy_cycles_remaining > 0
+
+    def endLoop(self) -> None:
+        return None
+
+    def stop(self) -> None:
+        self._busy_cycles_remaining = 0
+        if self._current_finished is not None:
+            self._current_finished.set()
+
+
+class Sapi5ExternalLoopRegressionEngine:
+    def __init__(self) -> None:
+        self.driver_name = "sapi5"
+        self.say_calls: list[str] = []
+        self.spoken_texts: list[str] = []
+        self.finished_events: list[threading.Event] = []
+        self.started_events: list[threading.Event] = []
+        self.properties: dict[str, object] = {}
+        self._pending_text: str | None = None
+        self._busy = False
+        self._stopped_once = False
+        self._current_started: threading.Event | None = None
+        self._current_finished: threading.Event | None = None
+
+    def say(self, text: str) -> None:
+        self.say_calls.append(text)
+        self._pending_text = text
+        self._busy = True
+        self._current_started = threading.Event()
+        self._current_finished = threading.Event()
+        self.started_events.append(self._current_started)
+        self.finished_events.append(self._current_finished)
+
+    def setProperty(self, name: str, value: object) -> None:
+        self.properties[name] = value
+
+    def getProperty(self, name: str) -> object:
+        return self.properties.get(name, [])
+
+    def startLoop(self, useDriverLoop: bool = True) -> None:
+        return None
+
+    def iterate(self) -> None:
+        if self._current_started is not None:
+            self._current_started.set()
+        time.sleep(0.005)
+        if self._pending_text is None:
+            self._busy = False
+        elif self._stopped_once:
+            # Mimics the upstream external-loop interruption bug on SAPI5:
+            # after a stop, the next utterance never actually starts speaking.
+            self._pending_text = None
+            self._busy = False
+        else:
+            if not self.spoken_texts or self.spoken_texts[-1] != self._pending_text:
+                self.spoken_texts.append(self._pending_text)
+
+    def isBusy(self) -> bool:
+        return self._busy
+
+    def endLoop(self) -> None:
+        if self._current_finished is not None:
+            self._current_finished.set()
+
+    def runAndWait(self) -> None:
+        if self._current_started is not None:
+            self._current_started.set()
+        time.sleep(0.005)
+        if self._pending_text is not None:
+            self.spoken_texts.append(self._pending_text)
+            self._pending_text = None
+        self._busy = False
+        if self._current_finished is not None:
+            self._current_finished.set()
+
+    def stop(self) -> None:
+        self._stopped_once = True
+        self._pending_text = None
+        self._busy = False
+        if self._current_finished is not None:
+            self._current_finished.set()
+
+
+class NsssLoopEngine(BusyLoopEngine):
+    def __init__(self) -> None:
+        super().__init__()
+        self.driver_name = "nsss"
+
+
 class FakeTaskManager:
     def __init__(self) -> None:
         self.calls: list[tuple[str, object]] = []
@@ -721,6 +892,107 @@ def test_pyttsx3_speech_output_waits_for_busy_loop_completion_before_finishing()
     assert engine.finished.wait(timeout=0.5)
 
     assert engine.iterate_calls >= 3
+
+
+def test_pyttsx3_speech_output_cancel_then_next_speak_still_runs():
+    engine = RestartableBusyLoopEngine()
+    output = Pyttsx3SpeechOutput(engine=engine)
+
+    output.speak(SpeechSequence(items=("first",)))
+    deadline = time.time() + 0.5
+    while len(engine.finished_events) < 1 and time.time() < deadline:
+        time.sleep(0.01)
+    assert len(engine.finished_events) == 1
+    assert engine.finished_events[0].wait(timeout=0.5)
+
+    output.cancel()
+    output.speak(SpeechSequence(items=("second",)))
+
+    deadline = time.time() + 0.5
+    while len(engine.finished_events) < 2 and time.time() < deadline:
+        time.sleep(0.01)
+    assert len(engine.finished_events) == 2
+    assert engine.finished_events[1].wait(timeout=0.5)
+    assert engine.say_calls == ["first", "second"]
+
+
+def test_pyttsx3_speech_output_repeated_interrupts_still_speak_latest_text():
+    engines: list[InterruptibleSequenceEngine] = []
+
+    def engine_factory():
+        engine = InterruptibleSequenceEngine()
+        engines.append(engine)
+        return engine
+
+    output = Pyttsx3SpeechOutput(
+        engine_factory=engine_factory,
+        recreate_engine_per_utterance=True,
+    )
+
+    output.speak(SpeechSequence(items=("first",)))
+    deadline = time.time() + 0.5
+    while (not engines or len(engines[0].started_events) < 1) and time.time() < deadline:
+        time.sleep(0.01)
+    assert len(engines) >= 1
+    assert len(engines[0].started_events) == 1
+    assert engines[0].started_events[0].wait(timeout=0.5)
+
+    output.cancel()
+    output.speak(SpeechSequence(items=("second",)))
+    deadline = time.time() + 0.5
+    while (len(engines) < 2 or len(engines[1].started_events) < 1) and time.time() < deadline:
+        time.sleep(0.01)
+    assert len(engines) >= 2
+    assert len(engines[1].started_events) == 1
+    assert engines[1].started_events[0].wait(timeout=0.5)
+
+    output.cancel()
+    output.speak(SpeechSequence(items=("third",)))
+    deadline = time.time() + 0.5
+    while (len(engines) < 3 or len(engines[2].started_events) < 1) and time.time() < deadline:
+        time.sleep(0.01)
+    assert len(engines) >= 3
+    assert len(engines[2].started_events) == 1
+    assert engines[2].finished_events[0].wait(timeout=0.5)
+    assert [engine.say_calls for engine in engines[:3]] == [["first"], ["second"], ["third"]]
+
+
+def test_pyttsx3_sapi5_engine_falls_back_to_run_and_wait_after_cancel():
+    engine = Sapi5ExternalLoopRegressionEngine()
+    output = Pyttsx3SpeechOutput(engine=engine)
+
+    output.speak(SpeechSequence(items=("first",)))
+    deadline = time.time() + 0.5
+    while len(engine.started_events) < 1 and time.time() < deadline:
+        time.sleep(0.01)
+    assert len(engine.started_events) == 1
+    assert engine.started_events[0].wait(timeout=0.5)
+
+    output.cancel()
+    assert engine.finished_events[0].wait(timeout=0.5)
+
+    output.speak(SpeechSequence(items=("second",)))
+    deadline = time.time() + 0.5
+    while len(engine.finished_events) < 2 and time.time() < deadline:
+        time.sleep(0.01)
+    assert len(engine.finished_events) == 2
+    assert engine.finished_events[1].wait(timeout=0.5)
+
+    assert engine.say_calls == ["first", "second"]
+    assert engine.spoken_texts == ["first", "second"]
+
+
+def test_pyttsx3_driver_execution_strategy_is_explicit_per_driver():
+    assert (
+        Pyttsx3SpeechOutput._driver_execution_strategy(NsssLoopEngine())
+        == "external_loop"
+    )
+    assert (
+        Pyttsx3SpeechOutput._driver_execution_strategy(
+            Sapi5ExternalLoopRegressionEngine()
+        )
+        == "run_and_wait"
+    )
 
 
 def test_speech_backend_config_store_loads_and_saves_backend_id(tmp_path):
