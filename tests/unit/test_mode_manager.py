@@ -1,3 +1,4 @@
+from application.events import ModeChanged
 from application.input.results import AppKeyEventResult
 from interop.key import HID, KeyEvent
 
@@ -69,7 +70,7 @@ def test_mode_manager_enters_mode_on_activation():
     assert result is True
     assert mode.entered == 1
     assert manager.active_mode_id == "echo"
-    assert statuses == [{"kind": "mode", "mode_id": "echo", "state": "active"}]
+    assert statuses == [ModeChanged("echo", active=True)]
 
 
 def test_mode_manager_routes_non_exit_keys_to_active_mode():
@@ -109,8 +110,8 @@ def test_mode_manager_exit_key_deactivates_mode():
     assert mode.exited == 1
     assert manager.active_mode_id is None
     assert statuses == [
-        {"kind": "mode", "mode_id": "echo", "state": "active"},
-        {"kind": "mode", "mode_id": "echo", "state": "idle"},
+        ModeChanged("echo", active=True),
+        ModeChanged("echo", active=False),
     ]
 
 

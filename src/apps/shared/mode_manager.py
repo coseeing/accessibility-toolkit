@@ -1,6 +1,7 @@
 from collections.abc import Callable
 from typing import Any
 
+from application.events import ModeChanged
 from application.input.results import AppKeyEventResult
 from interop.key.key_event import KeyEvent
 
@@ -10,7 +11,7 @@ class ModeManager:
         self,
         *,
         activation,
-        notify_status: Callable[[dict[str, Any]], None],
+        notify_status: Callable[[ModeChanged], None],
     ) -> None:
         self._activation = activation
         self._notify_status = notify_status
@@ -34,9 +35,7 @@ class ModeManager:
             self._activation.exit_active()
             return False
         self.active_mode_id = mode_id
-        self._notify_status(
-            {"kind": "mode", "mode_id": mode_id, "state": "active"}
-        )
+        self._notify_status(ModeChanged(mode_id, active=True))
         return True
 
     def exit_active_mode(self) -> AppKeyEventResult:
@@ -47,9 +46,7 @@ class ModeManager:
         if not self._activation.exit_active():
             return AppKeyEventResult.HANDLED_STOP
         mode.exit()
-        self._notify_status(
-            {"kind": "mode", "mode_id": mode_id, "state": "idle"}
-        )
+        self._notify_status(ModeChanged(mode_id, active=False))
         self.active_mode_id = None
         return AppKeyEventResult.HANDLED_STOP
 
