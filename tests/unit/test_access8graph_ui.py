@@ -4,6 +4,8 @@ import types
 
 import pytest
 
+from application.events import ErrorRaised
+
 
 def install_fake_wx(monkeypatch):
     fake_wx = types.ModuleType("wx")
@@ -141,7 +143,7 @@ class FakeController:
         self.start_calls += 1
         if self.start_error:
             if self.listener:
-                self.listener({"kind": "error", "message": self.start_error})
+                self.listener(ErrorRaised(self.start_error))
             raise RuntimeError("Failed to start navigation")
         self.running = True
 
@@ -210,7 +212,7 @@ def test_main_frame_preserves_error_label_from_controller_status(
     frame = main_frame_type(controller=controller)
 
     assert controller.listener is not None
-    controller.listener({"kind": "error", "message": "Something went wrong"})
+    controller.listener(ErrorRaised("Something went wrong"))
 
     assert frame.status_label.GetLabel() == "Something went wrong"
 
@@ -249,7 +251,7 @@ def test_main_frame_clears_error_on_new_file_selection(
     controller = FakeController()
     frame = module.Access8GraphMainFrame(controller=controller)
 
-    controller.listener({"kind": "error", "message": "parse failed"})
+    controller.listener(ErrorRaised("parse failed"))
     assert frame.status_label.GetLabel() == "parse failed"
 
     frame._on_choose_graphml(None)

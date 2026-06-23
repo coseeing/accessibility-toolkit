@@ -1,5 +1,7 @@
 import wx
 
+from apps.key_echo.events import EchoStateChanged
+
 
 class EchoMainFrame(wx.Frame):
     def __init__(self, controller):
@@ -50,7 +52,11 @@ class EchoMainFrame(wx.Frame):
         self.control_button.SetLabel("Stop" if running else "Start")
         self.status_label.SetLabel("Running" if running else "Stopped")
 
-    def _on_controller_status(self, _status) -> None:
+    def _on_controller_status(self, status) -> None:
+        if isinstance(status, EchoStateChanged):
+            self.control_button.SetLabel("Stop" if status.running else "Start")
+            self.status_label.SetLabel("Running" if status.running else "Stopped")
+            return
         self._sync_echo_controls()
 
     def _on_close(self, event) -> None:

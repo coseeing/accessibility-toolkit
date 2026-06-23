@@ -7,7 +7,10 @@ import pytest
 
 import bootstrap.platform
 import bootstrap.runtime
+from application.events import ErrorRaised, SpeechBackendChanged
 from application.output.speech import SpeechBackendOption
+from apps.key_echo.events import EchoStateChanged
+from apps.nvda_remote.events import RemoteConnectionChanged
 from interop.key import HID
 
 
@@ -375,7 +378,7 @@ class FakeController:
         self.state.connection_state = "connected"
         self.state.control_state = "connected"
         if self.status_listener is not None:
-            self.status_listener({"kind": "connection", "state": "connected"})
+            self.status_listener(RemoteConnectionChanged("connected"))
 
     def disconnect(self):
         if self.state.control_state == "controlling":
@@ -384,19 +387,19 @@ class FakeController:
         self.state.connection_state = "idle"
         self.state.control_state = "idle"
         if self.status_listener is not None:
-            self.status_listener({"kind": "connection", "state": "idle"})
+            self.status_listener(RemoteConnectionChanged("idle"))
 
     def start_control(self):
         self.started_control += 1
         self.state.control_state = "controlling"
         if self.status_listener is not None:
-            self.status_listener({"kind": "connection", "state": "connected"})
+            self.status_listener(RemoteConnectionChanged("connected"))
 
     def stop_control(self):
         self.stopped_control += 1
         self.state.control_state = "connected" if self.state.connection_state != "idle" else "idle"
         if self.status_listener is not None:
-            self.status_listener({"kind": "connection", "state": self.state.connection_state})
+            self.status_listener(RemoteConnectionChanged(self.state.connection_state))
 
     def push_clipboard(self):
         self.pushed_clipboard += 1
@@ -422,7 +425,7 @@ class FakeController:
             raise self.backend_switch_error
         self.speech_backend_id = backend_id
         if self.status_listener is not None:
-            self.status_listener({"kind": "speech_backend", "backend_id": backend_id})
+            self.status_listener(SpeechBackendChanged(backend_id))
 
     def get_available_voices(self):
         return self.available_voices
@@ -482,13 +485,13 @@ class FakeEchoController:
         self.started += 1
         self.running = True
         if self.status_listener is not None:
-            self.status_listener({"kind": "echo", "state": "running"})
+            self.status_listener(EchoStateChanged(running=True))
 
     def stop_echo(self):
         self.stopped += 1
         self.running = False
         if self.status_listener is not None:
-            self.status_listener({"kind": "echo", "state": "stopped"})
+            self.status_listener(EchoStateChanged(running=False))
 
     def is_echo_running(self):
         return self.running
@@ -508,7 +511,7 @@ class FakeEchoController:
             raise self.backend_switch_error
         self.speech_backend_id = backend_id
         if self.status_listener is not None:
-            self.status_listener({"kind": "speech_backend", "backend_id": backend_id})
+            self.status_listener(SpeechBackendChanged(backend_id))
 
     def get_available_voices(self):
         return self.available_voices
@@ -641,7 +644,7 @@ def test_main_frame_shows_input_error_from_controller_status(monkeypatch):
     controller = FakeController()
     frame = MainFrame(controller=controller)
 
-    controller.status_listener({"kind": "error", "message": "permissions missing"})
+    controller.status_listener(ErrorRaised("permissions missing"))
 
     assert fake_wx.message_box_calls == [
         ("permissions missing", "Input Error", fake_wx.OK | fake_wx.ICON_ERROR)

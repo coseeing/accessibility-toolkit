@@ -2,6 +2,8 @@ from pathlib import Path
 
 import wx
 
+from application.events import ErrorRaised
+
 
 class Access8GraphMainFrame(wx.Frame):
     def __init__(self, controller):
@@ -89,8 +91,8 @@ class Access8GraphMainFrame(wx.Frame):
             self.status_label.SetLabel("No file selected")
 
     def _on_controller_status(self, status) -> None:
-        if isinstance(status, dict) and status.get("kind") == "error":
-            self._last_error = str(status.get("message", ""))
+        if isinstance(status, ErrorRaised):
+            self._last_error = status.message
             self.status_label.SetLabel(self._last_error)
             return
         self._last_error = None
