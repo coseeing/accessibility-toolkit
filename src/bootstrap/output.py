@@ -26,31 +26,35 @@ def build_output_services(
     on_backend_fallback: Callable[[str], None] | None = None,
 ) -> OutputServices:
     scheduler = Scheduler()
-    backend_options = backend_options_factory(scheduler)
     try:
-        speech = SpeechService(
-            backend_options=backend_options,
-            selected_backend_id=selected_backend_id,
+        backend_options = backend_options_factory(scheduler)
+        try:
+            speech = SpeechService(
+                backend_options=backend_options,
+                selected_backend_id=selected_backend_id,
+                scheduler=scheduler,
+            )
+        except ValueError:
+            fallback_id = fallback_backend_id or selected_backend_id
+            _logger.warning(
+                "Unknown configured speech backend %r; falling back to %s",
+                selected_backend_id,
+                fallback_id,
+            )
+            speech = SpeechService(
+                backend_options=backend_options,
+                selected_backend_id=fallback_id,
+                scheduler=scheduler,
+            )
+            if on_backend_fallback is not None:
+                on_backend_fallback(fallback_id)
+        speaker = QueuedService(speech=speech)
+        return OutputServices(
             scheduler=scheduler,
+            speech=speech,
+            speaker=speaker,
+            capabilities=Capabilities(speech=speaker, tone=tone_output),
         )
-    except ValueError:
-        fallback_id = fallback_backend_id or selected_backend_id
-        _logger.warning(
-            "Unknown configured speech backend %r; falling back to %s",
-            selected_backend_id,
-            fallback_id,
-        )
-        speech = SpeechService(
-            backend_options=backend_options,
-            selected_backend_id=fallback_id,
-            scheduler=scheduler,
-        )
-        if on_backend_fallback is not None:
-            on_backend_fallback(fallback_id)
-    speaker = QueuedService(speech=speech)
-    return OutputServices(
-        scheduler=scheduler,
-        speech=speech,
-        speaker=speaker,
-        capabilities=Capabilities(speech=speaker, tone=tone_output),
-    )
+    except Exception:
+        scheduler.shutdown()
+        raise

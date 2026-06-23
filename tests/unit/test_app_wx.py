@@ -916,6 +916,7 @@ def test_nvda_remote_main_build_runtime_composes_app_service_and_gui(monkeypatch
         assert kwargs["hotkey_usage"] == FakeAppService.enter_usage
         assert kwargs["selected_backend_id"] == "pyttsx3"
         assert kwargs["fallback_backend_id"] == "nvda_controller"
+        assert kwargs["include_clipboard"] is True
         assert callable(kwargs["on_backend_fallback"])
         return types.SimpleNamespace(
             input_capture=input_capture,
@@ -1044,6 +1045,7 @@ def test_nvda_remote_build_runtime_uses_mode_enter_hotkey_as_single_source_of_tr
 
     def fake_build_app_runtime_parts(**kwargs):
         requested_hotkeys.append(kwargs["hotkey_usage"])
+        assert kwargs["include_clipboard"] is True
         return types.SimpleNamespace(
             input_capture=FakeKeyboardCapture(),
             hotkey_capture=FakeHotkeyCapture(),
@@ -1389,6 +1391,7 @@ def test_nvda_remote_main_build_runtime_falls_back_for_unknown_backend(monkeypat
         build_calls.append(kwargs)
         assert kwargs["selected_backend_id"] == "missing"
         assert kwargs["fallback_backend_id"] == "nvda_controller"
+        assert kwargs["include_clipboard"] is True
         kwargs["on_backend_fallback"]("nvda_controller")
         return types.SimpleNamespace(
             input_capture=FakeKeyboardCapture(),

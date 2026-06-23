@@ -45,6 +45,7 @@ def build_runtime() -> NvdaRemoteRuntime:
         selected_backend_id=selected_backend_id,
         fallback_backend_id=default_bid,
         on_backend_fallback=config_store.save_backend_id,
+        include_clipboard=True,
     )
 
     transport = RelayTransport(JSONSerializer())

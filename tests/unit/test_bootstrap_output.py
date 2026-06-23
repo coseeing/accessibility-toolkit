@@ -2,6 +2,7 @@ import logging
 
 from application.output import Capabilities, QueuedService, Scheduler
 from application.output.speech import SpeechBackendOption, SpeechService
+import bootstrap.output as bootstrap_output
 from bootstrap.output import build_output_services
 
 
@@ -98,3 +99,73 @@ def test_build_output_services_falls_back_and_persists_backend(caplog):
         assert "Unknown configured speech backend" in caplog.text
     finally:
         services.speaker.shutdown()
+
+
+def test_build_output_services_shuts_down_scheduler_when_options_factory_raises(monkeypatch):
+    class FakeScheduler:
+        instances = []
+
+        def __init__(self):
+            self.shutdown_calls = 0
+            type(self).instances.append(self)
+
+        def shutdown(self):
+            self.shutdown_calls += 1
+
+    monkeypatch.setattr(bootstrap_output, "Scheduler", FakeScheduler)
+
+    def raise_options(scheduler):
+        assert isinstance(scheduler, FakeScheduler)
+        raise RuntimeError("options failed")
+
+    try:
+        build_output_services(
+            backend_options_factory=raise_options,
+            selected_backend_id="primary",
+        )
+    except RuntimeError as error:
+        assert str(error) == "options failed"
+    else:
+        raise AssertionError("expected RuntimeError")
+
+    assert FakeScheduler.instances[0].shutdown_calls == 1
+
+
+def test_build_output_services_shuts_down_scheduler_when_fallback_callback_raises(
+    monkeypatch,
+):
+    class FakeScheduler:
+        instances = []
+
+        def __init__(self):
+            self.shutdown_calls = 0
+            type(self).instances.append(self)
+
+        def shutdown(self):
+            self.shutdown_calls += 1
+
+    monkeypatch.setattr(bootstrap_output, "Scheduler", FakeScheduler)
+
+    def raise_fallback(backend_id):
+        assert backend_id == "fallback"
+        raise RuntimeError("persist failed")
+
+    try:
+        build_output_services(
+            backend_options_factory=lambda scheduler: (
+                SpeechBackendOption(
+                    "fallback",
+                    "Fallback",
+                    lambda: FakeSpeechOutput(),
+                ),
+            ),
+            selected_backend_id="missing",
+            fallback_backend_id="fallback",
+            on_backend_fallback=raise_fallback,
+        )
+    except RuntimeError as error:
+        assert str(error) == "persist failed"
+    else:
+        raise AssertionError("expected RuntimeError")
+
+    assert FakeScheduler.instances[0].shutdown_calls == 1

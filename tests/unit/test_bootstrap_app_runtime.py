@@ -1,7 +1,6 @@
 from application.output import Scheduler
 from application.output.speech import SpeechBackendOption
 from bootstrap.app_runtime import build_app_runtime_parts
-from bootstrap.platform import PlatformServices
 from interop.key import HID
 
 
@@ -68,15 +67,34 @@ class FakeProvider:
         self.tone_output = FakeTone()
         self.hotkey_usage = None
         self.scheduler = None
+        self.clipboard_calls = 0
+        self.input_calls = 0
+        self.hotkey_calls = []
+        self.tone_calls = 0
 
     def build_services(self, hotkey_usage):
         self.hotkey_usage = hotkey_usage
-        return PlatformServices(
-            input_capture=self.input_capture,
-            hotkey_capture=self.hotkey_capture,
-            clipboard=self.clipboard,
-            tone_output=self.tone_output,
-        )
+        self.input_calls += 1
+        self.hotkey_calls.append(hotkey_usage)
+        self.clipboard_calls += 1
+        self.tone_calls += 1
+        return object()
+
+    def create_input_capture(self):
+        self.input_calls += 1
+        return self.input_capture
+
+    def create_hotkey_capture(self, usage):
+        self.hotkey_calls.append(usage)
+        return self.hotkey_capture
+
+    def create_clipboard_service(self):
+        self.clipboard_calls += 1
+        return self.clipboard
+
+    def create_tone_output(self):
+        self.tone_calls += 1
+        return self.tone_output
 
     def default_speech_backend_id(self):
         return "default"
@@ -97,9 +115,13 @@ def test_build_app_runtime_parts_wires_platform_and_output_services():
         provider=provider,
         hotkey_usage=HID.ENTER,
         selected_backend_id="selected",
+        include_clipboard=True,
     )
     try:
-        assert provider.hotkey_usage == HID.ENTER
+        assert provider.input_calls == 1
+        assert provider.hotkey_calls == [HID.ENTER]
+        assert provider.clipboard_calls == 1
+        assert provider.tone_calls == 1
         assert parts.input_capture is provider.input_capture
         assert parts.hotkey_capture is provider.hotkey_capture
         assert parts.clipboard is provider.clipboard
@@ -121,8 +143,34 @@ def test_build_app_runtime_parts_uses_default_backend_and_can_exclude_tone():
         include_tone=False,
     )
     try:
-        assert parts.tone_output is provider.tone_output
+        assert provider.input_calls == 1
+        assert provider.hotkey_calls == [HID.ENTER]
+        assert provider.clipboard_calls == 0
+        assert provider.tone_calls == 0
+        assert parts.clipboard is None
+        assert parts.tone_output is None
         assert parts.output.speaker.get_selected_backend() == "default"
+        assert parts.output.capabilities.tone is None
+    finally:
+        parts.output.speaker.shutdown()
+
+
+def test_build_app_runtime_parts_can_request_clipboard_without_tone():
+    provider = FakeProvider()
+
+    parts = build_app_runtime_parts(
+        provider=provider,
+        hotkey_usage=HID.ENTER,
+        include_clipboard=True,
+        include_tone=False,
+    )
+    try:
+        assert provider.input_calls == 1
+        assert provider.hotkey_calls == [HID.ENTER]
+        assert provider.clipboard_calls == 1
+        assert provider.tone_calls == 0
+        assert parts.clipboard is provider.clipboard
+        assert parts.tone_output is None
         assert parts.output.capabilities.tone is None
     finally:
         parts.output.speaker.shutdown()
