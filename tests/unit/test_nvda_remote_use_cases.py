@@ -1,4 +1,5 @@
 from application.state import ConnectionState, ControlState, RuntimeState
+from apps.nvda_remote.events import RemoteControlChanged
 from interop.key import HID, KeyEvent
 
 from adapters.inputs.base import KeyEventDecision
@@ -96,7 +97,7 @@ def test_control_mode_use_case_start_control_starts_capture_and_stops_hotkey():
         connection_state=ConnectionState.CONNECTED,
         control_state=ControlState.CONNECTED,
     )
-    notifications: list[dict[str, str]] = []
+    notifications: list[RemoteControlChanged] = []
 
     use_case = NvdaRemoteControlModeUseCase(
         state=state,
@@ -107,7 +108,7 @@ def test_control_mode_use_case_start_control_starts_capture_and_stops_hotkey():
     use_case.start_control()
 
     assert state.control_state == ControlState.CONTROLLING
-    assert notifications == [{"kind": "control", "state": ControlState.CONTROLLING.value}]
+    assert notifications == [RemoteControlChanged(ControlState.CONTROLLING.value)]
 
 
 def test_control_mode_use_case_stop_control_stops_capture_and_restarts_hotkey():
@@ -117,7 +118,7 @@ def test_control_mode_use_case_stop_control_stops_capture_and_restarts_hotkey():
         connection_state=ConnectionState.CONNECTED,
         control_state=ControlState.CONTROLLING,
     )
-    notifications: list[dict[str, str]] = []
+    notifications: list[RemoteControlChanged] = []
 
     use_case = NvdaRemoteControlModeUseCase(
         state=state,
@@ -128,7 +129,7 @@ def test_control_mode_use_case_stop_control_stops_capture_and_restarts_hotkey():
     use_case.stop_control()
 
     assert state.control_state == ControlState.CONNECTED
-    assert notifications == [{"kind": "control", "state": ControlState.CONNECTED.value}]
+    assert notifications == [RemoteControlChanged(ControlState.CONNECTED.value)]
 
 
 def test_input_forwarding_use_case_sends_remote_key_when_controlling():

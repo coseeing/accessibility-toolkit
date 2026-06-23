@@ -1,6 +1,7 @@
 from collections.abc import Callable
 
 from application.state import ControlState, RuntimeState
+from apps.nvda_remote.events import RemoteControlChanged
 
 
 class NvdaRemoteControlModeUseCase:
@@ -9,7 +10,7 @@ class NvdaRemoteControlModeUseCase:
         *,
         state: RuntimeState,
         notify_error: Callable[[str], None],
-        notify_status: Callable[[dict[str, str]], None],
+        notify_status: Callable[[RemoteControlChanged], None],
     ) -> None:
         self._state = state
         self._notify_error = notify_error
@@ -17,8 +18,8 @@ class NvdaRemoteControlModeUseCase:
 
     def start_control(self) -> None:
         self._state.control_state = ControlState.CONTROLLING
-        self._notify_status({"kind": "control", "state": ControlState.CONTROLLING.value})
+        self._notify_status(RemoteControlChanged(ControlState.CONTROLLING.value))
 
     def stop_control(self) -> None:
         self._state.control_state = ControlState.CONNECTED
-        self._notify_status({"kind": "control", "state": ControlState.CONNECTED.value})
+        self._notify_status(RemoteControlChanged(ControlState.CONNECTED.value))

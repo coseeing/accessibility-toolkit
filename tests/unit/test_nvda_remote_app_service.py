@@ -1,11 +1,16 @@
 from adapters.inputs.captured_event import CapturedKeyEvent
 from adapters.windows.native_key_context import WindowsNativeKeyContext
+from application.events import ErrorRaised, SpeechBackendChanged
 from application.input.results import AppKeyEventResult, KeyboardPipelineResult
 from application.output import Capabilities
 from interop.key import HID, KeyEvent
 from interop.protocol.messages import RemoteMessageType
 from interop.protocol.routing.message_router import MessageRouter
 
+from apps.nvda_remote.events import (
+    RemoteConnectionChanged,
+    RemoteMessageReceived,
+)
 from apps.nvda_remote.service import NvdaRemoteAppService
 
 
@@ -304,7 +309,7 @@ def test_nvda_remote_service_dispatches_status_updates_through_main_thread_callb
 
     pending.pop()()
 
-    assert delivered == [{"kind": "connection", "state": "connected"}]
+    assert delivered == [RemoteConnectionChanged("connected")]
 
 
 def test_nvda_remote_service_handles_transport_disconnected_message():
@@ -319,7 +324,19 @@ def test_nvda_remote_service_handles_transport_disconnected_message():
 
     assert service.state.connection_state == service.state.connection_state.IDLE
     assert service.state.control_state == service.state.control_state.IDLE
-    assert status_events == [{"kind": "connection", "state": "idle"}]
+    assert status_events == [RemoteConnectionChanged("idle")]
+
+
+def test_nvda_remote_service_converts_remote_status_for_listener():
+    service, transport, _capture, _hotkey, _dispatch_calls = build_service()
+    service.bind()
+    delivered = []
+    service.set_status_listener(delivered.append)
+    payload = {"type": RemoteMessageType.MOTD.value, "message": "hello"}
+
+    transport.message_handler(payload)
+
+    assert delivered == [RemoteMessageReceived("motd", payload)]
 
 
 def test_nvda_remote_service_stop_control_handles_hotkey_start_failure():
@@ -348,7 +365,7 @@ def test_nvda_remote_service_stop_control_handles_hotkey_start_failure():
     assert service.state.control_state == service.state.control_state.CONTROLLING
     assert capture.running is True
     assert status_events == [
-        {"kind": "error", "message": "hotkey busy"},
+        ErrorRaised("hotkey busy"),
     ]
 
 
@@ -375,7 +392,7 @@ def test_nvda_remote_service_dispatches_speech_backend_notifications():
 
     pending.pop()()
 
-    assert delivered == [{"kind": "speech_backend", "backend_id": "pyttsx3"}]
+    assert delivered == [SpeechBackendChanged("pyttsx3")]
 
 
 def test_nvda_remote_service_f11_toggles_control_on_keydown_only():

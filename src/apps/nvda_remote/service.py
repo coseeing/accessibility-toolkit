@@ -3,6 +3,12 @@ from typing import Any
 
 from adapters.inputs.base import HotkeyCapture, InputCapture, KeyEventDecision
 from adapters.inputs.captured_event import CapturedKeyEvent
+from application.events import (
+    AppEvent,
+    ErrorRaised,
+    SpeechBackendChanged,
+    StatusEvent,
+)
 from application.input import (
     AppKeyEventResult,
     InputActivationUseCase,
@@ -24,6 +30,11 @@ from interop.protocol.transport.base import Transport
 from apps.nvda_remote.use_cases import (
     NvdaRemoteControlModeUseCase,
     NvdaRemoteInputForwardingUseCase,
+)
+from apps.nvda_remote.events import (
+    RemoteConnectionChanged,
+    RemoteControlChanged,
+    RemoteMessageReceived,
 )
 from apps.shared.mode_manager import ModeManager
 from apps.shared.speech_settings_controller import SpeechSettingsController
@@ -76,7 +87,7 @@ class NvdaRemoteAppService(KeyEventHandler):
         self._capabilities = capabilities
         self._on_speech_backend_changed = on_speech_backend_changed
         self.state = RuntimeState()
-        self._status_listener: Callable[[dict[str, Any]], None] | None = None
+        self._status_listener: Callable[[object], None] | None = None
         self._main_thread_dispatch = main_thread_dispatch or (lambda callback: callback())
         self._suppressed_keyups: set[int] = set()
 
@@ -186,7 +197,7 @@ class NvdaRemoteAppService(KeyEventHandler):
         return bool(getattr(self.clipboard, "supported", True))
 
     def set_status_listener(
-        self, listener: Callable[[dict[str, Any]], None] | None
+        self, listener: Callable[[object], None] | None
     ) -> None:
         self._status_listener = listener
 
@@ -198,9 +209,7 @@ class NvdaRemoteAppService(KeyEventHandler):
 
     def set_speech_backend(self, backend_id: str) -> None:
         self._speech_settings.set_backend(backend_id)
-        self._notify_status_listener(
-            {"kind": "speech_backend", "backend_id": backend_id}
-        )
+        self._notify_status_listener(SpeechBackendChanged(backend_id))
 
     def get_available_voices(self) -> tuple[tuple[str, str], ...]:
         return self._speech_settings.list_voices()
@@ -277,10 +286,11 @@ class NvdaRemoteAppService(KeyEventHandler):
 
     def _on_status(self, status: dict[str, Any]) -> None:
         if status.get("kind") != "connection":
-            self._notify_status_listener(status)
+            self._notify_status_listener(self._event_from_status(status))
             return
 
-        match status.get("state"):
+        state = str(status.get("state", ""))
+        match state:
             case ConnectionState.CONNECTED.value:
                 self.state.connection_state = ConnectionState.CONNECTED
                 if self.state.control_state != ControlState.CONTROLLING:
@@ -292,14 +302,27 @@ class NvdaRemoteAppService(KeyEventHandler):
                 self._stop_hotkey()
                 self.state.connection_state = ConnectionState.IDLE
                 self.state.control_state = ControlState.IDLE
-        self._notify_status_listener(status)
+        self._notify_status_listener(RemoteConnectionChanged(state))
 
-    def _notify_status_listener(self, status: dict[str, Any]) -> None:
+    def _event_from_status(
+        self, status: dict[str, Any]
+    ) -> RemoteMessageReceived | StatusEvent:
+        if status.get("kind") == "remote":
+            return RemoteMessageReceived(
+                str(status.get("type", "")),
+                status.get("payload") or {},
+            )
+        return StatusEvent.from_payload(status)
+
+    def _notify_status_listener(
+        self,
+        status: AppEvent | RemoteConnectionChanged | RemoteControlChanged | RemoteMessageReceived | StatusEvent,
+    ) -> None:
         if self._status_listener is not None:
             self._main_thread_dispatch(lambda: self._status_listener(status))
 
     def _notify_error(self, message: str) -> None:
-        self._notify_status_listener({"kind": "error", "message": message})
+        self._notify_status_listener(ErrorRaised(message))
 
     def _ensure_capture_started(self) -> None:
         if not self.input_capture.running:
