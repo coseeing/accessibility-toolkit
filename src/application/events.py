@@ -3,6 +3,47 @@ from typing import Any
 
 
 @dataclass(frozen=True, slots=True)
+class ErrorRaised:
+    message: str
+
+
+@dataclass(frozen=True, slots=True)
+class SpeechBackendChanged:
+    backend_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class InputCaptureChanged:
+    active: bool
+
+
+@dataclass(frozen=True, slots=True)
+class HotkeyCaptureChanged:
+    active: bool
+
+
+@dataclass(frozen=True, slots=True)
+class ClipboardAvailabilityChanged:
+    available: bool
+
+
+@dataclass(frozen=True, slots=True)
+class ModeChanged:
+    mode_id: str
+    active: bool
+
+
+AppEvent = (
+    ErrorRaised
+    | SpeechBackendChanged
+    | InputCaptureChanged
+    | HotkeyCaptureChanged
+    | ClipboardAvailabilityChanged
+    | ModeChanged
+)
+
+
+@dataclass(frozen=True, slots=True)
 class StatusEvent:
     kind: str
     state: str | None = None
