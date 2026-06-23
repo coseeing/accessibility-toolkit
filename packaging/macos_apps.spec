@@ -123,5 +123,20 @@ def build_app(target: str, settings: dict[str, object]):
     )
 
 
+import subprocess
+
 for app_target, app_settings in APPS.items():
     build_app(app_target, app_settings)
+
+for app_target, app_settings in APPS.items():
+    if not should_build(app_target):
+        continue
+    app_name = app_settings["name"]
+    zip_path = DIST / f"{app_name}.zip"
+    zip_path.unlink(missing_ok=True)
+    subprocess.run(
+        ["zip", "-ry", str(zip_path), f"{app_name}.app"],
+        cwd=str(DIST),
+        check=True,
+    )
+    print(f"Zipped: {zip_path}")
