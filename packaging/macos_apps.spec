@@ -3,8 +3,9 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from PyInstaller.building.api import BUNDLE, COLLECT, EXE
+from PyInstaller.building.api import COLLECT, EXE
 from PyInstaller.building.build_main import Analysis, PYZ
+from PyInstaller.building.osx import BUNDLE
 from PyInstaller.utils.hooks import collect_submodules
 
 
@@ -88,8 +89,6 @@ def build_app(target: str, settings: dict[str, object]):
     exe = EXE(
         pyz,
         analysis.scripts,
-        analysis.binaries,
-        analysis.datas,
         [],
         name=app_name,
         debug=False,
@@ -97,12 +96,22 @@ def build_app(target: str, settings: dict[str, object]):
         strip=False,
         upx=True,
         console=False,
+        exclude_binaries=True,
         target_arch=None,
         codesign_identity=None,
         entitlements_file=None,
     )
-    bundle = BUNDLE(
+    coll = COLLECT(
         exe,
+        analysis.binaries,
+        analysis.datas,
+        strip=False,
+        upx=True,
+        upx_exclude=[],
+        name=app_name,
+    )
+    return BUNDLE(
+        coll,
         name=f"{app_name}.app",
         icon=None,
         bundle_identifier=settings["bundle_identifier"],
@@ -111,15 +120,6 @@ def build_app(target: str, settings: dict[str, object]):
             "CFBundleName": app_name,
             "NSAppleEventsUsageDescription": "Required for keyboard event handling.",
         },
-    )
-    return COLLECT(
-        bundle,
-        analysis.binaries,
-        analysis.datas,
-        strip=False,
-        upx=True,
-        upx_exclude=[],
-        name=app_name,
     )
 
 
