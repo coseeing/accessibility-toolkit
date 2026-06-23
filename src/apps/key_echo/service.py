@@ -1,3 +1,4 @@
+from application.events import AppEvent, ErrorRaised, SpeechBackendChanged
 from adapters.inputs.base import HotkeyCapture, InputCapture
 from adapters.inputs.captured_event import CapturedKeyEvent
 from application.input import (
@@ -14,6 +15,7 @@ from apps.key_echo.use_cases import (
     KeyEchoControlUseCase,
     KeyEchoInputUseCase,
 )
+from apps.key_echo.events import EchoStateChanged
 from apps.shared.mode_manager import ModeManager
 from apps.shared.speech_settings_controller import SpeechSettingsController
 
@@ -76,7 +78,7 @@ class KeyEchoAppService(KeyEventHandler):
             is_active=self.is_echo_running,
             set_active=self._set_echo_active,
             notify_error=lambda message: self._notify_status_listener(
-                {"kind": "error", "message": message}
+                ErrorRaised(message)
             ),
         )
         self._mode_manager = ModeManager(
@@ -130,9 +132,7 @@ class KeyEchoAppService(KeyEventHandler):
 
     def set_speech_backend(self, backend_id: str) -> None:
         self._speech_settings.set_backend(backend_id)
-        self._notify_status_listener(
-            {"kind": "speech_backend", "backend_id": backend_id}
-        )
+        self._notify_status_listener(SpeechBackendChanged(backend_id))
 
     def get_available_voices(self) -> tuple[tuple[str, str], ...]:
         return self._speech_settings.list_voices()
@@ -176,7 +176,9 @@ class KeyEchoAppService(KeyEventHandler):
             send_to_system=send_to_system, app_result=app_result
         )
 
-    def _notify_status_listener(self, status: dict[str, str]) -> None:
+    def _notify_status_listener(
+        self, status: AppEvent | EchoStateChanged
+    ) -> None:
         if self._status_listener is not None:
             self._status_listener(status)
 

@@ -4,12 +4,14 @@ import types
 from adapters.inputs.captured_event import CapturedKeyEvent
 from adapters.windows.native_key_context import WindowsNativeKeyContext
 from application.input.results import AppKeyEventResult, KeyboardPipelineResult
+from application.events import ErrorRaised, ModeChanged, SpeechBackendChanged
 from application.keyboard import KeyboardInputService
 from application.output import Capabilities
 from application.output.speech import SpeechService
 from interop.key import HID, KeyEvent
 from interop.speech.speech_sequence import SpeechSequence
 
+from apps.key_echo.events import EchoStateChanged
 from apps.key_echo.service import KeyEchoAppService
 from apps.key_echo import main as main_module
 
@@ -354,6 +356,29 @@ def test_key_echo_app_service_starts_and_stops_echo_capture() -> None:
     assert service.is_echo_running() is False
 
 
+def test_key_echo_app_service_dispatches_typed_echo_state_notifications() -> None:
+    capture = FakeCapture()
+    delivered = []
+    service = KeyEchoAppService(
+        hotkey_capture=FakeHotkeyCapture(),
+        input_capture=capture,
+        capabilities=Capabilities(speech=SpeechService.single_backend(FakeSpeechOutput())),
+    )
+    input_service = KeyboardInputService(capture, service)
+    service.attach_input_service(input_service)
+    service.set_status_listener(delivered.append)
+
+    service.start_echo()
+    service.stop_echo()
+
+    assert delivered == [
+        EchoStateChanged(running=True),
+        ModeChanged("echo_keys", active=True),
+        EchoStateChanged(running=False),
+        ModeChanged("echo_keys", active=False),
+    ]
+
+
 def test_key_echo_app_service_exposes_speech_settings_api() -> None:
     speech_output = FakeSpeechOutput()
     service = KeyEchoAppService(
@@ -373,6 +398,43 @@ def test_key_echo_app_service_exposes_speech_settings_api() -> None:
     assert service.get_rate() == 120
     assert service.get_pitch() == 3
     assert service.get_volume() == 80
+
+
+def test_key_echo_app_service_dispatches_typed_speech_backend_notification() -> None:
+    speech_output = FakeSpeechOutput()
+    delivered = []
+    service = KeyEchoAppService(
+        hotkey_capture=FakeHotkeyCapture(),
+        input_capture=FakeCapture(),
+        capabilities=Capabilities(speech=SpeechService.single_backend(speech_output)),
+    )
+    service.set_status_listener(delivered.append)
+
+    service.set_speech_backend("default")
+
+    assert delivered == [SpeechBackendChanged("default")]
+
+
+def test_key_echo_app_service_dispatches_typed_error_notification() -> None:
+    class FailingCapture(FakeCapture):
+        def start(self) -> None:
+            raise RuntimeError("input busy")
+
+    delivered = []
+    hotkey = FakeHotkeyCapture()
+    service = KeyEchoAppService(
+        hotkey_capture=hotkey,
+        input_capture=FailingCapture(),
+        capabilities=Capabilities(speech=SpeechService.single_backend(FakeSpeechOutput())),
+    )
+    input_service = KeyboardInputService(service.input_capture, service)
+    service.attach_input_service(input_service)
+    service.set_status_listener(delivered.append)
+    hotkey.start()
+
+    service.start_echo()
+
+    assert delivered == [ErrorRaised("input busy")]
 
 
 def test_build_runtime_composes_local_keyboard_and_speech(monkeypatch) -> None:

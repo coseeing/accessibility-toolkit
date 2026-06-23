@@ -1,5 +1,6 @@
 from application.input.results import AppKeyEventResult
 from interop.key import HID, KeyEvent
+from apps.key_echo.events import EchoStateChanged
 
 
 class FakeSpeech:
@@ -75,8 +76,8 @@ def test_echo_control_use_case_start_and_stop_echo():
 
     assert use_case.is_running() is False
     assert statuses == [
-        {"kind": "echo", "state": "running"},
-        {"kind": "echo", "state": "stopped"},
+        EchoStateChanged(running=True),
+        EchoStateChanged(running=False),
     ]
 
 
