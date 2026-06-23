@@ -3,20 +3,13 @@ import logging
 from adapters.inputs.base import HotkeyCapture, InputCapture
 from application.config import SpeechBackendConfigStore
 from application.keyboard import KeyboardInputService
-from application.output import Capabilities
 from application.output import Scheduler
 from application.output import QueuedService
 from application.output import ClipboardService
 from application.output.speech import SpeechService
 from apps.nvda_remote.service import NvdaRemoteAppService
-from bootstrap.platform import (
-    create_input_capture,
-    create_hotkey_capture,
-    create_clipboard_service,
-    create_tone_output,
-    default_speech_backend_options,
-    default_speech_backend_id,
-)
+from bootstrap.app_runtime import build_app_runtime_parts
+from bootstrap.platform import PlatformProvider
 from bootstrap.runtime import configure_logging, default_config_path
 from interop.protocol.serializer import JSONSerializer
 from interop.protocol.transport.relay import RelayTransport
@@ -41,63 +34,43 @@ class NvdaRemoteRuntime:
 
 def build_runtime() -> NvdaRemoteRuntime:
     config_store = SpeechBackendConfigStore(default_config_path())
-    scheduler = Scheduler()
-    backend_options = default_speech_backend_options(scheduler)
-    default_bid = default_speech_backend_id()
+    provider = PlatformProvider()
+    default_bid = provider.default_speech_backend_id()
     selected_backend_id = config_store.load_backend_id(
         default_backend_id=default_bid
     )
-    try:
-        speech = SpeechService(
-            backend_options=backend_options,
-            selected_backend_id=selected_backend_id,
-            scheduler=scheduler,
-        )
-    except ValueError:
-        logging.getLogger(__name__).warning(
-            "Unknown configured speech backend %r; falling back to %s",
-            selected_backend_id,
-            default_bid,
-        )
-        speech = SpeechService(
-            backend_options=backend_options,
-            selected_backend_id=default_bid,
-            scheduler=scheduler,
-        )
-        config_store.save_backend_id(default_bid)
+    parts = build_app_runtime_parts(
+        provider=provider,
+        hotkey_usage=NvdaRemoteAppService.enter_usage,
+        selected_backend_id=selected_backend_id,
+        fallback_backend_id=default_bid,
+        on_backend_fallback=config_store.save_backend_id,
+    )
 
     transport = RelayTransport(JSONSerializer())
-    input_capture = create_input_capture()
-    hotkey_capture = create_hotkey_capture(NvdaRemoteAppService.enter_usage)
-    clipboard = create_clipboard_service()
-    tone_output = create_tone_output()
-    speaker = QueuedService(speech=speech)
     app_service = NvdaRemoteAppService(
         transport=transport,
-        input_capture=input_capture,
-        hotkey_capture=hotkey_capture,
-        clipboard=clipboard,
-        capabilities=Capabilities(
-            speech=speaker,
-            tone=tone_output,
-        ),
+        input_capture=parts.input_capture,
+        hotkey_capture=parts.hotkey_capture,
+        clipboard=parts.clipboard,
+        capabilities=parts.output.capabilities,
         on_speech_backend_changed=config_store.save_backend_id,
         main_thread_dispatch=getattr(NvdaRemoteApp, "dispatch", None),
     )
-    input_service = KeyboardInputService(input_capture, app_service)
+    input_service = KeyboardInputService(parts.input_capture, app_service)
     app_service.bind()
     input_service.bind()
     app = NvdaRemoteApp(controller=app_service)
     return NvdaRemoteRuntime(
         config_store=config_store,
         transport=transport,
-        input_capture=input_capture,
-        hotkey_capture=hotkey_capture,
-        clipboard=clipboard,
-        tone_output=tone_output,
-        scheduler=scheduler,
-        speech=speech,
-        speaker=speaker,
+        input_capture=parts.input_capture,
+        hotkey_capture=parts.hotkey_capture,
+        clipboard=parts.clipboard,
+        tone_output=parts.tone_output,
+        scheduler=parts.output.scheduler,
+        speech=parts.output.speech,
+        speaker=parts.output.speaker,
         input_service=input_service,
         app_service=app_service,
         app=app,

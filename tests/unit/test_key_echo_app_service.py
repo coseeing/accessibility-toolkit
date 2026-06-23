@@ -1,4 +1,5 @@
 import pytest
+import types
 
 from adapters.inputs.captured_event import CapturedKeyEvent
 from adapters.windows.native_key_context import WindowsNativeKeyContext
@@ -101,6 +102,113 @@ class FakeHotkeyCapture:
     @property
     def running(self) -> bool:
         return self.start_calls > self.stop_calls
+
+
+class FakeRuntimeSpeech:
+    def __init__(self, output: FakeSpeechOutput) -> None:
+        self.output = output
+
+    def speak(self, sequence) -> None:
+        self.output.speak(sequence)
+
+    def cancel(self) -> None:
+        self.output.cancel()
+
+    def pause(self, is_paused: bool) -> None:
+        self.output.pause(is_paused)
+
+    def get_backend_options(self):
+        return (("pyttsx3", "pyttsx3"),)
+
+    def get_selected_backend(self):
+        return "pyttsx3"
+
+    def set_backend(self, backend_id):
+        del backend_id
+
+    def list_voices(self):
+        return self.output.list_voices()
+
+    def get_voice(self):
+        return self.output.get_voice()
+
+    def set_voice(self, voice_id):
+        self.output.set_voice(voice_id)
+
+    def get_rate(self):
+        return self.output.get_rate()
+
+    def set_rate(self, value):
+        self.output.set_rate(value)
+
+    def get_pitch(self):
+        return self.output.get_pitch()
+
+    def set_pitch(self, value):
+        self.output.set_pitch(value)
+
+    def get_volume(self):
+        return self.output.get_volume()
+
+    def set_volume(self, value):
+        self.output.set_volume(value)
+
+    def shutdown(self) -> None:
+        return None
+
+
+class FakeRuntimeSpeaker(FakeRuntimeSpeech):
+    def __init__(self, speech: FakeRuntimeSpeech) -> None:
+        self.speech = speech
+        self.output = speech.output
+
+
+def install_fake_key_echo_runtime_parts(
+    monkeypatch,
+    *,
+    capture,
+    hotkey,
+    speech_output,
+    requested_hotkeys: list[int] | None = None,
+    scheduler=None,
+) -> object:
+    scheduler = scheduler if scheduler is not None else object()
+    speech = FakeRuntimeSpeech(speech_output)
+    speaker = FakeRuntimeSpeaker(speech)
+
+    def fake_build_app_runtime_parts(
+        *,
+        hotkey_usage,
+        selected_backend_id,
+        fallback_backend_id,
+        include_tone,
+        **kwargs,
+    ):
+        assert selected_backend_id == "pyttsx3"
+        assert fallback_backend_id == "pyttsx3"
+        assert include_tone is False
+        assert kwargs == {}
+        if requested_hotkeys is not None:
+            requested_hotkeys.append(hotkey_usage)
+        return types.SimpleNamespace(
+            input_capture=capture,
+            hotkey_capture=hotkey,
+            clipboard=None,
+            tone_output=None,
+            output=types.SimpleNamespace(
+                scheduler=scheduler,
+                speech=speech,
+                speaker=speaker,
+                capabilities=Capabilities(speech=speaker),
+            ),
+        )
+
+    monkeypatch.setattr(
+        main_module,
+        "build_app_runtime_parts",
+        fake_build_app_runtime_parts,
+    )
+    return scheduler
 
 
 def test_key_echo_app_service_speaks_vk_on_keydown() -> None:
@@ -333,28 +441,14 @@ def test_build_runtime_composes_local_keyboard_and_speech(monkeypatch) -> None:
             self.controller = controller
             app_calls.append(controller)
 
-    from application.output.speech import SpeechBackendOption
-    monkeypatch.setattr(main_module, "create_input_capture", lambda: capture)
-    monkeypatch.setattr(
-        main_module,
-        "create_hotkey_capture",
-        lambda usage=HID.F10: hotkey,
+    scheduler = install_fake_key_echo_runtime_parts(
+        monkeypatch,
+        capture=capture,
+        hotkey=hotkey,
+        speech_output=speech_output,
+        scheduler=FakeScheduler(),
     )
-    monkeypatch.setattr(
-        main_module,
-        "default_speech_backend_options",
-        lambda scheduler: (
-            SpeechBackendOption(
-                backend_id="pyttsx3",
-                label="pyttsx3",
-                factory=lambda: speech_output,
-            ),
-        ),
-    )
-    monkeypatch.setattr(main_module, "QueuedService", FakeQueuedService)
-    monkeypatch.setattr(main_module, "Scheduler", FakeScheduler)
     import sys
-    import types
 
     fake_echo_app_module = types.ModuleType("ui.echo.app")
     fake_echo_app_module.EchoApp = FakeApp
@@ -369,7 +463,7 @@ def test_build_runtime_composes_local_keyboard_and_speech(monkeypatch) -> None:
     assert isinstance(runtime.app_service, KeyEchoAppService)
     assert runtime.input_capture is capture
     assert runtime.hotkey_capture is hotkey
-    assert isinstance(runtime.scheduler, FakeScheduler)
+    assert runtime.scheduler is scheduler
     assert runtime.speech.get_selected_backend() == "pyttsx3"
     assert runtime.speaker.speech is runtime.speech
     assert runtime.app is not None
@@ -447,36 +541,19 @@ def test_build_runtime_macos_path_composes_capture(monkeypatch) -> None:
         def __init__(self, controller):
             self.controller = controller
 
-    from application.output.speech import SpeechBackendOption
-    monkeypatch.setattr(
-        main_module,
-        "create_input_capture",
-        lambda: MacOSFakeCapture(
-            manager=FakeManager(permissions=FakePermissions(), backend=object()),
-        ),
+    capture = MacOSFakeCapture(
+        manager=FakeManager(permissions=FakePermissions(), backend=object()),
     )
-    monkeypatch.setattr(
-        main_module,
-        "create_hotkey_capture",
-        lambda usage=HID.F10: FakeHotkeyCapture(),
+    install_fake_key_echo_runtime_parts(
+        monkeypatch,
+        capture=capture,
+        hotkey=FakeHotkeyCapture(),
+        speech_output=FakeSpeechOutput(),
+        scheduler=FakeScheduler(),
     )
-    monkeypatch.setattr(
-        main_module,
-        "default_speech_backend_options",
-        lambda scheduler: (
-            SpeechBackendOption(
-                backend_id="pyttsx3",
-                label="pyttsx3",
-                factory=lambda: FakeSpeechOutput(),
-            ),
-        ),
-    )
-    monkeypatch.setattr(main_module, "Scheduler", FakeScheduler)
     monkeypatch.setattr(main_module, "KeyboardInputService", FakeKeyboardInputService)
-    monkeypatch.setattr(main_module, "QueuedService", FakeQueuedService)
 
     import sys as _sys
-    import types
     fake_echo_app_module = types.ModuleType("ui.echo.app")
     fake_echo_app_module.EchoApp = FakeApp
     monkeypatch.setitem(_sys.modules, "ui.echo.app", fake_echo_app_module)
@@ -687,27 +764,15 @@ def test_build_runtime_starts_with_hotkey_running_and_keyboard_stopped(monkeypat
     speech_output = FakeSpeechOutput()
     requested_hotkeys: list[int] = []
 
-    from application.output.speech import SpeechBackendOption
-    monkeypatch.setattr(main_module, "create_input_capture", lambda: capture)
-    monkeypatch.setattr(
-        main_module,
-        "create_hotkey_capture",
-        lambda usage=HID.F10: requested_hotkeys.append(usage) or hotkey,
-    )
-    monkeypatch.setattr(
-        main_module,
-        "default_speech_backend_options",
-        lambda scheduler: (
-            SpeechBackendOption(
-                backend_id="pyttsx3",
-                label="pyttsx3",
-                factory=lambda: speech_output,
-            ),
-        ),
+    install_fake_key_echo_runtime_parts(
+        monkeypatch,
+        capture=capture,
+        hotkey=hotkey,
+        speech_output=speech_output,
+        requested_hotkeys=requested_hotkeys,
     )
 
     import sys as _sys
-    import types
     fake_echo_app_module = types.ModuleType("ui.echo.app")
     fake_echo_app_module.EchoApp = lambda controller: None
     monkeypatch.setitem(_sys.modules, "ui.echo.app", fake_echo_app_module)
@@ -725,30 +790,18 @@ def test_build_runtime_uses_echo_mode_enter_hotkey_as_single_source_of_truth(mon
     speech_output = FakeSpeechOutput()
     requested_hotkeys: list[int] = []
 
-    from application.output.speech import SpeechBackendOption
-    monkeypatch.setattr(main_module, "create_input_capture", lambda: capture)
-    monkeypatch.setattr(
-        main_module,
-        "create_hotkey_capture",
-        lambda usage=HID.F10: requested_hotkeys.append(usage) or hotkey,
-    )
-    monkeypatch.setattr(
-        main_module,
-        "default_speech_backend_options",
-        lambda scheduler: (
-            SpeechBackendOption(
-                backend_id="pyttsx3",
-                label="pyttsx3",
-                factory=lambda: speech_output,
-            ),
-        ),
+    install_fake_key_echo_runtime_parts(
+        monkeypatch,
+        capture=capture,
+        hotkey=hotkey,
+        speech_output=speech_output,
+        requested_hotkeys=requested_hotkeys,
     )
 
     original = main_module.KeyEchoAppService.enter_usage
     monkeypatch.setattr(main_module.KeyEchoAppService, "enter_usage", HID.F10)
 
     import sys as _sys
-    import types
     fake_echo_app_module = types.ModuleType("ui.echo.app")
     fake_echo_app_module.EchoApp = lambda controller: None
     monkeypatch.setitem(_sys.modules, "ui.echo.app", fake_echo_app_module)
@@ -767,27 +820,15 @@ def test_build_runtime_shutdown_stops_both_captures(monkeypatch) -> None:
     speech_output = FakeSpeechOutput()
     requested_hotkeys: list[int] = []
 
-    from application.output.speech import SpeechBackendOption
-    monkeypatch.setattr(main_module, "create_input_capture", lambda: capture)
-    monkeypatch.setattr(
-        main_module,
-        "create_hotkey_capture",
-        lambda usage=HID.F10: requested_hotkeys.append(usage) or hotkey,
-    )
-    monkeypatch.setattr(
-        main_module,
-        "default_speech_backend_options",
-        lambda scheduler: (
-            SpeechBackendOption(
-                backend_id="pyttsx3",
-                label="pyttsx3",
-                factory=lambda: speech_output,
-            ),
-        ),
+    install_fake_key_echo_runtime_parts(
+        monkeypatch,
+        capture=capture,
+        hotkey=hotkey,
+        speech_output=speech_output,
+        requested_hotkeys=requested_hotkeys,
     )
 
     import sys as _sys
-    import types
     fake_echo_app_module = types.ModuleType("ui.echo.app")
     fake_echo_app_module.EchoApp = lambda controller: None
     monkeypatch.setitem(_sys.modules, "ui.echo.app", fake_echo_app_module)
