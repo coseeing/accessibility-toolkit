@@ -10,6 +10,7 @@ from interop.protocol.routing.message_router import MessageRouter
 from apps.nvda_remote.events import (
     RemoteConnectionChanged,
     RemoteMessageReceived,
+    RemoteTransportDisconnected,
 )
 from apps.nvda_remote.service import NvdaRemoteAppService
 
@@ -320,11 +321,26 @@ def test_nvda_remote_service_handles_transport_disconnected_message():
     status_events = []
     service.set_status_listener(status_events.append)
 
-    transport.message_handler({"type": "transport_disconnected"})
+    transport.message_handler(
+        {"type": "transport_disconnected", "reason": "socket closed"}
+    )
 
     assert service.state.connection_state == service.state.connection_state.IDLE
     assert service.state.control_state == service.state.control_state.IDLE
-    assert status_events == [RemoteConnectionChanged("idle")]
+    assert status_events == [
+        RemoteTransportDisconnected("socket closed"),
+        RemoteConnectionChanged("idle"),
+    ]
+
+
+def test_nvda_remote_service_ignores_unknown_status_kinds_for_listener():
+    service, _transport, _capture, _hotkey, _dispatch_calls = build_service()
+    delivered = []
+    service.set_status_listener(delivered.append)
+
+    service._on_status({"kind": "invalid_message", "reason": "bad payload"})
+
+    assert delivered == []
 
 
 def test_nvda_remote_service_converts_remote_status_for_listener():

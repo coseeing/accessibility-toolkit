@@ -1,4 +1,5 @@
 from collections.abc import Callable
+import logging
 from typing import Any
 
 from adapters.inputs.base import HotkeyCapture, InputCapture, KeyEventDecision
@@ -35,9 +36,12 @@ from apps.nvda_remote.events import (
     RemoteConnectionChanged,
     RemoteControlChanged,
     RemoteMessageReceived,
+    RemoteTransportDisconnected,
 )
 from apps.shared.mode_manager import ModeManager
 from apps.shared.speech_settings_controller import SpeechSettingsController
+
+_logger = logging.getLogger(__name__)
 
 
 class RemoteControlMode:
@@ -278,6 +282,12 @@ class NvdaRemoteAppService(KeyEventHandler):
 
     def _handle_transport_message(self, payload: dict[str, Any]) -> None:
         if payload.get("type") == "transport_disconnected":
+            reason = payload.get("reason")
+            self._notify_status_listener(
+                RemoteTransportDisconnected(
+                    None if reason is None else str(reason)
+                )
+            )
             self._handle_connection_status(ConnectionState.IDLE.value)
             return
         if self.session.handle_message(payload):
@@ -287,7 +297,9 @@ class NvdaRemoteAppService(KeyEventHandler):
     def _on_status(self, status: dict[str, Any]) -> None:
         event = StatusEvent.from_payload(status)
         if event.kind != "connection":
-            self._notify_status_listener(self._event_from_status(event))
+            converted = self._event_from_status(event)
+            if converted is not None:
+                self._notify_status_listener(converted)
             return
 
         self._handle_connection_status(event.state or "")
@@ -309,17 +321,18 @@ class NvdaRemoteAppService(KeyEventHandler):
 
     def _event_from_status(
         self, status: StatusEvent
-    ) -> RemoteMessageReceived | StatusEvent:
+    ) -> RemoteMessageReceived | None:
         if status.kind == "remote":
             return RemoteMessageReceived(
                 status.type or "",
                 status.payload or {},
             )
-        return status
+        _logger.debug("Ignoring non-UI status kind: %s", status.kind)
+        return None
 
     def _notify_status_listener(
         self,
-        status: AppEvent | RemoteConnectionChanged | RemoteControlChanged | RemoteMessageReceived | StatusEvent,
+        status: AppEvent | RemoteConnectionChanged | RemoteControlChanged | RemoteMessageReceived | RemoteTransportDisconnected,
     ) -> None:
         if self._status_listener is not None:
             self._main_thread_dispatch(lambda: self._status_listener(status))
