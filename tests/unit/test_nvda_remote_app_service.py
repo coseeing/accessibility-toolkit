@@ -1,6 +1,6 @@
 from adapters.inputs.captured_event import CapturedKeyEvent
 from adapters.windows.native_key_context import WindowsNativeKeyContext
-from application.events import ErrorRaised, SpeechBackendChanged
+from application.events import ErrorRaised, ModeChanged, SpeechBackendChanged
 from application.input.results import AppKeyEventResult, KeyboardPipelineResult
 from application.output import Capabilities
 from interop.key import HID, KeyEvent
@@ -9,6 +9,7 @@ from interop.protocol.routing.message_router import MessageRouter
 
 from apps.nvda_remote.events import (
     RemoteConnectionChanged,
+    RemoteControlChanged,
     RemoteMessageReceived,
     RemoteTransportDisconnected,
 )
@@ -353,6 +354,56 @@ def test_nvda_remote_service_converts_remote_status_for_listener():
     transport.message_handler(payload)
 
     assert delivered == [RemoteMessageReceived("motd", payload)]
+
+
+def test_nvda_remote_service_safely_converts_malformed_remote_status() -> None:
+    service, _transport, _capture, _hotkey, _dispatch_calls = build_service()
+    delivered = []
+    service.set_status_listener(delivered.append)
+
+    service._on_status({"kind": "remote", "type": 123, "payload": "bad"})
+
+    assert delivered == [RemoteMessageReceived("123", {})]
+
+
+def test_nvda_remote_service_start_and_stop_control_dispatch_control_events() -> None:
+    pending = []
+
+    def deferred_dispatch(callback):
+        pending.append(callback)
+
+    service, _transport, capture, _hotkey, dispatch_calls = build_service(
+        dispatch=deferred_dispatch
+    )
+    service.state.connection_state = service.state.connection_state.CONNECTED
+    delivered = []
+    service.set_status_listener(delivered.append)
+
+    service.start_control()
+
+    assert service.state.control_state == service.state.control_state.CONTROLLING
+    assert delivered == []
+    assert len(dispatch_calls) == 2
+    while pending:
+        pending.pop(0)()
+    assert delivered == [
+        RemoteControlChanged("controlling"),
+        ModeChanged("remote_control", active=True),
+    ]
+
+    service.stop_control()
+
+    assert service.state.control_state == service.state.control_state.CONNECTED
+    assert len(dispatch_calls) == 4
+    while pending:
+        pending.pop(0)()
+    assert delivered == [
+        RemoteControlChanged("controlling"),
+        ModeChanged("remote_control", active=True),
+        RemoteControlChanged("connected"),
+        ModeChanged("remote_control", active=False),
+    ]
+    assert capture.running is False
 
 
 def test_nvda_remote_service_stop_control_handles_hotkey_start_failure():

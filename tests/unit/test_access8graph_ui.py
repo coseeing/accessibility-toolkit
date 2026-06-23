@@ -5,6 +5,7 @@ import types
 import pytest
 
 from application.events import ErrorRaised
+from apps.access8graph.events import GraphNavigationChanged
 
 
 def install_fake_wx(monkeypatch):
@@ -215,6 +216,26 @@ def test_main_frame_preserves_error_label_from_controller_status(
     controller.listener(ErrorRaised("Something went wrong"))
 
     assert frame.status_label.GetLabel() == "Something went wrong"
+
+    frame.Destroy()
+
+
+def test_main_frame_syncs_navigation_changed_status(main_frame_type) -> None:
+    controller = FakeController()
+    controller.selected_path = "map.graphml"
+    frame = main_frame_type(controller=controller)
+
+    controller.running = True
+    controller.listener(GraphNavigationChanged(active=True))
+
+    assert frame.status_label.GetLabel() == "Navigation running"
+    assert frame.navigation_button.GetLabel() == "Stop Navigation"
+
+    controller.running = False
+    controller.listener(GraphNavigationChanged(active=False))
+
+    assert frame.status_label.GetLabel() == "map.graphml"
+    assert frame.navigation_button.GetLabel() == "Start Navigation"
 
     frame.Destroy()
 

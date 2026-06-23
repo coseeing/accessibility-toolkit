@@ -55,3 +55,35 @@ def test_status_event_from_payload_keeps_transitional_dict_support() -> None:
         reason="closed",
         payload={"message": "hi"},
     )
+
+
+def test_status_event_from_payload_coerces_optional_string_fields() -> None:
+    event = StatusEvent.from_payload(
+        {
+            "kind": 123,
+            "state": 456,
+            "type": False,
+            "reason": RuntimeError("closed"),
+            "payload": {"ok": True},
+        }
+    )
+
+    assert event == StatusEvent(
+        kind="123",
+        state="456",
+        type="False",
+        reason="closed",
+        payload={"ok": True},
+    )
+
+
+def test_status_event_from_payload_drops_non_dict_payload() -> None:
+    event = StatusEvent.from_payload(
+        {
+            "kind": "remote",
+            "type": "motd",
+            "payload": "not a dict",
+        }
+    )
+
+    assert event == StatusEvent(kind="remote", type="motd", payload=None)

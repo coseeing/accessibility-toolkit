@@ -3,6 +3,7 @@ from pathlib import Path
 import wx
 
 from application.events import ErrorRaised
+from apps.access8graph.events import GraphNavigationChanged
 
 
 class Access8GraphMainFrame(wx.Frame):
@@ -94,6 +95,10 @@ class Access8GraphMainFrame(wx.Frame):
         if isinstance(status, ErrorRaised):
             self._last_error = status.message
             self.status_label.SetLabel(self._last_error)
+            return
+        if isinstance(status, GraphNavigationChanged):
+            self._last_error = None
+            self._sync_controls()
             return
         self._last_error = None
         self._sync_controls()

@@ -5,7 +5,6 @@ from typing import Any
 from adapters.inputs.base import HotkeyCapture, InputCapture, KeyEventDecision
 from adapters.inputs.captured_event import CapturedKeyEvent
 from application.events import (
-    AppEvent,
     ErrorRaised,
     SpeechBackendChanged,
     StatusEvent,
@@ -33,6 +32,7 @@ from apps.nvda_remote.use_cases import (
     NvdaRemoteInputForwardingUseCase,
 )
 from apps.nvda_remote.events import (
+    NvdaRemoteEvent,
     RemoteConnectionChanged,
     RemoteControlChanged,
     RemoteMessageReceived,
@@ -91,7 +91,7 @@ class NvdaRemoteAppService(KeyEventHandler):
         self._capabilities = capabilities
         self._on_speech_backend_changed = on_speech_backend_changed
         self.state = RuntimeState()
-        self._status_listener: Callable[[object], None] | None = None
+        self._status_listener: Callable[[NvdaRemoteEvent], None] | None = None
         self._main_thread_dispatch = main_thread_dispatch or (lambda callback: callback())
         self._suppressed_keyups: set[int] = set()
 
@@ -201,7 +201,7 @@ class NvdaRemoteAppService(KeyEventHandler):
         return bool(getattr(self.clipboard, "supported", True))
 
     def set_status_listener(
-        self, listener: Callable[[object], None] | None
+        self, listener: Callable[[NvdaRemoteEvent], None] | None
     ) -> None:
         self._status_listener = listener
 
@@ -332,7 +332,7 @@ class NvdaRemoteAppService(KeyEventHandler):
 
     def _notify_status_listener(
         self,
-        status: AppEvent | RemoteConnectionChanged | RemoteControlChanged | RemoteMessageReceived | RemoteTransportDisconnected,
+        status: NvdaRemoteEvent,
     ) -> None:
         if self._status_listener is not None:
             self._main_thread_dispatch(lambda: self._status_listener(status))

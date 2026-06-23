@@ -7,6 +7,7 @@ from application.events import ErrorRaised, SpeechBackendChanged
 from application.input.results import AppKeyEventResult, KeyboardPipelineResult
 from application.keyboard import KeyboardInputService
 from application.output import Capabilities
+from apps.access8graph.events import GraphNavigationChanged
 from apps.access8graph.service import Access8GraphAppService
 from interop.key import HID, KeyEvent
 from interop.speech.speech_sequence import SpeechSequence
@@ -269,6 +270,19 @@ def test_service_starts_and_stops_navigation() -> None:
 
     assert service.is_navigation_running() is False
     assert input_capture.running is False
+
+
+def test_service_dispatches_graph_navigation_state_changes() -> None:
+    statuses = []
+    service, _input_capture, _hotkey_capture, _speech = build_service()
+    service.set_status_listener(statuses.append)
+
+    service.choose_graphml(str(FIXTURE))
+    service.start_navigation()
+    service.stop_navigation()
+
+    assert GraphNavigationChanged(active=True) in statuses
+    assert GraphNavigationChanged(active=False) in statuses
 
 
 def test_service_handles_key_event_while_navigation_running() -> None:

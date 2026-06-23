@@ -2,7 +2,7 @@ from pathlib import Path
 
 from adapters.inputs.base import HotkeyCapture, InputCapture
 from adapters.inputs.captured_event import CapturedKeyEvent
-from application.events import AppEvent, ErrorRaised, ModeChanged, SpeechBackendChanged
+from application.events import AppEvent, ErrorRaised, SpeechBackendChanged
 from application.input import (
     assemble_pipeline_result,
     InputActivationUseCase,
@@ -15,6 +15,7 @@ from application.output import Capabilities
 from interop.key import HID
 from interop.speech.speech_sequence import SpeechSequence
 
+from apps.access8graph.events import GraphNavigationChanged
 from apps.access8graph.flow import MrtFlow
 from apps.access8graph.graphml import Graph, MrtDirectionNavigator, MrtModel, MrtUndirectionNavigator
 from apps.access8graph.input import Access8GraphKeyTranslator
@@ -157,11 +158,15 @@ class Access8GraphAppService(KeyEventHandler):
             },
             output=self._flow_output,
         )
+        self._notify_status_listener(GraphNavigationChanged(active=True))
 
     def _stop_flow(self) -> None:
+        had_flow = self._flow is not None
         self._navigation_running = False
         self._flow = None
         self._flow_output.cancel_speech()
+        if had_flow:
+            self._notify_status_listener(GraphNavigationChanged(active=False))
 
     def get_speech_backend_options(self) -> tuple[tuple[str, str], ...]:
         return self._speech_settings.get_backend_options()
@@ -227,7 +232,7 @@ class Access8GraphAppService(KeyEventHandler):
         )
 
     def _notify_status_listener(
-        self, status: AppEvent | ModeChanged
+        self, status: AppEvent | GraphNavigationChanged
     ) -> None:
         if self._hotkey_start_in_progress and isinstance(status, ErrorRaised):
             self._hotkey_start_reported_error = True
