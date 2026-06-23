@@ -278,18 +278,21 @@ class NvdaRemoteAppService(KeyEventHandler):
 
     def _handle_transport_message(self, payload: dict[str, Any]) -> None:
         if payload.get("type") == "transport_disconnected":
-            self._on_status({"kind": "connection", "state": "idle"})
+            self._handle_connection_status(ConnectionState.IDLE.value)
             return
         if self.session.handle_message(payload):
             return
         self.router.handle_message(payload)
 
     def _on_status(self, status: dict[str, Any]) -> None:
-        if status.get("kind") != "connection":
-            self._notify_status_listener(self._event_from_status(status))
+        event = StatusEvent.from_payload(status)
+        if event.kind != "connection":
+            self._notify_status_listener(self._event_from_status(event))
             return
 
-        state = str(status.get("state", ""))
+        self._handle_connection_status(event.state or "")
+
+    def _handle_connection_status(self, state: str) -> None:
         match state:
             case ConnectionState.CONNECTED.value:
                 self.state.connection_state = ConnectionState.CONNECTED
@@ -305,14 +308,14 @@ class NvdaRemoteAppService(KeyEventHandler):
         self._notify_status_listener(RemoteConnectionChanged(state))
 
     def _event_from_status(
-        self, status: dict[str, Any]
+        self, status: StatusEvent
     ) -> RemoteMessageReceived | StatusEvent:
-        if status.get("kind") == "remote":
+        if status.kind == "remote":
             return RemoteMessageReceived(
-                str(status.get("type", "")),
-                status.get("payload") or {},
+                status.type or "",
+                status.payload or {},
             )
-        return StatusEvent.from_payload(status)
+        return status
 
     def _notify_status_listener(
         self,
