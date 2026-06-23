@@ -1,6 +1,7 @@
 import importlib
 import logging
 import sys
+from dataclasses import dataclass
 from typing import Any
 
 from adapters.inputs.base import HotkeyCapture, InputCapture
@@ -32,6 +33,14 @@ _MACOS_HOTKEY_KEY_CODES: dict[int, int] = {
     HID.F10: 109,
     HID.ENTER: 36,
 }
+
+
+@dataclass(frozen=True)
+class PlatformServices:
+    input_capture: InputCapture
+    hotkey_capture: HotkeyCapture
+    clipboard: ClipboardService
+    tone_output: DefaultToneOutput
 
 
 # --- null / fallback implementations ---
@@ -240,3 +249,37 @@ def default_speech_backend_options(
 
 def default_speech_backend_id() -> str:
     return "nvda_controller" if sys.platform == "win32" else "pyttsx3"
+
+
+class PlatformProvider:
+    def create_input_capture(self) -> InputCapture:
+        return create_input_capture()
+
+    def create_hotkey_capture(
+        self, usage: int = _DEFAULT_HOTKEY_USAGE
+    ) -> HotkeyCapture:
+        return create_hotkey_capture(usage)
+
+    def create_clipboard_service(self) -> ClipboardService:
+        return create_clipboard_service()
+
+    def create_tone_output(self) -> DefaultToneOutput:
+        return create_tone_output()
+
+    def default_speech_backend_options(
+        self, scheduler: Scheduler
+    ) -> tuple[SpeechBackendOption, ...]:
+        return default_speech_backend_options(scheduler)
+
+    def default_speech_backend_id(self) -> str:
+        return default_speech_backend_id()
+
+    def build_services(
+        self, hotkey_usage: int = _DEFAULT_HOTKEY_USAGE
+    ) -> PlatformServices:
+        return PlatformServices(
+            input_capture=self.create_input_capture(),
+            hotkey_capture=self.create_hotkey_capture(hotkey_usage),
+            clipboard=self.create_clipboard_service(),
+            tone_output=self.create_tone_output(),
+        )

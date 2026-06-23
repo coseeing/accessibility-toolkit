@@ -12,6 +12,7 @@ from bootstrap.platform import (
     create_tone_output,
     default_speech_backend_id,
     default_speech_backend_options,
+    PlatformProvider,
 )
 from interop.key import HID
 
@@ -262,3 +263,16 @@ class TestCreateToneOutput:
         tone = create_tone_output()
 
         assert isinstance(tone, DefaultToneOutput)
+
+
+class TestPlatformProvider:
+    def test_build_services_on_linux_uses_fallback_platform_services(self, monkeypatch):
+        monkeypatch.setattr(sys, "platform", "linux")
+
+        services = PlatformProvider().build_services(hotkey_usage=HID.ENTER)
+
+        assert not services.input_capture.running
+        assert not services.hotkey_capture.running
+        assert services.clipboard.get_text() == ""
+        assert services.tone_output is not None
+        assert PlatformProvider().default_speech_backend_id() == "pyttsx3"
