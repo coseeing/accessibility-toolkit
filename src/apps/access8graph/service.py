@@ -2,6 +2,7 @@ from pathlib import Path
 
 from adapters.inputs.base import HotkeyCapture, InputCapture
 from adapters.inputs.captured_event import CapturedKeyEvent
+from application.events import AppEvent, ErrorRaised, ModeChanged, SpeechBackendChanged
 from application.input import (
     assemble_pipeline_result,
     InputActivationUseCase,
@@ -12,6 +13,7 @@ from application.input.results import AppKeyEventResult
 from application.keyboard import KeyEventHandler, KeyboardInputService
 from application.output import Capabilities
 from interop.key import HID
+from interop.speech.speech_sequence import SpeechSequence
 
 from apps.access8graph.flow import MrtFlow
 from apps.access8graph.graphml import Graph, MrtDirectionNavigator, MrtModel, MrtUndirectionNavigator
@@ -36,9 +38,7 @@ class Access8GraphNavigationMode:
         try:
             self._service._start_flow()
         except Exception as error:
-            self._service._notify_status_listener(
-                {"kind": "error", "message": str(error)}
-            )
+            self._service._notify_status_listener(ErrorRaised(str(error)))
             return False
         return True
 
@@ -93,7 +93,7 @@ class Access8GraphAppService(KeyEventHandler):
             is_active=self.is_navigation_running,
             set_active=self._set_navigation_active,
             notify_error=lambda message: self._notify_status_listener(
-                {"kind": "error", "message": message}
+                ErrorRaised(message)
             ),
         )
         self._mode_manager = ModeManager(
@@ -171,9 +171,7 @@ class Access8GraphAppService(KeyEventHandler):
 
     def set_speech_backend(self, backend_id: str) -> None:
         self._speech_settings.set_backend(backend_id)
-        self._notify_status_listener(
-            {"kind": "speech_backend", "backend_id": backend_id}
-        )
+        self._notify_status_listener(SpeechBackendChanged(backend_id))
 
     def get_available_voices(self) -> tuple[tuple[str, str], ...]:
         return self._speech_settings.list_voices()
@@ -214,7 +212,7 @@ class Access8GraphAppService(KeyEventHandler):
         try:
             app_result = self._mode_manager.handle_key_event(event.key_event)
         except Exception as error:
-            self._notify_status_listener({"kind": "error", "message": str(error)})
+            self._notify_status_listener(ErrorRaised(str(error)))
             self.stop_navigation()
             return KeyboardPipelineResult(
                 send_to_system=False,
@@ -228,12 +226,13 @@ class Access8GraphAppService(KeyEventHandler):
             send_to_system=send_to_system, app_result=app_result
         )
 
-    def _notify_status_listener(self, status: dict[str, str]) -> None:
-        if (
-            self._hotkey_start_in_progress
-            and status.get("kind") == "error"
-        ):
+    def _notify_status_listener(
+        self, status: AppEvent | ModeChanged
+    ) -> None:
+        if self._hotkey_start_in_progress and isinstance(status, ErrorRaised):
             self._hotkey_start_reported_error = True
+        if isinstance(status, ErrorRaised):
+            self._capabilities.speech.speak(SpeechSequence(items=(status.message,)))
         if self._status_listener is not None:
             self._main_thread_dispatch(lambda: self._status_listener(status))
 
@@ -250,7 +249,7 @@ class Access8GraphAppService(KeyEventHandler):
         except Exception as error:
             if self._hotkey_start_reported_error:
                 return
-            self._notify_status_listener({"kind": "error", "message": str(error)})
+            self._notify_status_listener(ErrorRaised(str(error)))
         finally:
             self._hotkey_start_in_progress = False
             self._hotkey_start_reported_error = False

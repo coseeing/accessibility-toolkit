@@ -3,6 +3,7 @@ from pathlib import Path
 import pytest
 
 from adapters.inputs.captured_event import CapturedKeyEvent
+from application.events import ErrorRaised, SpeechBackendChanged
 from application.input.results import AppKeyEventResult, KeyboardPipelineResult
 from application.keyboard import KeyboardInputService
 from application.output import Capabilities
@@ -129,7 +130,7 @@ def test_service_dispatches_status_updates_through_main_thread_callback() -> Non
 
     pending.pop()()
 
-    assert delivered == [{"kind": "speech_backend", "backend_id": "default"}]
+    assert delivered == [SpeechBackendChanged("default")]
 
 
 def test_idle_hotkey_without_selected_graphml_reports_error_without_starting_capture() -> None:
@@ -163,7 +164,8 @@ def test_idle_hotkey_without_selected_graphml_reports_error_without_starting_cap
 
     pending.pop(0)()
 
-    assert delivered == [{"kind": "error", "message": "No GraphML file selected"}]
+    assert delivered == [ErrorRaised("No GraphML file selected")]
+    assert ("speak", SpeechSequence(items=("No GraphML file selected",))) in speech.calls
 
 
 def test_idle_hotkey_with_malformed_graphml_keeps_specific_error_message(
@@ -199,10 +201,9 @@ def test_idle_hotkey_with_malformed_graphml_keeps_specific_error_message(
     assert input_capture.running is False
     assert hotkey_capture.running is True
     assert delivered == [
-        {
-            "kind": "error",
-            "message": "Failed to parse GraphML file: syntax error: line 1, column 0",
-        }
+        ErrorRaised(
+            "Failed to parse GraphML file: syntax error: line 1, column 0"
+        )
     ]
 
 
@@ -232,9 +233,7 @@ def test_idle_hotkey_reports_generic_start_failure_when_no_specific_error_preced
     while pending:
         pending.pop(0)()
 
-    assert delivered == [
-        {"kind": "error", "message": "Failed to start navigation"}
-    ]
+    assert delivered == [ErrorRaised("Failed to start navigation")]
 
 
 def test_service_cannot_start_without_selected_graphml() -> None:
@@ -346,7 +345,7 @@ def test_service_stops_navigation_and_reports_flow_dispatch_exception() -> None:
     )
     assert service.is_navigation_running() is False
     assert input_capture.running is False
-    assert {"kind": "error", "message": "flow dispatch failed"} in statuses
+    assert ErrorRaised("flow dispatch failed") in statuses
 
 
 def test_service_escape_stops_navigation() -> None:
