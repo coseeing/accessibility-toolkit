@@ -1590,17 +1590,39 @@ def test_access8graph_main_build_runtime_injects_tone_output(monkeypatch):
             self.controller = controller
 
     tone_output = FakeToneOutput()
+    keyboard_capture = FakeKeyboardCapture()
+    hotkey_capture = FakeHotkeyCapture()
+    scheduler = FakeScheduler()
+    speech = FakeSpeechService(
+        backend_options=("backend",),
+        selected_backend_id="pyttsx3",
+        scheduler=scheduler,
+    )
+    speaker = FakeQueuedService(speech=speech)
+    capabilities = types.SimpleNamespace(speech=speaker, tone=tone_output)
 
-    monkeypatch.setattr(access8graph_main, "Scheduler", FakeScheduler)
-    monkeypatch.setattr(access8graph_main, "SpeechService", FakeSpeechService)
-    monkeypatch.setattr(access8graph_main, "QueuedService", FakeQueuedService)
+    def fake_build_app_runtime_parts(*, hotkey_usage, **kwargs):
+        assert hotkey_usage == FakeAppService.enter_usage
+        assert kwargs == {}
+        return types.SimpleNamespace(
+            input_capture=keyboard_capture,
+            hotkey_capture=hotkey_capture,
+            tone_output=tone_output,
+            output=types.SimpleNamespace(
+                scheduler=scheduler,
+                speech=speech,
+                speaker=speaker,
+                capabilities=capabilities,
+            ),
+        )
+
     monkeypatch.setattr(access8graph_main, "KeyboardInputService", FakeKeyboardInputService)
     monkeypatch.setattr(access8graph_main, "Access8GraphAppService", FakeAppService)
-    monkeypatch.setattr(access8graph_main, "create_input_capture", lambda: FakeKeyboardCapture())
-    monkeypatch.setattr(access8graph_main, "create_hotkey_capture", lambda usage=HID.F11: FakeHotkeyCapture())
-    monkeypatch.setattr(access8graph_main, "create_tone_output", lambda: tone_output)
-    monkeypatch.setattr(access8graph_main, "default_speech_backend_options", lambda scheduler: ("backend",))
-    monkeypatch.setattr(access8graph_main, "default_speech_backend_id", lambda: "pyttsx3")
+    monkeypatch.setattr(
+        access8graph_main,
+        "build_app_runtime_parts",
+        fake_build_app_runtime_parts,
+    )
     monkeypatch.setitem(
         sys.modules,
         "ui.access8graph.app",
@@ -1612,6 +1634,10 @@ def test_access8graph_main_build_runtime_injects_tone_output(monkeypatch):
     assert runtime.app_service._capabilities.speech is runtime.speaker
     assert runtime.app_service._capabilities.tone is tone_output
     assert runtime.tone_output is tone_output
+    assert runtime.hotkey_capture is hotkey_capture
     assert runtime.hotkey_capture.started == 1
+    assert runtime.scheduler is scheduler
+    assert runtime.speech is speech
+    assert runtime.speaker is speaker
     assert runtime.app_service.bind_calls == 1
     assert runtime.app.controller is runtime.app_service
