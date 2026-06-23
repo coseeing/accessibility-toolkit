@@ -4,7 +4,7 @@ import logging
 import sys
 from typing import Any
 
-from application.output_scheduler import OutputScheduler
+from application.output import Scheduler
 from interop.speech.speech_commands import (
     BreakCommand,
     PitchCommand,
@@ -27,7 +27,7 @@ class NvdaControllerSpeechOutput:
         controller: Any | None,
         *,
         loaded_from: str | None = None,
-        scheduler: OutputScheduler | None = None,
+        scheduler: Scheduler | None = None,
     ) -> None:
         self.controller = controller if self._supports_ssml(controller) else None
         self.available = self.controller is not None
@@ -43,7 +43,7 @@ class NvdaControllerSpeechOutput:
         *,
         loader: Any | None = None,
         is_windows: bool | None = None,
-        scheduler: OutputScheduler | None = None,
+        scheduler: Scheduler | None = None,
     ) -> "NvdaControllerSpeechOutput":
         running_windows = sys.platform == "win32" if is_windows is None else is_windows
         if not running_windows:

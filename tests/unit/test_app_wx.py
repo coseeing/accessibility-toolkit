@@ -775,10 +775,10 @@ def test_nvda_remote_main_build_runtime_composes_app_service_and_gui(monkeypatch
             self.backend_options = backend_options
             self.selected_backend_id = selected_backend_id
 
-    class FakeOutputScheduler:
+    class FakeScheduler:
         pass
 
-    class FakeQueuedOutputService:
+    class FakeQueuedService:
         def __init__(self, *, speech):
             self.speech = speech
 
@@ -821,7 +821,7 @@ def test_nvda_remote_main_build_runtime_composes_app_service_and_gui(monkeypatch
             input_capture,
             hotkey_capture,
             clipboard,
-            outputs,
+            capabilities,
             on_speech_backend_changed,
             main_thread_dispatch,
         ):
@@ -829,7 +829,7 @@ def test_nvda_remote_main_build_runtime_composes_app_service_and_gui(monkeypatch
             self.input_capture = input_capture
             self.hotkey_capture = hotkey_capture
             self.clipboard = clipboard
-            self.outputs = outputs
+            self.capabilities = capabilities
             self.on_speech_backend_changed = on_speech_backend_changed
             self.main_thread_dispatch = main_thread_dispatch
             self.bind_calls = 0
@@ -847,9 +847,9 @@ def test_nvda_remote_main_build_runtime_composes_app_service_and_gui(monkeypatch
             return 77
 
     monkeypatch.setattr(nvda_remote_main, "SpeechBackendConfigStore", FakeConfigStore)
-    monkeypatch.setattr(nvda_remote_main, "OutputScheduler", FakeOutputScheduler)
+    monkeypatch.setattr(nvda_remote_main, "Scheduler", FakeScheduler)
     monkeypatch.setattr(nvda_remote_main, "SpeechService", FakeSpeechService)
-    monkeypatch.setattr(nvda_remote_main, "QueuedOutputService", FakeQueuedOutputService)
+    monkeypatch.setattr(nvda_remote_main, "QueuedService", FakeQueuedService)
     monkeypatch.setattr(nvda_remote_main, "RelayTransport", FakeTransport)
     monkeypatch.setattr(bootstrap.platform, "create_input_capture", lambda: FakeKeyboardCapture())
     monkeypatch.setattr(
@@ -880,13 +880,13 @@ def test_nvda_remote_main_build_runtime_composes_app_service_and_gui(monkeypatch
     assert isinstance(runtime.input_capture, FakeKeyboardCapture)
     assert isinstance(runtime.hotkey_capture, FakeHotkeyCapture)
     assert isinstance(runtime.clipboard, FakeClipboard)
-    assert isinstance(runtime.speech_scheduler, FakeOutputScheduler)
-    assert isinstance(runtime.speech_service, FakeSpeechService)
-    assert isinstance(runtime.output_service, FakeQueuedOutputService)
-    assert runtime.speech_service.selected_backend_id == "pyttsx3"
-    assert runtime.output_service.speech is runtime.speech_service
-    assert runtime.app_service.outputs.speech is runtime.output_service
-    assert runtime.app_service.outputs.tone is tone_output
+    assert isinstance(runtime.scheduler, FakeScheduler)
+    assert isinstance(runtime.speech, FakeSpeechService)
+    assert isinstance(runtime.speaker, FakeQueuedService)
+    assert runtime.speech.selected_backend_id == "pyttsx3"
+    assert runtime.speaker.speech is runtime.speech
+    assert runtime.app_service.capabilities.speech is runtime.speaker
+    assert runtime.app_service.capabilities.tone is tone_output
     assert runtime.app_service.on_speech_backend_changed == runtime.config_store.save_backend_id
     assert runtime.app_service.main_thread_dispatch is FakeApp.dispatch
     assert runtime.app_service.bind_calls == 1
@@ -919,10 +919,10 @@ def test_nvda_remote_build_runtime_uses_mode_enter_hotkey_as_single_source_of_tr
             self.backend_options = backend_options
             self.selected_backend_id = selected_backend_id
 
-    class FakeOutputScheduler:
+    class FakeScheduler:
         pass
 
-    class FakeQueuedOutputService:
+    class FakeQueuedService:
         def __init__(self, *, speech):
             self.speech = speech
 
@@ -966,9 +966,9 @@ def test_nvda_remote_build_runtime_uses_mode_enter_hotkey_as_single_source_of_tr
             return 0
 
     monkeypatch.setattr(nvda_remote_main, "SpeechBackendConfigStore", FakeConfigStore)
-    monkeypatch.setattr(nvda_remote_main, "OutputScheduler", FakeOutputScheduler)
+    monkeypatch.setattr(nvda_remote_main, "Scheduler", FakeScheduler)
     monkeypatch.setattr(nvda_remote_main, "SpeechService", FakeSpeechService)
-    monkeypatch.setattr(nvda_remote_main, "QueuedOutputService", FakeQueuedOutputService)
+    monkeypatch.setattr(nvda_remote_main, "QueuedService", FakeQueuedService)
     monkeypatch.setattr(nvda_remote_main, "RelayTransport", FakeTransport)
     monkeypatch.setattr(nvda_remote_main, "create_input_capture", lambda: FakeKeyboardCapture())
     monkeypatch.setattr(
@@ -1007,10 +1007,10 @@ def test_build_runtime_uses_macos_input_and_hotkey_on_darwin(monkeypatch):
             self.backend_options = backend_options
             self.selected_backend_id = selected_backend_id
 
-    class FakeOutputScheduler:
+    class FakeScheduler:
         pass
 
-    class FakeQueuedOutputService:
+    class FakeQueuedService:
         def __init__(self, *, speech):
             self.speech = speech
 
@@ -1066,9 +1066,9 @@ def test_build_runtime_uses_macos_input_and_hotkey_on_darwin(monkeypatch):
             return 0
 
     monkeypatch.setattr(nvda_remote_main, "SpeechBackendConfigStore", FakeConfigStore)
-    monkeypatch.setattr(nvda_remote_main, "OutputScheduler", FakeOutputScheduler)
+    monkeypatch.setattr(nvda_remote_main, "Scheduler", FakeScheduler)
     monkeypatch.setattr(nvda_remote_main, "SpeechService", FakeSpeechService)
-    monkeypatch.setattr(nvda_remote_main, "QueuedOutputService", FakeQueuedOutputService)
+    monkeypatch.setattr(nvda_remote_main, "QueuedService", FakeQueuedService)
     monkeypatch.setattr(nvda_remote_main, "RelayTransport", FakeTransport)
     monkeypatch.setattr(bootstrap.platform, "_MacOSEventTapManager", FakeManager)
     monkeypatch.setattr(bootstrap.platform, "_MacOSEventTapBackend", lambda: fake_backend)
@@ -1121,10 +1121,10 @@ def test_build_runtime_uses_safe_clipboard_on_darwin(monkeypatch):
             self.backend_options = backend_options
             self.selected_backend_id = selected_backend_id
 
-    class FakeOutputScheduler:
+    class FakeScheduler:
         pass
 
-    class FakeQueuedOutputService:
+    class FakeQueuedService:
         def __init__(self, *, speech):
             self.speech = speech
 
@@ -1173,9 +1173,9 @@ def test_build_runtime_uses_safe_clipboard_on_darwin(monkeypatch):
             return 0
 
     monkeypatch.setattr(nvda_remote_main, "SpeechBackendConfigStore", FakeConfigStore)
-    monkeypatch.setattr(nvda_remote_main, "OutputScheduler", FakeOutputScheduler)
+    monkeypatch.setattr(nvda_remote_main, "Scheduler", FakeScheduler)
     monkeypatch.setattr(nvda_remote_main, "SpeechService", FakeSpeechService)
-    monkeypatch.setattr(nvda_remote_main, "QueuedOutputService", FakeQueuedOutputService)
+    monkeypatch.setattr(nvda_remote_main, "QueuedService", FakeQueuedService)
     monkeypatch.setattr(nvda_remote_main, "RelayTransport", FakeTransport)
     monkeypatch.setattr(bootstrap.platform, "_MacOSEventTapManager", FakeManager)
     monkeypatch.setattr(bootstrap.platform, "_MacOSEventTapBackend", lambda: object())
@@ -1239,10 +1239,10 @@ def test_nvda_remote_main_build_runtime_falls_back_for_unknown_backend(monkeypat
             if selected_backend_id == "missing":
                 raise ValueError("Unknown speech backend: missing")
 
-    class FakeOutputScheduler:
+    class FakeScheduler:
         pass
 
-    class FakeQueuedOutputService:
+    class FakeQueuedService:
         def __init__(self, *, speech):
             self.speech = speech
 
@@ -1286,9 +1286,9 @@ def test_nvda_remote_main_build_runtime_falls_back_for_unknown_backend(monkeypat
             return 0
 
     monkeypatch.setattr(nvda_remote_main, "SpeechBackendConfigStore", FakeConfigStore)
-    monkeypatch.setattr(nvda_remote_main, "OutputScheduler", FakeOutputScheduler)
+    monkeypatch.setattr(nvda_remote_main, "Scheduler", FakeScheduler)
     monkeypatch.setattr(nvda_remote_main, "SpeechService", FakeSpeechService)
-    monkeypatch.setattr(nvda_remote_main, "QueuedOutputService", FakeQueuedOutputService)
+    monkeypatch.setattr(nvda_remote_main, "QueuedService", FakeQueuedService)
     monkeypatch.setattr(nvda_remote_main, "RelayTransport", FakeTransport)
     monkeypatch.setattr(bootstrap.platform, "create_input_capture", lambda: FakeKeyboardCapture())
     monkeypatch.setattr(
@@ -1314,9 +1314,9 @@ def test_nvda_remote_main_build_runtime_falls_back_for_unknown_backend(monkeypat
 
     assert FakeSpeechService.init_calls == ["missing", "nvda_controller"]
     assert runtime.config_store.saved == ["nvda_controller"]
-    assert isinstance(runtime.speech_scheduler, FakeOutputScheduler)
-    assert runtime.speech_service.selected_backend_id == "nvda_controller"
-    assert runtime.output_service.speech is runtime.speech_service
+    assert isinstance(runtime.scheduler, FakeScheduler)
+    assert runtime.speech.selected_backend_id == "nvda_controller"
+    assert runtime.speaker.speech is runtime.speech
 
 
 def test_nvda_remote_main_continues_startup_when_logging_setup_fails(monkeypatch):
@@ -1531,7 +1531,7 @@ def test_access8graph_main_build_runtime_injects_tone_output(monkeypatch):
     install_fake_wx(monkeypatch)
     access8graph_main = importlib.import_module("apps.access8graph.main")
 
-    class FakeOutputScheduler:
+    class FakeScheduler:
         pass
 
     class FakeSpeechService:
@@ -1540,7 +1540,7 @@ def test_access8graph_main_build_runtime_injects_tone_output(monkeypatch):
             self.selected_backend_id = selected_backend_id
             self.scheduler = scheduler
 
-    class FakeQueuedOutputService:
+    class FakeQueuedService:
         def __init__(self, *, speech):
             self.speech = speech
 
@@ -1569,10 +1569,10 @@ def test_access8graph_main_build_runtime_injects_tone_output(monkeypatch):
     class FakeAppService:
         enter_usage = HID.F11
 
-        def __init__(self, *, hotkey_capture, input_capture, outputs, main_thread_dispatch):
+        def __init__(self, *, hotkey_capture, input_capture, capabilities, main_thread_dispatch):
             self.hotkey_capture = hotkey_capture
             self.input_capture = input_capture
-            self._outputs = outputs
+            self._capabilities = capabilities
             self.main_thread_dispatch = main_thread_dispatch
             self.attached_input_service = None
             self.bind_calls = 0
@@ -1591,9 +1591,9 @@ def test_access8graph_main_build_runtime_injects_tone_output(monkeypatch):
 
     tone_output = FakeToneOutput()
 
-    monkeypatch.setattr(access8graph_main, "OutputScheduler", FakeOutputScheduler)
+    monkeypatch.setattr(access8graph_main, "Scheduler", FakeScheduler)
     monkeypatch.setattr(access8graph_main, "SpeechService", FakeSpeechService)
-    monkeypatch.setattr(access8graph_main, "QueuedOutputService", FakeQueuedOutputService)
+    monkeypatch.setattr(access8graph_main, "QueuedService", FakeQueuedService)
     monkeypatch.setattr(access8graph_main, "KeyboardInputService", FakeKeyboardInputService)
     monkeypatch.setattr(access8graph_main, "Access8GraphAppService", FakeAppService)
     monkeypatch.setattr(access8graph_main, "create_input_capture", lambda: FakeKeyboardCapture())
@@ -1609,8 +1609,8 @@ def test_access8graph_main_build_runtime_injects_tone_output(monkeypatch):
 
     runtime = access8graph_main.build_runtime()
 
-    assert runtime.app_service._outputs.speech is runtime.output_service
-    assert runtime.app_service._outputs.tone is tone_output
+    assert runtime.app_service._capabilities.speech is runtime.speaker
+    assert runtime.app_service._capabilities.tone is tone_output
     assert runtime.tone_output is tone_output
     assert runtime.hotkey_capture.started == 1
     assert runtime.app_service.bind_calls == 1

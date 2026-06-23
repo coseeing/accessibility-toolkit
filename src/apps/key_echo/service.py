@@ -7,7 +7,7 @@ from application.input import (
     should_pass_through_system_toggle,
 )
 from application.keyboard import KeyEventHandler, KeyboardInputService
-from application.output_capabilities import OutputCapabilities
+from application.output import Capabilities
 from interop.key import HID
 
 from apps.key_echo.use_cases import (
@@ -50,12 +50,12 @@ class KeyEchoAppService(KeyEventHandler):
         *,
         hotkey_capture: HotkeyCapture,
         input_capture: InputCapture,
-        outputs: OutputCapabilities,
+        capabilities: Capabilities,
         main_thread_dispatch=None,
     ) -> None:
         self.hotkey_capture = hotkey_capture
         self.input_capture = input_capture
-        self._outputs = outputs
+        self._capabilities = capabilities
         self._input_service: KeyboardInputService | None = None
         self._status_listener = None
         self._echo_control: KeyEchoControlUseCase | None = None
@@ -64,11 +64,11 @@ class KeyEchoAppService(KeyEventHandler):
         )
 
         self._echo_input = KeyEchoInputUseCase(
-            cancel=lambda: self._outputs.speech.cancel(),
-            speak=lambda sequence: self._outputs.speech.speak(sequence),
+            cancel=lambda: self._capabilities.speech.cancel(),
+            speak=lambda sequence: self._capabilities.speech.speak(sequence),
         )
         self._speech_settings = SpeechSettingsController(
-            speech=outputs.speech,
+            speech=capabilities.speech,
         )
         self._activation = InputActivationUseCase(
             input_capture=input_capture,
@@ -167,7 +167,7 @@ class KeyEchoAppService(KeyEventHandler):
             self._input_service.stop()
         if self.hotkey_capture is not None and self.hotkey_capture.running:
             self.hotkey_capture.stop()
-        self._outputs.speech.shutdown()
+        self._capabilities.speech.shutdown()
 
     def handle_key_event(self, event: CapturedKeyEvent) -> KeyboardPipelineResult:
         send_to_system = should_pass_through_system_toggle(event)

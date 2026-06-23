@@ -6,9 +6,9 @@ from typing import Any
 from adapters.inputs.base import HotkeyCapture, InputCapture
 from adapters.outputs.drivers.pyttsx3 import Pyttsx3SpeechOutput
 from adapters.outputs.tone import DefaultToneOutput
-from application.output_scheduler import OutputScheduler
-from application.services import ClipboardService
-from application.speech_backends import SpeechBackendOption
+from application.output import Scheduler
+from application.output import ClipboardService
+from application.output.speech import SpeechBackendOption
 from interop.key import HID
 
 _logger = logging.getLogger(__name__)
@@ -215,7 +215,7 @@ def create_tone_output() -> DefaultToneOutput:
 
 
 def default_speech_backend_options(
-    scheduler: OutputScheduler,
+    scheduler: Scheduler,
 ) -> tuple[SpeechBackendOption, ...]:
     options = [
         SpeechBackendOption(

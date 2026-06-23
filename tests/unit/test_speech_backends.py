@@ -6,8 +6,8 @@ import pytest
 
 from adapters.outputs.drivers.pyttsx3 import Pyttsx3SpeechOutput
 from application.config import SpeechBackendConfigStore
-from application.speech_backends import SpeechBackendManager, SpeechBackendOption
-from application.services import OutputManager
+from application.output.speech import SpeechBackendManager, SpeechBackendOption
+from application.output import Manager
 from adapters.windows.nvda_controller import NvdaControllerSpeechOutput
 from interop.speech.speech_commands import (
     BreakCommand,
@@ -580,7 +580,7 @@ def test_raw_json_speak_payload_reaches_real_pyttsx3_sequence_path():
     engine = FakeEngine()
     task_manager = FakeTaskManager()
     output = Pyttsx3SpeechOutput(engine=engine, task_manager=task_manager)
-    manager = OutputManager(speech_output=output, clipboard=FakeClipboard())
+    manager = Manager(speech_output=output, clipboard=FakeClipboard())
     router = MessageRouter(
         on_speech=manager.handle_speech,
         on_cancel=manager.handle_cancel,
@@ -608,7 +608,7 @@ def test_raw_json_speak_payload_reaches_real_nvda_controller_sequence_path():
     serializer = JSONSerializer()
     controller = FakeNvdaController()
     output = NvdaControllerSpeechOutput(controller=controller)
-    manager = OutputManager(speech_output=output, clipboard=FakeClipboard())
+    manager = Manager(speech_output=output, clipboard=FakeClipboard())
     router = MessageRouter(
         on_speech=manager.handle_speech,
         on_cancel=manager.handle_cancel,

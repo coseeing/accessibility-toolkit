@@ -2,20 +2,20 @@ import logging
 from enum import Enum
 from typing import Protocol, runtime_checkable
 
-from application.output_scheduler import OutputScheduler
-from application.speech_service import SpeechService
+from application.output.scheduler import Scheduler
+from application.output.speech.service import SpeechService
 from interop.speech.speech_sequence import SpeechSequence
 
 _logger = logging.getLogger(__name__)
 
 
-class OutputMode(Enum):
+class Mode(Enum):
     SEQUENTIAL = "sequential"
     PARALLEL = "parallel"
 
 
 @runtime_checkable
-class SpeechOutputService(Protocol):
+class SpeechServiceProtocol(Protocol):
     def speak(self, sequence: SpeechSequence) -> None: ...
     def cancel(self) -> None: ...
     def pause(self, is_paused: bool) -> None: ...
@@ -34,36 +34,36 @@ class SpeechOutputService(Protocol):
     def shutdown(self) -> None: ...
 
 
-class QueuedOutputService:
+class QueuedService:
     def __init__(self, *, speech: SpeechService) -> None:
         self._speech = speech
-        self._mode = OutputMode.PARALLEL
-        self._shared_scheduler = OutputScheduler()
+        self._mode = Mode.PARALLEL
+        self._shared_scheduler = Scheduler()
 
-    def set_mode(self, mode: OutputMode) -> None:
+    def set_mode(self, mode: Mode) -> None:
         self._mode = mode
 
-    def get_mode(self) -> OutputMode:
+    def get_mode(self) -> Mode:
         return self._mode
 
     def speak(self, sequence: SpeechSequence) -> None:
         _logger.debug(
-            "QueuedOutputService.speak mode=%s items=%d",
+            "QueuedService.speak mode=%s items=%d",
             self._mode.value,
             len(sequence.items),
         )
         # SEQUENTIAL mode relies on speech.speak() being synchronous with
         # respect to enqueuing: it must finish adding all chunks/SSML into
-        # the backend's own OutputScheduler before returning.  Both pyttsx3
+        # the backend's own Scheduler before returning. Both pyttsx3
         # and nvda_controller backends satisfy this contract because their
         # speak() implementations schedule into a local scheduler synchronously.
-        if self._mode == OutputMode.SEQUENTIAL:
+        if self._mode == Mode.SEQUENTIAL:
             self._shared_scheduler.schedule(self, lambda: self._speech.speak(sequence))
         else:
             self._speech.speak(sequence)
 
     def cancel(self) -> None:
-        _logger.debug("QueuedOutputService.cancel mode=%s", self._mode.value)
+        _logger.debug("QueuedService.cancel mode=%s", self._mode.value)
         self._shared_scheduler.cancel_all()
         self._speech.cancel()
 

@@ -10,7 +10,7 @@ _logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
-class OutputEventCallbacks:
+class EventCallbacks:
     on_index_reached: Callable[[int | None], None] = field(
         default=lambda index: None
     )
@@ -31,9 +31,9 @@ class CancellationToken:
         return self._event.wait(timeout)
 
 
-class OutputFuture(Future):
-    def then(self, fn: Callable[[Future], object]) -> "OutputFuture":
-        next_future = OutputFuture()
+class ScheduledFuture(Future):
+    def then(self, fn: Callable[[Future], object]) -> "ScheduledFuture":
+        next_future = ScheduledFuture()
 
         def _on_done(future: Future) -> None:
             try:
@@ -72,14 +72,14 @@ class _ScheduledJob:
     owner: object
     run: Callable[[], object]
     wait_done: bool
-    future: OutputFuture
+    future: ScheduledFuture
     token: CancellationToken | None = None
     timeout: float | None = None
 
 
-class OutputScheduler:
-    def __init__(self, callbacks: OutputEventCallbacks | None = None):
-        self._callbacks = callbacks or OutputEventCallbacks()
+class Scheduler:
+    def __init__(self, callbacks: EventCallbacks | None = None):
+        self._callbacks = callbacks or EventCallbacks()
         self._queue: queue.Queue[_ScheduledJob | None] = queue.Queue()
         self._stop = threading.Event()
         self._state_lock = threading.Lock()
@@ -88,7 +88,7 @@ class OutputScheduler:
         self._current_voice: object | None = None
         self._current_token: CancellationToken | None = None
         self._current_done_event: threading.Event | None = None
-        self._current_future: OutputFuture | None = None
+        self._current_future: ScheduledFuture | None = None
 
         self._thread = threading.Thread(target=self._worker, daemon=True)
         self._thread.start()
@@ -101,10 +101,10 @@ class OutputScheduler:
         wait_done: bool = False,
         cancel_token: CancellationToken | None = None,
         timeout: float | None = None,
-    ) -> OutputFuture:
-        future = OutputFuture()
+    ) -> ScheduledFuture:
+        future = ScheduledFuture()
         _logger.debug(
-            "OutputScheduler.schedule owner=%s wait_done=%s token=%s timeout=%s future_id=%s",
+            "Scheduler.schedule owner=%s wait_done=%s token=%s timeout=%s future_id=%s",
             type(owner).__name__,
             wait_done,
             cancel_token is not None,
@@ -118,7 +118,7 @@ class OutputScheduler:
 
     def schedule_break(
         self, owner: object, seconds: float, *, cancel_token: CancellationToken | None = None
-    ) -> OutputFuture:
+    ) -> ScheduledFuture:
         token = cancel_token or CancellationToken()
 
         def _break() -> None:
@@ -134,7 +134,7 @@ class OutputScheduler:
             future = self._current_future
 
         _logger.debug(
-            "OutputScheduler.cancel_current owner=%s token=%s done_event=%s future_id=%s",
+            "Scheduler.cancel_current owner=%s token=%s done_event=%s future_id=%s",
             type(owner).__name__ if owner is not None else None,
             token is not None,
             done is not None,
@@ -150,13 +150,13 @@ class OutputScheduler:
         if owner is not None and hasattr(owner, "stop"):
             try:
                 _logger.debug(
-                    "OutputScheduler.cancel_current calling owner.stop owner=%s",
+                    "Scheduler.cancel_current calling owner.stop owner=%s",
                     type(owner).__name__,
                 )
                 owner.stop()
             except Exception:
                 _logger.debug(
-                    "OutputScheduler.cancel_current owner.stop raised",
+                    "Scheduler.cancel_current owner.stop raised",
                     exc_info=True,
                 )
                 pass
@@ -165,7 +165,7 @@ class OutputScheduler:
             done.set()
 
     def cancel_all(self) -> None:
-        _logger.debug("OutputScheduler.cancel_all begin")
+        _logger.debug("Scheduler.cancel_all begin")
         self.cancel_current()
 
         cancelled_jobs = 0
@@ -178,7 +178,7 @@ class OutputScheduler:
                 self._queue.task_done()
         except queue.Empty:
             pass
-        _logger.debug("OutputScheduler.cancel_all completed cancelled_jobs=%d", cancelled_jobs)
+        _logger.debug("Scheduler.cancel_all completed cancelled_jobs=%d", cancelled_jobs)
 
     def shutdown(self) -> None:
         self.cancel_all()
@@ -207,7 +207,7 @@ class OutputScheduler:
         *,
         token: CancellationToken | None = None,
         timeout: float | None = None,
-    ) -> OutputFuture:
+    ) -> ScheduledFuture:
         return self.schedule(
             owner,
             speak_fn,
@@ -230,27 +230,27 @@ class OutputScheduler:
                 self._queue.task_done()
 
     @staticmethod
-    def _try_set_result(future: OutputFuture, result: object) -> None:
+    def _try_set_result(future: ScheduledFuture, result: object) -> None:
         if future.done():
             return
         future.set_result(result)
 
     @staticmethod
-    def _try_set_exception(future: OutputFuture, exc: Exception) -> None:
+    def _try_set_exception(future: ScheduledFuture, exc: Exception) -> None:
         if future.done():
             return
         future.set_exception(exc)
 
     def _run_one(self, job: _ScheduledJob) -> None:
         _logger.debug(
-            "OutputScheduler._run_one begin owner=%s wait_done=%s future_id=%s",
+            "Scheduler._run_one begin owner=%s wait_done=%s future_id=%s",
             type(job.owner).__name__,
             job.wait_done,
             id(job.future),
         )
         if job.future.cancelled():
             _logger.debug(
-                "OutputScheduler._run_one skipped because future already cancelled future_id=%s",
+                "Scheduler._run_one skipped because future already cancelled future_id=%s",
                 id(job.future),
             )
             return
@@ -258,7 +258,7 @@ class OutputScheduler:
         if job.token is not None and job.token.is_cancelled():
             job.future.cancel()
             _logger.debug(
-                "OutputScheduler._run_one cancelled before start via token future_id=%s",
+                "Scheduler._run_one cancelled before start via token future_id=%s",
                 id(job.future),
             )
             return
@@ -276,13 +276,13 @@ class OutputScheduler:
                     if not job.future.done():
                         job.future.cancel()
                     _logger.debug(
-                        "OutputScheduler._run_one cancelled after run via token future_id=%s",
+                        "Scheduler._run_one cancelled after run via token future_id=%s",
                         id(job.future),
                     )
                     return
                 self._try_set_result(job.future, result)
                 _logger.debug(
-                    "OutputScheduler._run_one completed without wait_done future_id=%s",
+                    "Scheduler._run_one completed without wait_done future_id=%s",
                     id(job.future),
                 )
                 return
@@ -293,7 +293,7 @@ class OutputScheduler:
 
             job.run()
             _logger.debug(
-                "OutputScheduler._run_one owner.run returned wait_done=%s future_id=%s",
+                "Scheduler._run_one owner.run returned wait_done=%s future_id=%s",
                 job.wait_done,
                 id(job.future),
             )
@@ -308,7 +308,7 @@ class OutputScheduler:
                     if not job.future.done():
                         job.future.cancel()
                     _logger.debug(
-                        "OutputScheduler._run_one cancelled while waiting via token future_id=%s",
+                        "Scheduler._run_one cancelled while waiting via token future_id=%s",
                         id(job.future),
                     )
                     return
@@ -316,7 +316,7 @@ class OutputScheduler:
                 if done.wait(timeout=0.01):
                     self._try_set_result(job.future, None)
                     _logger.debug(
-                        "OutputScheduler._run_one observed done event future_id=%s",
+                        "Scheduler._run_one observed done event future_id=%s",
                         id(job.future),
                     )
                     return
@@ -329,7 +329,7 @@ class OutputScheduler:
         except Exception as exc:
             self._try_set_exception(job.future, exc)
             _logger.debug(
-                "OutputScheduler._run_one raised exception future_id=%s",
+                "Scheduler._run_one raised exception future_id=%s",
                 id(job.future),
                 exc_info=True,
             )
@@ -341,6 +341,6 @@ class OutputScheduler:
                 self._current_done_event = None
                 self._current_future = None
             _logger.debug(
-                "OutputScheduler._run_one end future_id=%s",
+                "Scheduler._run_one end future_id=%s",
                 id(job.future),
             )

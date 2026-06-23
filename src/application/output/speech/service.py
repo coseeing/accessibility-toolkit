@@ -1,11 +1,11 @@
 from typing import TYPE_CHECKING
 
 from adapters.outputs.interfaces import SpeechOutput
-from application.speech_backends import SpeechBackendManager, SpeechBackendOption
+from application.output.speech.backends import SpeechBackendManager, SpeechBackendOption
 from interop.speech.speech_sequence import SpeechSequence
 
 if TYPE_CHECKING:
-    from application.output_scheduler import OutputScheduler
+    from application.output.scheduler import Scheduler
 
 
 class SpeechService:
@@ -14,7 +14,7 @@ class SpeechService:
         *,
         backend_options: tuple[SpeechBackendOption, ...],
         selected_backend_id: str,
-        scheduler: "OutputScheduler | None" = None,
+        scheduler: "Scheduler | None" = None,
     ) -> None:
         self._backend_manager = SpeechBackendManager(
             backend_options=backend_options,

@@ -4,11 +4,11 @@ from concurrent.futures import CancelledError
 
 import pytest
 
-from application.output_scheduler import (
+from application.output import (
     CancellationToken,
-    OutputEventCallbacks,
-    OutputFuture,
-    OutputScheduler,
+    EventCallbacks,
+    ScheduledFuture,
+    Scheduler,
 )
 
 
@@ -30,7 +30,7 @@ def wait_for(predicate, *, timeout: float = 0.5) -> None:
 
 
 def test_output_scheduler_completes_basic_task():
-    scheduler = OutputScheduler()
+    scheduler = Scheduler()
     owner = FakeOwner()
     called = []
 
@@ -42,7 +42,7 @@ def test_output_scheduler_completes_basic_task():
 
 
 def test_output_scheduler_break_task_waits_and_can_cancel():
-    scheduler = OutputScheduler()
+    scheduler = Scheduler()
     owner = FakeOwner()
     future = scheduler.schedule_break(owner, 0.2)
 
@@ -60,7 +60,7 @@ def test_output_scheduler_break_task_waits_and_can_cancel():
 
 def test_output_scheduler_notifies_done_callback():
     called = []
-    scheduler = OutputScheduler(callbacks=OutputEventCallbacks(on_done=lambda: called.append("done")))
+    scheduler = Scheduler(callbacks=EventCallbacks(on_done=lambda: called.append("done")))
 
     scheduler.notify_done()
 
@@ -69,8 +69,8 @@ def test_output_scheduler_notifies_done_callback():
 
 
 def test_output_future_then_cancels_when_chained_future_is_cancelled():
-    first = OutputFuture()
-    chained = OutputFuture()
+    first = ScheduledFuture()
+    chained = ScheduledFuture()
     next_future = first.then(lambda _: chained)
 
     first.set_result(None)
@@ -80,7 +80,7 @@ def test_output_future_then_cancels_when_chained_future_is_cancelled():
 
 
 def test_output_scheduler_serializes_tasks() -> None:
-    scheduler = OutputScheduler()
+    scheduler = Scheduler()
     owner = FakeOwner()
     events: list[str] = []
 
@@ -92,7 +92,7 @@ def test_output_scheduler_serializes_tasks() -> None:
 
 
 def test_output_scheduler_cancel_all_skips_pending_tasks() -> None:
-    scheduler = OutputScheduler()
+    scheduler = Scheduler()
     owner = FakeOwner()
     entered = threading.Event()
     release = threading.Event()
@@ -116,7 +116,7 @@ def test_output_scheduler_cancel_all_skips_pending_tasks() -> None:
 
 
 def test_cancellation_token_can_cancel_scheduled_tasks() -> None:
-    scheduler = OutputScheduler()
+    scheduler = Scheduler()
     owner = FakeOwner()
     token = CancellationToken()
     token.cancel()

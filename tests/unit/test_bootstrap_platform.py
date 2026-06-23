@@ -32,10 +32,10 @@ class TestDefaultSpeechBackendId:
 
 class TestDefaultSpeechBackendOptions:
     def test_windows_includes_nvda_controller_and_pyttsx3(self, monkeypatch):
-        from application.output_scheduler import OutputScheduler
+        from application.output import Scheduler
 
         monkeypatch.setattr(sys, "platform", "win32")
-        scheduler = OutputScheduler()
+        scheduler = Scheduler()
         try:
             options = default_speech_backend_options(scheduler)
             ids = [opt.backend_id for opt in options]
@@ -44,10 +44,10 @@ class TestDefaultSpeechBackendOptions:
             scheduler.shutdown()
 
     def test_non_windows_includes_only_pyttsx3(self, monkeypatch):
-        from application.output_scheduler import OutputScheduler
+        from application.output import Scheduler
 
         monkeypatch.setattr(sys, "platform", "darwin")
-        scheduler = OutputScheduler()
+        scheduler = Scheduler()
         try:
             options = default_speech_backend_options(scheduler)
             ids = [opt.backend_id for opt in options]

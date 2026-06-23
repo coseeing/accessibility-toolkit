@@ -3,11 +3,11 @@ import logging
 from adapters.inputs.base import HotkeyCapture, InputCapture
 from application.config import SpeechBackendConfigStore
 from application.keyboard import KeyboardInputService
-from application.output_capabilities import OutputCapabilities
-from application.output_scheduler import OutputScheduler
-from application.output_service import QueuedOutputService
-from application.services import ClipboardService
-from application.speech_service import SpeechService
+from application.output import Capabilities
+from application.output import Scheduler
+from application.output import QueuedService
+from application.output import ClipboardService
+from application.output.speech import SpeechService
 from apps.nvda_remote.service import NvdaRemoteAppService
 from bootstrap.platform import (
     create_input_capture,
@@ -31,9 +31,9 @@ class NvdaRemoteRuntime:
     hotkey_capture: HotkeyCapture
     clipboard: ClipboardService
     tone_output: object
-    speech_scheduler: OutputScheduler
-    speech_service: SpeechService
-    output_service: QueuedOutputService
+    scheduler: Scheduler
+    speech: SpeechService
+    speaker: QueuedService
     input_service: KeyboardInputService
     app_service: NvdaRemoteAppService
     app: NvdaRemoteApp
@@ -41,17 +41,17 @@ class NvdaRemoteRuntime:
 
 def build_runtime() -> NvdaRemoteRuntime:
     config_store = SpeechBackendConfigStore(default_config_path())
-    speech_scheduler = OutputScheduler()
-    backend_options = default_speech_backend_options(speech_scheduler)
+    scheduler = Scheduler()
+    backend_options = default_speech_backend_options(scheduler)
     default_bid = default_speech_backend_id()
     selected_backend_id = config_store.load_backend_id(
         default_backend_id=default_bid
     )
     try:
-        speech_service = SpeechService(
+        speech = SpeechService(
             backend_options=backend_options,
             selected_backend_id=selected_backend_id,
-            scheduler=speech_scheduler,
+            scheduler=scheduler,
         )
     except ValueError:
         logging.getLogger(__name__).warning(
@@ -59,10 +59,10 @@ def build_runtime() -> NvdaRemoteRuntime:
             selected_backend_id,
             default_bid,
         )
-        speech_service = SpeechService(
+        speech = SpeechService(
             backend_options=backend_options,
             selected_backend_id=default_bid,
-            scheduler=speech_scheduler,
+            scheduler=scheduler,
         )
         config_store.save_backend_id(default_bid)
 
@@ -71,14 +71,14 @@ def build_runtime() -> NvdaRemoteRuntime:
     hotkey_capture = create_hotkey_capture(NvdaRemoteAppService.enter_usage)
     clipboard = create_clipboard_service()
     tone_output = create_tone_output()
-    output_service = QueuedOutputService(speech=speech_service)
+    speaker = QueuedService(speech=speech)
     app_service = NvdaRemoteAppService(
         transport=transport,
         input_capture=input_capture,
         hotkey_capture=hotkey_capture,
         clipboard=clipboard,
-        outputs=OutputCapabilities(
-            speech=output_service,
+        capabilities=Capabilities(
+            speech=speaker,
             tone=tone_output,
         ),
         on_speech_backend_changed=config_store.save_backend_id,
@@ -95,9 +95,9 @@ def build_runtime() -> NvdaRemoteRuntime:
         hotkey_capture=hotkey_capture,
         clipboard=clipboard,
         tone_output=tone_output,
-        speech_scheduler=speech_scheduler,
-        speech_service=speech_service,
-        output_service=output_service,
+        scheduler=scheduler,
+        speech=speech,
+        speaker=speaker,
         input_service=input_service,
         app_service=app_service,
         app=app,

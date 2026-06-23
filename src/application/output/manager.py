@@ -1,9 +1,9 @@
 from typing import Protocol
 
 from adapters.outputs.interfaces import SpeechOutput, ToneOutput
-from interop.speech.speech_sequence import SpeechSequence
 from interop.protocol.messages import RemoteMessageType
 from interop.protocol.transport.base import Transport
+from interop.speech.speech_sequence import SpeechSequence
 
 
 class ClipboardService(Protocol):
@@ -12,7 +12,7 @@ class ClipboardService(Protocol):
     def get_text(self) -> str: ...
 
 
-class OutputManager:
+class Manager:
     def __init__(
         self,
         speech_output: SpeechOutput,

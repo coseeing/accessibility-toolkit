@@ -10,7 +10,7 @@ from application.input import (
 )
 from application.input.results import AppKeyEventResult
 from application.keyboard import KeyEventHandler, KeyboardInputService
-from application.output_capabilities import OutputCapabilities
+from application.output import Capabilities
 from interop.key import HID
 
 from apps.access8graph.flow import MrtFlow
@@ -66,12 +66,12 @@ class Access8GraphAppService(KeyEventHandler):
         *,
         hotkey_capture: HotkeyCapture,
         input_capture: InputCapture,
-        outputs: OutputCapabilities,
+        capabilities: Capabilities,
         main_thread_dispatch=None,
     ) -> None:
         self.hotkey_capture = hotkey_capture
         self.input_capture = input_capture
-        self._outputs = outputs
+        self._capabilities = capabilities
         self._input_service: KeyboardInputService | None = None
         self._status_listener = None
         self._main_thread_dispatch = main_thread_dispatch or (
@@ -83,9 +83,9 @@ class Access8GraphAppService(KeyEventHandler):
         self._hotkey_start_in_progress = False
         self._hotkey_start_reported_error = False
 
-        self._flow_output = Access8GraphFlowOutput(outputs=outputs)
+        self._flow_output = Access8GraphFlowOutput(capabilities=capabilities)
         self._speech_settings = SpeechSettingsController(
-            speech=outputs.speech,
+            speech=capabilities.speech,
         )
         self._activation = InputActivationUseCase(
             input_capture=input_capture,
@@ -208,7 +208,7 @@ class Access8GraphAppService(KeyEventHandler):
             self._input_service.stop()
         if self.hotkey_capture is not None and self.hotkey_capture.running:
             self.hotkey_capture.stop()
-        self._outputs.speech.shutdown()
+        self._capabilities.speech.shutdown()
 
     def handle_key_event(self, event: CapturedKeyEvent) -> KeyboardPipelineResult:
         try:

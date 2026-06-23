@@ -4,10 +4,10 @@ from typing import Any
 
 from adapters.inputs.base import HotkeyCapture, InputCapture
 from application.keyboard import KeyboardInputService
-from application.output_capabilities import OutputCapabilities
-from application.output_scheduler import OutputScheduler
-from application.output_service import QueuedOutputService
-from application.speech_service import SpeechService
+from application.output import Capabilities
+from application.output import Scheduler
+from application.output import QueuedService
+from application.output.speech import SpeechService
 from apps.key_echo.service import KeyEchoAppService
 from bootstrap.runtime import configure_logging
 from bootstrap.platform import (
@@ -21,9 +21,9 @@ from bootstrap.platform import (
 class KeyEchoRuntime:
     input_capture: InputCapture
     hotkey_capture: HotkeyCapture
-    speech_scheduler: OutputScheduler
-    speech_service: SpeechService
-    output_service: QueuedOutputService
+    scheduler: Scheduler
+    speech: SpeechService
+    speaker: QueuedService
     input_service: KeyboardInputService
     app_service: KeyEchoAppService
     app: Any
@@ -34,19 +34,19 @@ def build_runtime() -> KeyEchoRuntime:
 
     input_capture = create_input_capture()
     hotkey_capture = create_hotkey_capture(KeyEchoAppService.enter_usage)
-    speech_scheduler = OutputScheduler()
-    speech_service = SpeechService(
-        backend_options=default_speech_backend_options(speech_scheduler),
+    scheduler = Scheduler()
+    speech = SpeechService(
+        backend_options=default_speech_backend_options(scheduler),
         selected_backend_id="pyttsx3",
-        scheduler=speech_scheduler,
+        scheduler=scheduler,
     )
-    output_service = QueuedOutputService(
-        speech=speech_service,
+    speaker = QueuedService(
+        speech=speech,
     )
     app_service = KeyEchoAppService(
         hotkey_capture=hotkey_capture,
         input_capture=input_capture,
-        outputs=OutputCapabilities(speech=output_service),
+        capabilities=Capabilities(speech=speaker),
         main_thread_dispatch=getattr(EchoApp, "dispatch", None),
     )
     input_service = KeyboardInputService(input_capture, app_service)
@@ -57,9 +57,9 @@ def build_runtime() -> KeyEchoRuntime:
     return KeyEchoRuntime(
         input_capture=input_capture,
         hotkey_capture=hotkey_capture,
-        speech_scheduler=speech_scheduler,
-        speech_service=speech_service,
-        output_service=output_service,
+        scheduler=scheduler,
+        speech=speech,
+        speaker=speaker,
         input_service=input_service,
         app_service=app_service,
         app=app,

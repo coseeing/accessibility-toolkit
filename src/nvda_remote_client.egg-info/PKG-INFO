@@ -1,9 +1,0 @@
-Metadata-Version: 2.4
-Name: nvda-remote-client
-Version: 0.1.0
-Requires-Python: >=3.11
-Requires-Dist: wxPython
-Requires-Dist: pyinstaller
-Requires-Dist: pyttsx3
-Requires-Dist: pyobjc-framework-ApplicationServices; sys_platform == "darwin"
-Requires-Dist: pyobjc-framework-Quartz; sys_platform == "darwin"

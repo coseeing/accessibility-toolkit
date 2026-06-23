@@ -1,8 +1,8 @@
 import pytest
 
-from application.output_capabilities import OutputCapabilities
-from application.speech_backends import SpeechBackendOption
-from application.speech_service import SpeechService
+from application.output import Capabilities
+from application.output.speech import SpeechBackendOption
+from application.output.speech import SpeechService
 from interop.speech.speech_sequence import SpeechSequence
 
 
@@ -115,7 +115,7 @@ def test_speech_service_switches_backends_and_routes_calls() -> None:
 def test_output_capabilities_exposes_shared_outputs() -> None:
     speech = FakeSpeechOutput("nvda")
 
-    capabilities = OutputCapabilities(speech=SpeechService.single_backend(speech))
+    capabilities = Capabilities(speech=SpeechService.single_backend(speech))
 
     assert capabilities.speech.get_selected_backend() == "default"
     assert capabilities.tone is None

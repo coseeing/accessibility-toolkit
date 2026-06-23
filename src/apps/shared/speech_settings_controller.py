@@ -1,13 +1,13 @@
 from collections.abc import Callable
 
-from application.output_service import SpeechOutputService
+from application.output import SpeechServiceProtocol
 
 
 class SpeechSettingsController:
     def __init__(
         self,
         *,
-        speech: SpeechOutputService,
+        speech: SpeechServiceProtocol,
         on_backend_changed: Callable[[str], None] | None = None,
     ) -> None:
         self._speech = speech

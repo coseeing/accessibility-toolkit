@@ -3,7 +3,7 @@ import threading
 import time
 from typing import Any
 
-from application.output_scheduler import OutputScheduler
+from application.output import Scheduler
 from interop.speech.speech_commands import (
     BreakCommand,
     PitchCommand,
@@ -27,13 +27,13 @@ class Pyttsx3SpeechOutput:
         *,
         engine_factory: Any | None = None,
         recreate_engine_per_utterance: bool = False,
-        scheduler: OutputScheduler | None = None,
-        task_manager: OutputScheduler | None = None,
+        scheduler: Scheduler | None = None,
+        task_manager: Scheduler | None = None,
     ) -> None:
         self._engine = engine
         self._engine_factory = engine_factory
         self._recreate_engine_per_utterance = recreate_engine_per_utterance
-        self._scheduler = scheduler or task_manager or OutputScheduler()
+        self._scheduler = scheduler or task_manager or Scheduler()
         self._active_engine: Any | None = None
         self._lock = threading.Lock()
         self._cancel_requested = False
@@ -48,7 +48,7 @@ class Pyttsx3SpeechOutput:
         cls,
         *,
         engine_factory: Any | None = None,
-        scheduler: OutputScheduler | None = None,
+        scheduler: Scheduler | None = None,
     ) -> "Pyttsx3SpeechOutput":
         if engine_factory is None:
             from pyttsx3.engine import Engine

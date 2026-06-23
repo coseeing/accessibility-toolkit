@@ -4,7 +4,7 @@ from interop.speech.speech_sequence import SpeechSequence
 from interop.protocol.messages import RemoteMessageType
 from interop.protocol.routing.message_router import MessageRouter
 from interop.protocol.session.remote_session import RemoteSession
-from application.services import OutputManager
+from application.output import Manager
 
 
 class DummyTransport:
@@ -107,7 +107,7 @@ def test_sequence_routes_from_router_to_backend_through_output_manager():
             return None
 
     router = MessageRouter(
-        on_speech=lambda sequence: OutputManager(
+        on_speech=lambda sequence: Manager(
             FakeBackend(), FakeClipboard()
         ).handle_speech(sequence),
         on_cancel=lambda: None,

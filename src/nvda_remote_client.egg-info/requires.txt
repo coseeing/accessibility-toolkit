@@ -1,7 +1,0 @@
-wxPython
-pyinstaller
-pyttsx3
-
-[:sys_platform == "darwin"]
-pyobjc-framework-ApplicationServices
-pyobjc-framework-Quartz

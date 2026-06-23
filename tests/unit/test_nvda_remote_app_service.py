@@ -1,7 +1,7 @@
 from adapters.inputs.captured_event import CapturedKeyEvent
 from adapters.windows.native_key_context import WindowsNativeKeyContext
 from application.input.results import AppKeyEventResult, KeyboardPipelineResult
-from application.output_capabilities import OutputCapabilities
+from application.output import Capabilities
 from interop.key import HID, KeyEvent
 from interop.protocol.messages import RemoteMessageType
 from interop.protocol.routing.message_router import MessageRouter
@@ -160,7 +160,7 @@ def build_service(*, dispatch=None):
         input_capture=capture,
         hotkey_capture=hotkey,
         clipboard=FakeClipboard(),
-        outputs=OutputCapabilities(speech=FakeSpeechService(), tone=tone),
+        capabilities=Capabilities(speech=FakeSpeechService(), tone=tone),
         main_thread_dispatch=dispatch_wrapper,
     )
     return service, transport, capture, hotkey, dispatch_calls
@@ -241,9 +241,9 @@ def test_nvda_remote_service_routes_remote_speech_commands_into_speech_facade():
     transport.message_handler({"type": RemoteMessageType.CANCEL.value})
     transport.message_handler({"type": RemoteMessageType.PAUSE_SPEECH.value, "switch": True})
 
-    assert [speech.items for speech in service._outputs.speech.spoken] == [("hi",)]
-    assert service._outputs.speech.cancelled == 1
-    assert service._outputs.speech.paused == [True]
+    assert [speech.items for speech in service._capabilities.speech.spoken] == [("hi",)]
+    assert service._capabilities.speech.cancelled == 1
+    assert service._capabilities.speech.paused == [True]
 
 
 def test_nvda_remote_service_registers_transport_message_handler():
@@ -368,7 +368,7 @@ def test_nvda_remote_service_dispatches_speech_backend_notifications():
 
     service.set_speech_backend("pyttsx3")
 
-    assert service._outputs.speech.backend_calls == ["pyttsx3"]
+    assert service._capabilities.speech.backend_calls == ["pyttsx3"]
     assert saved_backend_ids == ["pyttsx3"]
     assert delivered == []
     assert len(dispatch_calls) == 1
@@ -444,16 +444,16 @@ def test_nvda_remote_service_routes_remote_tone_into_tone_output():
         }
     )
 
-    assert service._outputs.tone.calls == [(440.0, 80, 25, 75)]
+    assert service._capabilities.tone.calls == [(440.0, 80, 25, 75)]
 
 
 def test_nvda_remote_service_ignores_remote_tone_when_tone_output_is_missing():
     service, transport, _capture, _hotkey, _dispatch_calls = build_service()
-    service._outputs = OutputCapabilities(speech=service._outputs.speech)
+    service._capabilities = Capabilities(speech=service._capabilities.speech)
     service.router = MessageRouter(
-        on_speech=service._outputs.speech.speak,
-        on_cancel=service._outputs.speech.cancel,
-        on_pause=service._outputs.speech.pause,
+        on_speech=service._capabilities.speech.speak,
+        on_cancel=service._capabilities.speech.cancel,
+        on_pause=service._capabilities.speech.pause,
         on_clipboard=service.clipboard.set_text,
         on_tone=service._handle_tone,
         on_status=service._on_status,

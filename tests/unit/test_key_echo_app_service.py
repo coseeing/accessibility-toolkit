@@ -4,8 +4,8 @@ from adapters.inputs.captured_event import CapturedKeyEvent
 from adapters.windows.native_key_context import WindowsNativeKeyContext
 from application.input.results import AppKeyEventResult, KeyboardPipelineResult
 from application.keyboard import KeyboardInputService
-from application.output_capabilities import OutputCapabilities
-from application.speech_service import SpeechService
+from application.output import Capabilities
+from application.output.speech import SpeechService
 from interop.key import HID, KeyEvent
 from interop.speech.speech_sequence import SpeechSequence
 
@@ -109,7 +109,7 @@ def test_key_echo_app_service_speaks_vk_on_keydown() -> None:
     service = KeyEchoAppService(
         hotkey_capture=FakeHotkeyCapture(),
         input_capture=capture,
-        outputs=OutputCapabilities(speech=SpeechService.single_backend(speech_output)),
+        capabilities=Capabilities(speech=SpeechService.single_backend(speech_output)),
     )
 
     input_service = KeyboardInputService(capture, service)
@@ -134,7 +134,7 @@ def test_key_echo_app_service_speaks_right_shift_on_keydown() -> None:
     service = KeyEchoAppService(
         hotkey_capture=FakeHotkeyCapture(),
         input_capture=capture,
-        outputs=OutputCapabilities(speech=SpeechService.single_backend(speech_output)),
+        capabilities=Capabilities(speech=SpeechService.single_backend(speech_output)),
     )
 
     input_service = KeyboardInputService(capture, service)
@@ -159,7 +159,7 @@ def test_key_echo_app_service_ignores_keyup_for_speech() -> None:
     service = KeyEchoAppService(
         hotkey_capture=FakeHotkeyCapture(),
         input_capture=capture,
-        outputs=OutputCapabilities(speech=SpeechService.single_backend(speech_output)),
+        capabilities=Capabilities(speech=SpeechService.single_backend(speech_output)),
     )
 
     input_service = KeyboardInputService(capture, service)
@@ -180,7 +180,7 @@ def test_key_echo_app_service_stops_echo_on_escape_keydown() -> None:
     service = KeyEchoAppService(
         hotkey_capture=FakeHotkeyCapture(),
         input_capture=capture,
-        outputs=OutputCapabilities(speech=SpeechService.single_backend(speech_output)),
+        capabilities=Capabilities(speech=SpeechService.single_backend(speech_output)),
     )
     input_service = KeyboardInputService(capture, service)
     service.attach_input_service(input_service)
@@ -202,7 +202,7 @@ def test_key_echo_app_service_passes_num_lock_through_for_windows_captured_event
     service = KeyEchoAppService(
         hotkey_capture=FakeHotkeyCapture(),
         input_capture=capture,
-        outputs=OutputCapabilities(speech=SpeechService.single_backend(speech_output)),
+        capabilities=Capabilities(speech=SpeechService.single_backend(speech_output)),
     )
     input_service = KeyboardInputService(capture, service)
     service.attach_input_service(input_service)
@@ -235,7 +235,7 @@ def test_key_echo_app_service_starts_and_stops_echo_capture() -> None:
     service = KeyEchoAppService(
         hotkey_capture=FakeHotkeyCapture(),
         input_capture=capture,
-        outputs=OutputCapabilities(speech=SpeechService.single_backend(speech_output)),
+        capabilities=Capabilities(speech=SpeechService.single_backend(speech_output)),
     )
     input_service = KeyboardInputService(capture, service)
     service.attach_input_service(input_service)
@@ -251,7 +251,7 @@ def test_key_echo_app_service_exposes_speech_settings_api() -> None:
     service = KeyEchoAppService(
         hotkey_capture=FakeHotkeyCapture(),
         input_capture=FakeCapture(),
-        outputs=OutputCapabilities(speech=SpeechService.single_backend(speech_output)),
+        capabilities=Capabilities(speech=SpeechService.single_backend(speech_output)),
     )
 
     assert service.get_speech_backend_options() == (("default", "Default"),)
@@ -273,7 +273,7 @@ def test_build_runtime_composes_local_keyboard_and_speech(monkeypatch) -> None:
     speech_output = FakeSpeechOutput()
     app_calls: list[object] = []
 
-    class FakeQueuedOutputService:
+    class FakeQueuedService:
         def __init__(self, *, speech) -> None:
             self.speech = speech
 
@@ -325,7 +325,7 @@ def test_build_runtime_composes_local_keyboard_and_speech(monkeypatch) -> None:
         def shutdown(self) -> None:
             return None
 
-    class FakeOutputScheduler:
+    class FakeScheduler:
         pass
 
     class FakeApp:
@@ -333,7 +333,7 @@ def test_build_runtime_composes_local_keyboard_and_speech(monkeypatch) -> None:
             self.controller = controller
             app_calls.append(controller)
 
-    from application.speech_backends import SpeechBackendOption
+    from application.output.speech import SpeechBackendOption
     monkeypatch.setattr(main_module, "create_input_capture", lambda: capture)
     monkeypatch.setattr(
         main_module,
@@ -351,8 +351,8 @@ def test_build_runtime_composes_local_keyboard_and_speech(monkeypatch) -> None:
             ),
         ),
     )
-    monkeypatch.setattr(main_module, "QueuedOutputService", FakeQueuedOutputService)
-    monkeypatch.setattr(main_module, "OutputScheduler", FakeOutputScheduler)
+    monkeypatch.setattr(main_module, "QueuedService", FakeQueuedService)
+    monkeypatch.setattr(main_module, "Scheduler", FakeScheduler)
     import sys
     import types
 
@@ -369,9 +369,9 @@ def test_build_runtime_composes_local_keyboard_and_speech(monkeypatch) -> None:
     assert isinstance(runtime.app_service, KeyEchoAppService)
     assert runtime.input_capture is capture
     assert runtime.hotkey_capture is hotkey
-    assert isinstance(runtime.speech_scheduler, FakeOutputScheduler)
-    assert runtime.speech_service.get_selected_backend() == "pyttsx3"
-    assert runtime.output_service.speech is runtime.speech_service
+    assert isinstance(runtime.scheduler, FakeScheduler)
+    assert runtime.speech.get_selected_backend() == "pyttsx3"
+    assert runtime.speaker.speech is runtime.speech
     assert runtime.app is not None
     assert app_calls == [runtime.app_service]
     assert decision == KeyboardPipelineResult(
@@ -418,7 +418,7 @@ def test_build_runtime_macos_path_composes_capture(monkeypatch) -> None:
             self.permissions = permissions
             self.backend = backend
 
-    class FakeOutputScheduler:
+    class FakeScheduler:
         pass
 
     class FakeKeyboardInputService:
@@ -439,7 +439,7 @@ def test_build_runtime_macos_path_composes_capture(monkeypatch) -> None:
         def running(self):
             return True
 
-    class FakeQueuedOutputService:
+    class FakeQueuedService:
         def __init__(self, *, speech):
             self.speech = speech
 
@@ -447,7 +447,7 @@ def test_build_runtime_macos_path_composes_capture(monkeypatch) -> None:
         def __init__(self, controller):
             self.controller = controller
 
-    from application.speech_backends import SpeechBackendOption
+    from application.output.speech import SpeechBackendOption
     monkeypatch.setattr(
         main_module,
         "create_input_capture",
@@ -471,9 +471,9 @@ def test_build_runtime_macos_path_composes_capture(monkeypatch) -> None:
             ),
         ),
     )
-    monkeypatch.setattr(main_module, "OutputScheduler", FakeOutputScheduler)
+    monkeypatch.setattr(main_module, "Scheduler", FakeScheduler)
     monkeypatch.setattr(main_module, "KeyboardInputService", FakeKeyboardInputService)
-    monkeypatch.setattr(main_module, "QueuedOutputService", FakeQueuedOutputService)
+    monkeypatch.setattr(main_module, "QueuedService", FakeQueuedService)
 
     import sys as _sys
     import types
@@ -483,7 +483,7 @@ def test_build_runtime_macos_path_composes_capture(monkeypatch) -> None:
 
     runtime = main_module.build_runtime()
     assert isinstance(runtime.input_capture, MacOSFakeCapture)
-    assert runtime.speech_service.get_selected_backend() == "pyttsx3"
+    assert runtime.speech.get_selected_backend() == "pyttsx3"
     assert runtime.input_capture.manager is not None
 
 
@@ -499,11 +499,11 @@ def test_main_runs_echo_app_main_loop(monkeypatch) -> None:
     runtime = main_module.KeyEchoRuntime(
         input_capture=FakeCapture(),
         hotkey_capture=FakeHotkeyCapture(),
-        speech_scheduler=object(),
-        speech_service=SpeechService.single_backend(FakeSpeechOutput()),
-        output_service=SpeechService.single_backend(FakeSpeechOutput()),
-        input_service=KeyboardInputService(FakeCapture(), KeyEchoAppService(hotkey_capture=FakeHotkeyCapture(), input_capture=FakeCapture(), outputs=OutputCapabilities(speech=SpeechService.single_backend(FakeSpeechOutput())))),
-        app_service=KeyEchoAppService(hotkey_capture=FakeHotkeyCapture(), input_capture=FakeCapture(), outputs=OutputCapabilities(speech=SpeechService.single_backend(FakeSpeechOutput()))),
+        scheduler=object(),
+        speech=SpeechService.single_backend(FakeSpeechOutput()),
+        speaker=SpeechService.single_backend(FakeSpeechOutput()),
+        input_service=KeyboardInputService(FakeCapture(), KeyEchoAppService(hotkey_capture=FakeHotkeyCapture(), input_capture=FakeCapture(), capabilities=Capabilities(speech=SpeechService.single_backend(FakeSpeechOutput())))),
+        app_service=KeyEchoAppService(hotkey_capture=FakeHotkeyCapture(), input_capture=FakeCapture(), capabilities=Capabilities(speech=SpeechService.single_backend(FakeSpeechOutput()))),
         app=FakeApp(),
     )
     monkeypatch.setattr(main_module, "build_runtime", lambda: runtime)
@@ -521,7 +521,7 @@ def test_key_echo_app_service_starts_echo_on_enter_keydown() -> None:
     service = KeyEchoAppService(
         hotkey_capture=hotkey,
         input_capture=capture,
-        outputs=OutputCapabilities(speech=SpeechService.single_backend(speech_output)),
+        capabilities=Capabilities(speech=SpeechService.single_backend(speech_output)),
     )
     input_service = KeyboardInputService(capture, service)
     service.attach_input_service(input_service)
@@ -541,7 +541,7 @@ def test_key_echo_app_service_enter_keyup_does_not_duplicate_start() -> None:
     service = KeyEchoAppService(
         hotkey_capture=hotkey,
         input_capture=capture,
-        outputs=OutputCapabilities(speech=SpeechService.single_backend(speech_output)),
+        capabilities=Capabilities(speech=SpeechService.single_backend(speech_output)),
     )
     input_service = KeyboardInputService(capture, service)
     service.attach_input_service(input_service)
@@ -616,7 +616,7 @@ def test_key_echo_app_service_idle_enter_uses_hotkey_path() -> None:
     service = KeyEchoAppService(
         hotkey_capture=hotkey,
         input_capture=capture,
-        outputs=OutputCapabilities(speech=SpeechService.single_backend(speech_output)),
+        capabilities=Capabilities(speech=SpeechService.single_backend(speech_output)),
     )
     input_service = KeyboardInputService(capture, service)
     service.attach_input_service(input_service)
@@ -638,7 +638,7 @@ def test_key_echo_app_service_idle_hotkey_dispatches_start_to_main_thread() -> N
     service = KeyEchoAppService(
         hotkey_capture=hotkey,
         input_capture=capture,
-        outputs=OutputCapabilities(speech=SpeechService.single_backend(speech_output)),
+        capabilities=Capabilities(speech=SpeechService.single_backend(speech_output)),
         main_thread_dispatch=pending.append,
     )
     input_service = KeyboardInputService(capture, service)
@@ -665,7 +665,7 @@ def test_key_echo_app_service_active_escape_exits_through_keyboard_pipeline() ->
     service = KeyEchoAppService(
         hotkey_capture=hotkey,
         input_capture=capture,
-        outputs=OutputCapabilities(speech=SpeechService.single_backend(speech_output)),
+        capabilities=Capabilities(speech=SpeechService.single_backend(speech_output)),
     )
     input_service = KeyboardInputService(capture, service)
     service.attach_input_service(input_service)
@@ -687,7 +687,7 @@ def test_build_runtime_starts_with_hotkey_running_and_keyboard_stopped(monkeypat
     speech_output = FakeSpeechOutput()
     requested_hotkeys: list[int] = []
 
-    from application.speech_backends import SpeechBackendOption
+    from application.output.speech import SpeechBackendOption
     monkeypatch.setattr(main_module, "create_input_capture", lambda: capture)
     monkeypatch.setattr(
         main_module,
@@ -725,7 +725,7 @@ def test_build_runtime_uses_echo_mode_enter_hotkey_as_single_source_of_truth(mon
     speech_output = FakeSpeechOutput()
     requested_hotkeys: list[int] = []
 
-    from application.speech_backends import SpeechBackendOption
+    from application.output.speech import SpeechBackendOption
     monkeypatch.setattr(main_module, "create_input_capture", lambda: capture)
     monkeypatch.setattr(
         main_module,
@@ -767,7 +767,7 @@ def test_build_runtime_shutdown_stops_both_captures(monkeypatch) -> None:
     speech_output = FakeSpeechOutput()
     requested_hotkeys: list[int] = []
 
-    from application.speech_backends import SpeechBackendOption
+    from application.output.speech import SpeechBackendOption
     monkeypatch.setattr(main_module, "create_input_capture", lambda: capture)
     monkeypatch.setattr(
         main_module,
@@ -807,7 +807,7 @@ def test_key_echo_app_service_returns_pipeline_result_for_regular_key():
     service = KeyEchoAppService(
         hotkey_capture=FakeHotkeyCapture(),
         input_capture=capture,
-        outputs=OutputCapabilities(speech=SpeechService.single_backend(speech_output)),
+        capabilities=Capabilities(speech=SpeechService.single_backend(speech_output)),
     )
     input_service = KeyboardInputService(capture, service)
     service.attach_input_service(input_service)
@@ -832,7 +832,7 @@ def test_key_echo_app_service_returns_pipeline_result_for_windows_num_lock():
     service = KeyEchoAppService(
         hotkey_capture=FakeHotkeyCapture(),
         input_capture=capture,
-        outputs=OutputCapabilities(speech=SpeechService.single_backend(speech_output)),
+        capabilities=Capabilities(speech=SpeechService.single_backend(speech_output)),
     )
     input_service = KeyboardInputService(capture, service)
     service.attach_input_service(input_service)

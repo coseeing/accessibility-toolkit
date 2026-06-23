@@ -1,4 +1,4 @@
-from application.services import OutputManager
+from application.output import Manager
 from interop.speech.speech_sequence import SpeechSequence
 
 
@@ -58,7 +58,7 @@ class FakeClipboard:
 
 def test_output_manager_routes_cancel_and_pause_to_speech_output():
     speech_output = FakeSpeechOutput()
-    manager = OutputManager(speech_output=speech_output, clipboard=FakeClipboard())
+    manager = Manager(speech_output=speech_output, clipboard=FakeClipboard())
 
     manager.handle_cancel()
     manager.handle_pause(True)
@@ -70,7 +70,7 @@ def test_output_manager_routes_cancel_and_pause_to_speech_output():
 
 def test_output_manager_passes_sequence_to_backend():
     speech_output = FakeSpeechOutput()
-    manager = OutputManager(speech_output=speech_output, clipboard=FakeClipboard())
+    manager = Manager(speech_output=speech_output, clipboard=FakeClipboard())
     sequence = SpeechSequence(items=("hello",))
 
     manager.handle_speech(sequence)
@@ -81,7 +81,7 @@ def test_output_manager_passes_sequence_to_backend():
 def test_output_manager_replaces_speech_output_after_canceling_previous():
     first = FakeSpeechOutput()
     second = FakeSpeechOutput()
-    manager = OutputManager(speech_output=first, clipboard=FakeClipboard())
+    manager = Manager(speech_output=first, clipboard=FakeClipboard())
 
     manager.set_speech_output(second)
     manager.handle_cancel()
@@ -100,7 +100,7 @@ class FakeTone:
 
 def test_output_manager_routes_tone_to_tone_output() -> None:
     tone = FakeTone()
-    manager = OutputManager(FakeSpeechOutput(), FakeClipboard(), tone_output=tone)
+    manager = Manager(FakeSpeechOutput(), FakeClipboard(), tone_output=tone)
 
     manager.handle_tone(440.0, 80, 25, 75)
 
@@ -108,6 +108,6 @@ def test_output_manager_routes_tone_to_tone_output() -> None:
 
 
 def test_output_manager_tone_is_noop_without_tone_output() -> None:
-    manager = OutputManager(FakeSpeechOutput(), FakeClipboard())
+    manager = Manager(FakeSpeechOutput(), FakeClipboard())
 
     manager.handle_tone(440.0, 80, 50, 50)

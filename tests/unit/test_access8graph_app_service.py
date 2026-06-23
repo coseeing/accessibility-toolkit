@@ -5,7 +5,7 @@ import pytest
 from adapters.inputs.captured_event import CapturedKeyEvent
 from application.input.results import AppKeyEventResult, KeyboardPipelineResult
 from application.keyboard import KeyboardInputService
-from application.output_capabilities import OutputCapabilities
+from application.output import Capabilities
 from apps.access8graph.service import Access8GraphAppService
 from interop.key import HID, KeyEvent
 from interop.speech.speech_sequence import SpeechSequence
@@ -100,7 +100,7 @@ def build_service():
     service = Access8GraphAppService(
         hotkey_capture=hotkey_capture,
         input_capture=input_capture,
-        outputs=OutputCapabilities(speech=speech),
+        capabilities=Capabilities(speech=speech),
     )
     input_service = KeyboardInputService(input_capture, service)
     service.attach_input_service(input_service)
@@ -117,7 +117,7 @@ def test_service_dispatches_status_updates_through_main_thread_callback() -> Non
     service = Access8GraphAppService(
         hotkey_capture=hotkey_capture,
         input_capture=input_capture,
-        outputs=OutputCapabilities(speech=speech),
+        capabilities=Capabilities(speech=speech),
         main_thread_dispatch=pending.append,
     )
     service.set_status_listener(delivered.append)
@@ -141,7 +141,7 @@ def test_idle_hotkey_without_selected_graphml_reports_error_without_starting_cap
     service = Access8GraphAppService(
         hotkey_capture=hotkey_capture,
         input_capture=input_capture,
-        outputs=OutputCapabilities(speech=speech),
+        capabilities=Capabilities(speech=speech),
         main_thread_dispatch=pending.append,
     )
     input_service = KeyboardInputService(input_capture, service)
@@ -177,7 +177,7 @@ def test_idle_hotkey_with_malformed_graphml_keeps_specific_error_message(
     service = Access8GraphAppService(
         hotkey_capture=hotkey_capture,
         input_capture=input_capture,
-        outputs=OutputCapabilities(speech=speech),
+        capabilities=Capabilities(speech=speech),
         main_thread_dispatch=pending.append,
     )
     input_service = KeyboardInputService(input_capture, service)
@@ -215,7 +215,7 @@ def test_idle_hotkey_reports_generic_start_failure_when_no_specific_error_preced
     service = Access8GraphAppService(
         hotkey_capture=hotkey_capture,
         input_capture=input_capture,
-        outputs=OutputCapabilities(speech=speech),
+        capabilities=Capabilities(speech=speech),
         main_thread_dispatch=pending.append,
     )
     input_service = KeyboardInputService(input_capture, service)

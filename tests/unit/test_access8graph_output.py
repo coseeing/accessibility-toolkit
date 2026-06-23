@@ -1,4 +1,4 @@
-from application.output_capabilities import OutputCapabilities
+from application.output import Capabilities
 from apps.access8graph.output import Access8GraphFlowOutput
 from interop.speech.speech_commands import BreakCommand
 from interop.speech.speech_sequence import SpeechSequence
@@ -67,7 +67,7 @@ class FakeTone:
 
 def test_output_speaks_non_empty_items_with_breaks_between_them() -> None:
     speech = FakeSpeech()
-    output = Access8GraphFlowOutput(OutputCapabilities(speech=speech))
+    output = Access8GraphFlowOutput(Capabilities(speech=speech))
 
     output.speak(["", "功能選單開啟", "方向探索", "", "3 之 1"])
 
@@ -84,7 +84,7 @@ def test_output_speaks_non_empty_items_with_breaks_between_them() -> None:
 
 def test_output_does_not_speak_when_all_items_are_empty() -> None:
     speech = FakeSpeech()
-    output = Access8GraphFlowOutput(OutputCapabilities(speech=speech))
+    output = Access8GraphFlowOutput(Capabilities(speech=speech))
 
     output.speak(["", None, ""])
 
@@ -93,7 +93,7 @@ def test_output_does_not_speak_when_all_items_are_empty() -> None:
 
 def test_output_cancels_speech() -> None:
     speech = FakeSpeech()
-    output = Access8GraphFlowOutput(OutputCapabilities(speech=speech))
+    output = Access8GraphFlowOutput(Capabilities(speech=speech))
 
     output.cancel_speech()
 
@@ -103,7 +103,7 @@ def test_output_cancels_speech() -> None:
 def test_output_beep_failure_uses_tone_when_available() -> None:
     speech = FakeSpeech()
     tone = FakeTone()
-    output = Access8GraphFlowOutput(OutputCapabilities(speech=speech, tone=tone))
+    output = Access8GraphFlowOutput(Capabilities(speech=speech, tone=tone))
 
     output.beep_failure()
 
@@ -112,7 +112,7 @@ def test_output_beep_failure_uses_tone_when_available() -> None:
 
 def test_output_beep_failure_is_noop_without_tone() -> None:
     speech = FakeSpeech()
-    output = Access8GraphFlowOutput(OutputCapabilities(speech=speech))
+    output = Access8GraphFlowOutput(Capabilities(speech=speech))
 
     output.beep_failure()
 

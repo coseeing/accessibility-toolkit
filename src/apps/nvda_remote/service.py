@@ -11,8 +11,8 @@ from application.input import (
     should_pass_through_system_toggle,
 )
 from application.keyboard import KeyEventHandler
-from application.output_capabilities import OutputCapabilities
-from application.services import ClipboardService
+from application.output import Capabilities
+from application.output import ClipboardService
 from application.state import ConnectionState, ControlState, RuntimeState
 from interop.key import HID
 from interop.protocol.connection_info import ConnectionInfo
@@ -65,7 +65,7 @@ class NvdaRemoteAppService(KeyEventHandler):
         input_capture: InputCapture,
         hotkey_capture: HotkeyCapture,
         clipboard: ClipboardService,
-        outputs: OutputCapabilities,
+        capabilities: Capabilities,
         on_speech_backend_changed: Callable[[str], None] | None = None,
         main_thread_dispatch: Callable[[Callable[[], None]], None] | None = None,
     ) -> None:
@@ -73,7 +73,7 @@ class NvdaRemoteAppService(KeyEventHandler):
         self.input_capture = input_capture
         self.hotkey_capture = hotkey_capture
         self.clipboard = clipboard
-        self._outputs = outputs
+        self._capabilities = capabilities
         self._on_speech_backend_changed = on_speech_backend_changed
         self.state = RuntimeState()
         self._status_listener: Callable[[dict[str, Any]], None] | None = None
@@ -85,9 +85,9 @@ class NvdaRemoteAppService(KeyEventHandler):
             on_status=self._on_status,
         )
         self.router = MessageRouter(
-            on_speech=self._outputs.speech.speak,
-            on_cancel=self._outputs.speech.cancel,
-            on_pause=self._outputs.speech.pause,
+            on_speech=self._capabilities.speech.speak,
+            on_cancel=self._capabilities.speech.cancel,
+            on_pause=self._capabilities.speech.pause,
             on_clipboard=self.clipboard.set_text,
             on_tone=self._handle_tone,
             on_status=self._on_status,
@@ -111,7 +111,7 @@ class NvdaRemoteAppService(KeyEventHandler):
                 self._on_speech_backend_changed(backend_id)
 
         self._speech_settings = SpeechSettingsController(
-            speech=self._outputs.speech,
+            speech=self._capabilities.speech,
             on_backend_changed=_on_backend_changed_wrapper,
         )
 
@@ -231,7 +231,7 @@ class NvdaRemoteAppService(KeyEventHandler):
 
     def shutdown(self) -> None:
         self.disconnect()
-        self._outputs.speech.shutdown()
+        self._capabilities.speech.shutdown()
 
     def handle_key_event(self, event: CapturedKeyEvent) -> KeyboardPipelineResult:
         if should_pass_through_system_toggle(event):
@@ -262,7 +262,7 @@ class NvdaRemoteAppService(KeyEventHandler):
         left: int = 50,
         right: int = 50,
     ) -> None:
-        tone = self._outputs.tone
+        tone = self._capabilities.tone
         if tone is None:
             return
         tone.beep(hz, length, left, right)
