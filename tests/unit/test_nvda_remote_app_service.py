@@ -318,6 +318,35 @@ def test_nvda_remote_service_passes_num_lock_through_without_forwarding_when_not
     assert transport.sent == []
 
 
+def test_nvda_remote_service_suppresses_num_lock_without_windows_native_context_while_controlling():
+    service, transport, _capture, _hotkey, _dispatch_calls = build_service()
+    service.bind()
+    service.state.connection_state = service.state.connection_state.CONNECTED
+    service.start_control()
+
+    decision = service.handle_key_event(
+        CapturedKeyEvent(
+            key_event=KeyEvent(
+                usage_page=HID.KEYBOARD_PAGE,
+                usage=HID.NUM_LOCK,
+                pressed=True,
+            ),
+            native_context=None,
+        )
+    )
+
+    assert decision == KeyboardPipelineResult(
+        send_to_system=False,
+        app_result=AppKeyEventResult.HANDLED_STOP,
+    )
+    assert transport.sent == [
+        (
+            RemoteMessageType.KEY,
+            {"vk_code": 0x90, "scan_code": 69, "extended": True, "pressed": True},
+        ),
+    ]
+
+
 def test_nvda_remote_service_passes_through_keys_before_control():
     service, transport, _capture, _hotkey, _dispatch_calls = build_service()
     service.state.connection_state = service.state.connection_state.CONNECTED

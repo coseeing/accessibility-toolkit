@@ -250,6 +250,7 @@ class NvdaRemoteAppService(KeyEventHandler):
 
     def handle_key_event(self, event: CapturedKeyEvent) -> KeyboardPipelineResult:
         key_event = event.key_event
+        should_pass_through_toggle = should_pass_through_system_toggle(event)
         if not key_event.pressed and key_event.usage in self._suppressed_keyups:
             self._suppressed_keyups.discard(key_event.usage)
             return assemble_pipeline_result(send_to_system=False, app_result=AppKeyEventResult.HANDLED_STOP)
@@ -262,12 +263,12 @@ class NvdaRemoteAppService(KeyEventHandler):
             decision = self._input_forwarding.handle(event)
             if decision == KeyEventDecision.SUPPRESS:
                 return assemble_pipeline_result(
-                    send_to_system=should_pass_through_system_toggle(event),
+                    send_to_system=should_pass_through_toggle,
                     app_result=AppKeyEventResult.HANDLED_STOP,
                 )
             else:
                 return assemble_pipeline_result(send_to_system=True, app_result=AppKeyEventResult.HANDLED_STOP)
-        if should_pass_through_system_toggle(event):
+        if should_pass_through_toggle:
             return assemble_pipeline_result(send_to_system=True, app_result=AppKeyEventResult.UNHANDLED)
         mode_result = self._mode_manager.handle_key_event(key_event)
         send_to_system = mode_result == AppKeyEventResult.UNHANDLED
