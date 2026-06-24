@@ -1,3 +1,5 @@
+import pytest
+
 from interop.key import HID, KeyEvent
 from apps.nvda_remote.legacy_key_payload import key_event_to_legacy_remote_payload
 
@@ -166,6 +168,78 @@ def test_hid_keypad_divide_maps_to_legacy_remote_payload():
         "vk_code": 111,
         "scan_code": 53,
         "extended": True,
+        "pressed": True,
+    }
+
+
+@pytest.mark.parametrize(
+    ("usage", "expected_on", "expected_off"),
+    [
+        (HID.KEYPAD_0, (0x60, 82, False), (0x2D, 82, False)),
+        (HID.KEYPAD_1, (0x61, 79, False), (0x23, 79, False)),
+        (HID.KEYPAD_2, (0x62, 80, False), (0x28, 80, False)),
+        (HID.KEYPAD_3, (0x63, 81, False), (0x22, 81, False)),
+        (HID.KEYPAD_4, (0x64, 75, False), (0x25, 75, False)),
+        (HID.KEYPAD_5, (0x65, 76, False), (0x0C, 76, False)),
+        (HID.KEYPAD_6, (0x66, 77, False), (0x27, 77, False)),
+        (HID.KEYPAD_7, (0x67, 71, False), (0x24, 71, False)),
+        (HID.KEYPAD_8, (0x68, 72, False), (0x26, 72, False)),
+        (HID.KEYPAD_9, (0x69, 73, False), (0x21, 73, False)),
+        (HID.KEYPAD_DECIMAL, (0x6E, 83, False), (0x2E, 83, False)),
+    ],
+)
+def test_keypad_numeric_keys_map_by_num_lock_state(usage, expected_on, expected_off):
+    event = KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=usage, pressed=True)
+
+    assert key_event_to_legacy_remote_payload(event, num_lock_on=True) == {
+        "vk_code": expected_on[0],
+        "scan_code": expected_on[1],
+        "extended": expected_on[2],
+        "pressed": True,
+    }
+    assert key_event_to_legacy_remote_payload(event, num_lock_on=False) == {
+        "vk_code": expected_off[0],
+        "scan_code": expected_off[1],
+        "extended": expected_off[2],
+        "pressed": True,
+    }
+
+
+@pytest.mark.parametrize(
+    ("usage", "expected"),
+    [
+        (HID.KEYPAD_DIVIDE, (0x6F, 53, True)),
+        (HID.KEYPAD_MULTIPLY, (0x6A, 55, False)),
+        (HID.KEYPAD_SUBTRACT, (0x6D, 74, False)),
+        (HID.KEYPAD_ADD, (0x6B, 78, False)),
+        (HID.KEYPAD_ENTER, (0x0D, 28, True)),
+        (HID.KEYPAD_EQUALS, (0xBB, 13, False)),
+    ],
+)
+def test_keypad_operator_keys_ignore_num_lock_state(usage, expected):
+    event = KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=usage, pressed=False)
+
+    assert key_event_to_legacy_remote_payload(event, num_lock_on=True) == {
+        "vk_code": expected[0],
+        "scan_code": expected[1],
+        "extended": expected[2],
+        "pressed": False,
+    }
+    assert key_event_to_legacy_remote_payload(event, num_lock_on=False) == {
+        "vk_code": expected[0],
+        "scan_code": expected[1],
+        "extended": expected[2],
+        "pressed": False,
+    }
+
+
+def test_keypad_num_lock_none_preserves_existing_mapping():
+    event = KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.KEYPAD_2, pressed=True)
+
+    assert key_event_to_legacy_remote_payload(event, num_lock_on=None) == {
+        "vk_code": 0x62,
+        "scan_code": 80,
+        "extended": False,
         "pressed": True,
     }
 
