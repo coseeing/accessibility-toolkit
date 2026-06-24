@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 import logging
+import os
 from adapters.inputs.base import HotkeyCapture, InputCapture
 from application.config import SpeechBackendConfigStore
 from application.keyboard import KeyboardInputService
@@ -32,6 +33,15 @@ class NvdaRemoteRuntime:
     app: NvdaRemoteApp
 
 
+def _use_windows_native_key_payload() -> bool:
+    return os.getenv("NVDA_REMOTE_USE_WINDOWS_NATIVE_KEY_PAYLOAD", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+
+
 def build_runtime() -> NvdaRemoteRuntime:
     config_store = SpeechBackendConfigStore(default_config_path())
     provider = PlatformProvider()
@@ -57,6 +67,7 @@ def build_runtime() -> NvdaRemoteRuntime:
         capabilities=parts.output.capabilities,
         on_speech_backend_changed=config_store.save_backend_id,
         main_thread_dispatch=getattr(NvdaRemoteApp, "dispatch", None),
+        use_windows_native_key_payload=_use_windows_native_key_payload(),
     )
     input_service = KeyboardInputService(parts.input_capture, app_service)
     app_service.bind()

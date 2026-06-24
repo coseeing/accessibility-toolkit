@@ -877,6 +877,7 @@ def test_nvda_remote_main_build_runtime_composes_app_service_and_gui(monkeypatch
             capabilities,
             on_speech_backend_changed,
             main_thread_dispatch,
+            use_windows_native_key_payload,
         ):
             self.transport = transport
             self.input_capture = input_capture
@@ -885,6 +886,7 @@ def test_nvda_remote_main_build_runtime_composes_app_service_and_gui(monkeypatch
             self.capabilities = capabilities
             self.on_speech_backend_changed = on_speech_backend_changed
             self.main_thread_dispatch = main_thread_dispatch
+            self.use_windows_native_key_payload = use_windows_native_key_payload
             self.bind_calls = 0
 
         def bind(self):
@@ -1426,6 +1428,114 @@ def test_nvda_remote_main_build_runtime_falls_back_for_unknown_backend(monkeypat
     assert runtime.scheduler is scheduler
     assert runtime.speech.selected_backend_id == "nvda_controller"
     assert runtime.speaker.speech is runtime.speech
+    assert runtime.app_service.use_windows_native_key_payload is False
+
+
+def test_nvda_remote_main_build_runtime_enables_windows_native_payload_from_env(monkeypatch):
+    install_fake_wx(monkeypatch)
+    nvda_remote_main = importlib.import_module("apps.nvda_remote.main")
+
+    class FakeConfigStore:
+        def __init__(self, path):
+            self.path = path
+
+        def load_backend_id(self, *, default_backend_id):
+            self.default_backend_id = default_backend_id
+            return default_backend_id
+
+        def save_backend_id(self, backend_id):
+            self.saved_backend_id = backend_id
+
+    class FakeTransport:
+        def __init__(self, serializer):
+            self.serializer = serializer
+
+    class FakeKeyboardCapture:
+        def start(self):
+            return None
+
+        def stop(self):
+            return None
+
+    class FakeHotkeyCapture(FakeKeyboardCapture):
+        pass
+
+    class FakeClipboard:
+        def get_text(self):
+            return ""
+
+        def set_text(self, text):
+            del text
+
+    class FakeScheduler:
+        pass
+
+    class FakeSpeechService:
+        def __init__(self):
+            self.selected_backend_id = "nvda_controller"
+
+    class FakeQueuedService:
+        def __init__(self, speech):
+            self.speech = speech
+
+    class FakeKeyboardInputService:
+        def __init__(self, capture, handler):
+            self.capture = capture
+            self.handler = handler
+
+        def bind(self):
+            return None
+
+    class FakeAppService:
+        enter_usage = HID.F11
+
+        def __init__(self, **kwargs):
+            self.__dict__.update(kwargs)
+
+        def bind(self):
+            return None
+
+    class FakeApp:
+        dispatch = staticmethod(lambda callback: callback())
+
+        def __init__(self, controller):
+            self.controller = controller
+
+        def MainLoop(self):
+            return 0
+
+    monkeypatch.setattr(nvda_remote_main, "SpeechBackendConfigStore", FakeConfigStore)
+    monkeypatch.setattr(nvda_remote_main, "RelayTransport", FakeTransport)
+    monkeypatch.setattr(bootstrap.platform.sys, "platform", "win32")
+    scheduler = FakeScheduler()
+    speech = FakeSpeechService()
+    speaker = FakeQueuedService(speech=speech)
+
+    monkeypatch.setattr(
+        nvda_remote_main,
+        "build_app_runtime_parts",
+        lambda **kwargs: types.SimpleNamespace(
+            input_capture=FakeKeyboardCapture(),
+            hotkey_capture=FakeHotkeyCapture(),
+            clipboard=FakeClipboard(),
+            tone_output=None,
+            output=types.SimpleNamespace(
+                scheduler=scheduler,
+                speech=speech,
+                speaker=speaker,
+                capabilities=types.SimpleNamespace(speech=speaker, tone=None),
+            ),
+        ),
+    )
+    monkeypatch.setattr(nvda_remote_main, "KeyboardInputService", FakeKeyboardInputService)
+    monkeypatch.setattr(nvda_remote_main, "NvdaRemoteAppService", FakeAppService)
+    monkeypatch.setattr(nvda_remote_main, "NvdaRemoteApp", FakeApp)
+    monkeypatch.setattr(nvda_remote_main, "default_config_path", lambda: "config.json")
+    monkeypatch.setenv("NVDA_REMOTE_USE_WINDOWS_NATIVE_KEY_PAYLOAD", "1")
+
+    runtime = nvda_remote_main.build_runtime()
+
+    assert runtime.app_service.use_windows_native_key_payload is True
 
 
 def test_nvda_remote_main_continues_startup_when_logging_setup_fails(monkeypatch):
