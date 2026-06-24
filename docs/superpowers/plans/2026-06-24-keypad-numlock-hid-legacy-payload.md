@@ -699,8 +699,8 @@ git commit -m "fix: forward numlock while passing through locally"
 ## Task 6: Full Verification And Documentation Consistency
 
 **Files:**
-- Verify: `docs/superpowers/specs/2026-06-23-keypad-numlock-hid-legacy-payload-design.md`
-- Verify: `docs/superpowers/specs/2026-06-23-keypad-numlock-hid-legacy-payload-design_zh-TW.md`
+- Verify: `docs/superpowers/specs/2026-06-24-keypad-numlock-hid-legacy-payload-design.md`
+- Verify: `docs/superpowers/specs/2026-06-24-keypad-numlock-hid-legacy-payload-design_zh-TW.md`
 - Verify: all modified source and test files
 
 - [ ] **Step 1: Run the focused test suite**
@@ -736,8 +736,8 @@ Expected: only intended files are modified or newly added.
 Read:
 
 ```bash
-sed -n '1,240p' docs/superpowers/specs/2026-06-23-keypad-numlock-hid-legacy-payload-design.md
-sed -n '1,260p' docs/superpowers/specs/2026-06-23-keypad-numlock-hid-legacy-payload-design_zh-TW.md
+sed -n '1,240p' docs/superpowers/specs/2026-06-24-keypad-numlock-hid-legacy-payload-design.md
+sed -n '1,260p' docs/superpowers/specs/2026-06-24-keypad-numlock-hid-legacy-payload-design_zh-TW.md
 ```
 
 Confirm the implementation covers:
@@ -751,6 +751,6 @@ Confirm the implementation covers:
 - [ ] **Step 5: Commit docs if they are still uncommitted**
 
 ```bash
-git add docs/superpowers/specs/2026-06-23-keypad-numlock-hid-legacy-payload-design.md docs/superpowers/specs/2026-06-23-keypad-numlock-hid-legacy-payload-design_zh-TW.md docs/superpowers/plans/2026-06-24-keypad-numlock-hid-legacy-payload.md
+git add docs/superpowers/specs/2026-06-24-keypad-numlock-hid-legacy-payload-design.md docs/superpowers/specs/2026-06-24-keypad-numlock-hid-legacy-payload-design_zh-TW.md docs/superpowers/plans/2026-06-24-keypad-numlock-hid-legacy-payload.md
 git commit -m "docs: plan keypad numlock payload implementation"
 ```
