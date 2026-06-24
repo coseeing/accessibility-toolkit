@@ -233,13 +233,13 @@ def test_nvda_remote_service_can_forward_windows_native_payloads():
     assert transport.sent == [(RemoteMessageType.KEY, {"vk_code": 0x09, "scan_code": 15, "extended": False, "pressed": True})]
 
 
-def test_nvda_remote_service_passes_num_lock_through_when_controlling_on_windows():
+def test_nvda_remote_service_forwards_num_lock_while_passing_it_through_when_controlling_on_windows():
     service, transport, capture, hotkey, _dispatch_calls = build_service()
     service.bind()
     service.state.connection_state = service.state.connection_state.CONNECTED
     service.start_control()
 
-    decision = service.handle_key_event(
+    keydown_decision = service.handle_key_event(
         CapturedKeyEvent(
             key_event=KeyEvent(
                 usage_page=HID.KEYBOARD_PAGE,
@@ -249,8 +249,72 @@ def test_nvda_remote_service_passes_num_lock_through_when_controlling_on_windows
             native_context=WindowsNativeKeyContext(vk_code=0x90, scan_code=69, extended=True),
         )
     )
+    keyup_decision = service.handle_key_event(
+        CapturedKeyEvent(
+            key_event=KeyEvent(
+                usage_page=HID.KEYBOARD_PAGE,
+                usage=HID.NUM_LOCK,
+                pressed=False,
+            ),
+            native_context=WindowsNativeKeyContext(vk_code=0x90, scan_code=69, extended=True),
+        )
+    )
 
-    assert decision == KeyboardPipelineResult(send_to_system=True, app_result=AppKeyEventResult.UNHANDLED)
+    assert keydown_decision == KeyboardPipelineResult(
+        send_to_system=True,
+        app_result=AppKeyEventResult.HANDLED_STOP,
+    )
+    assert keyup_decision == KeyboardPipelineResult(
+        send_to_system=True,
+        app_result=AppKeyEventResult.HANDLED_STOP,
+    )
+    assert transport.sent == [
+        (
+            RemoteMessageType.KEY,
+            {"vk_code": 0x90, "scan_code": 69, "extended": True, "pressed": True},
+        ),
+        (
+            RemoteMessageType.KEY,
+            {"vk_code": 0x90, "scan_code": 69, "extended": True, "pressed": False},
+        ),
+    ]
+
+
+def test_nvda_remote_service_passes_num_lock_through_without_forwarding_when_not_controlling():
+    service, transport, _capture, _hotkey, _dispatch_calls = build_service()
+    service.bind()
+    service.state.connection_state = service.state.connection_state.CONNECTED
+    service.state.control_state = service.state.control_state.CONNECTED
+
+    keydown_decision = service.handle_key_event(
+        CapturedKeyEvent(
+            key_event=KeyEvent(
+                usage_page=HID.KEYBOARD_PAGE,
+                usage=HID.NUM_LOCK,
+                pressed=True,
+            ),
+            native_context=WindowsNativeKeyContext(vk_code=0x90, scan_code=69, extended=True),
+        )
+    )
+    keyup_decision = service.handle_key_event(
+        CapturedKeyEvent(
+            key_event=KeyEvent(
+                usage_page=HID.KEYBOARD_PAGE,
+                usage=HID.NUM_LOCK,
+                pressed=False,
+            ),
+            native_context=WindowsNativeKeyContext(vk_code=0x90, scan_code=69, extended=True),
+        )
+    )
+
+    assert keydown_decision == KeyboardPipelineResult(
+        send_to_system=True,
+        app_result=AppKeyEventResult.UNHANDLED,
+    )
+    assert keyup_decision == KeyboardPipelineResult(
+        send_to_system=True,
+        app_result=AppKeyEventResult.UNHANDLED,
+    )
     assert transport.sent == []
 
 
