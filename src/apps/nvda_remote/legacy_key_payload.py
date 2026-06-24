@@ -107,6 +107,8 @@ _USAGE_TO_LEGACY: dict[int, tuple[int, int, bool]] = {
     HID.APPLICATION: (93, 93, True),
 }
 
+# These vk_codes switch to NumLock-off navigation/editing behavior while preserving
+# keypad-origin scan_code and extended semantics for the same physical key.
 _KEYPAD_NUM_LOCK_OFF_TO_LEGACY: dict[int, tuple[int, int, bool]] = {
     HID.KEYPAD_0: (0x2D, 82, False),
     HID.KEYPAD_1: (0x23, 79, False),
@@ -134,6 +136,7 @@ _EXPLICIT_UNSUPPORTED: dict[int, str] = {
 
 def key_event_to_legacy_remote_payload(
     event: KeyEvent,
+    *,
     num_lock_on: bool | None = None,
 ) -> dict[str, int | bool]:
     if event.usage_page != HID.KEYBOARD_PAGE:

@@ -233,6 +233,17 @@ def test_keypad_operator_keys_ignore_num_lock_state(usage, expected):
     }
 
 
+def test_keypad_operator_key_preserves_mapping_when_num_lock_state_unknown():
+    event = KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.KEYPAD_DIVIDE, pressed=False)
+
+    assert key_event_to_legacy_remote_payload(event, num_lock_on=None) == {
+        "vk_code": 0x6F,
+        "scan_code": 53,
+        "extended": True,
+        "pressed": False,
+    }
+
+
 def test_keypad_num_lock_none_preserves_existing_mapping():
     event = KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.KEYPAD_2, pressed=True)
 
@@ -242,6 +253,13 @@ def test_keypad_num_lock_none_preserves_existing_mapping():
         "extended": False,
         "pressed": True,
     }
+
+
+def test_num_lock_state_must_be_passed_by_keyword():
+    event = KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.KEYPAD_2, pressed=True)
+
+    with pytest.raises(TypeError):
+        key_event_to_legacy_remote_payload(event, False)
 
 
 def test_non_us_backslash_is_explicitly_unsupported_for_legacy_remote_payload():
