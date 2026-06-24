@@ -9,12 +9,11 @@ class SpeechSettingsController:
         *,
         speech: SpeechServiceProtocol,
         on_engine_changed: Callable[[str], None] | None = None,
-        on_backend_changed: Callable[[str], None] | None = None,
         on_voice_changed: Callable[[str, str], None] | None = None,
         on_numeric_setting_changed: Callable[[str, str, int], None] | None = None,
     ) -> None:
         self._speech = speech
-        self._on_engine_changed = on_engine_changed or on_backend_changed
+        self._on_engine_changed = on_engine_changed
         self._on_voice_changed = on_voice_changed
         self._on_numeric_setting_changed = on_numeric_setting_changed
 
@@ -28,15 +27,6 @@ class SpeechSettingsController:
         self._speech.set_engine(engine_id)
         if self._on_engine_changed is not None:
             self._on_engine_changed(engine_id)
-
-    def get_backend_options(self) -> tuple[tuple[str, str], ...]:
-        return self.get_engine_options()
-
-    def get_selected_backend(self) -> str:
-        return self.get_selected_engine()
-
-    def set_backend(self, backend_id: str) -> None:
-        self.set_engine(backend_id)
 
     def list_voices(self) -> tuple[tuple[str, str], ...]:
         return self._speech.list_voices()

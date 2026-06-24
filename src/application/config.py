@@ -20,12 +20,6 @@ class SpeechEngineConfigStore:
         payload["speech_engine"] = engine_id
         self._write(payload)
 
-    def load_backend_id(self, *, default_backend_id: str) -> str:
-        return self.load_engine_id(default_engine_id=default_backend_id)
-
-    def save_backend_id(self, backend_id: str) -> None:
-        self.save_engine_id(backend_id)
-
     def load_voice(self, engine_id: str) -> str | None:
         value = self._engine_payload(engine_id).get("voice")
         return value if isinstance(value, str) and value else None
@@ -37,7 +31,7 @@ class SpeechEngineConfigStore:
 
     def load_numeric_setting(self, engine_id: str, setting_id: str) -> int | None:
         value = self._engine_payload(engine_id).get(setting_id)
-        if not isinstance(value, int):
+        if not isinstance(value, int) or isinstance(value, bool):
             return None
         return clamp_percent(value)
 
@@ -78,6 +72,3 @@ class SpeechEngineConfigStore:
     def _write(self, payload: dict[str, object]) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-
-
-SpeechBackendConfigStore = SpeechEngineConfigStore

@@ -200,9 +200,9 @@ class Pyttsx3SpeechOutput:
         try:
             if self._voice_id is not None:
                 engine.setProperty("voice", self._voice_id)
-            engine.setProperty("rate", percent_to_range(self._rate, *_RATE_RANGE))
+            engine.setProperty("rate", round(percent_to_range(self._rate, *_RATE_RANGE)))
             try:
-                engine.setProperty("pitch", percent_to_range(self._pitch, *_PITCH_RANGE))
+                engine.setProperty("pitch", round(percent_to_range(self._pitch, *_PITCH_RANGE)))
             except Exception:
                 logger.debug("pyttsx3 engine does not support pitch property")
             engine.setProperty("volume", self._volume / 100.0)

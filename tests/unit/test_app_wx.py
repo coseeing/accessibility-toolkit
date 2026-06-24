@@ -69,6 +69,9 @@ class FakeBootstrapSpeechOutput:
     def set_volume(self, value):
         del value
 
+    def get_supported_numeric_settings(self):
+        return ()
+
 
 def fake_bootstrap_speech_engine_options(scheduler):
     del scheduler
@@ -79,9 +82,6 @@ def fake_bootstrap_speech_engine_options(scheduler):
             factory=FakeBootstrapSpeechOutput,
         ),
     )
-
-
-fake_bootstrap_speech_backend_options = fake_bootstrap_speech_engine_options
 
 
 def clear_ui_modules():
@@ -2186,14 +2186,57 @@ def test_access8graph_main_build_runtime_injects_tone_output(monkeypatch):
         pass
 
     class FakeSpeechService:
-        def __init__(self, *, backend_options, selected_backend_id, scheduler=None):
-            self.backend_options = backend_options
-            self.selected_backend_id = selected_backend_id
+        def __init__(self, *, engine_options, selected_engine_id, scheduler=None):
+            self.engine_options = engine_options
+            self.selected_engine_id = selected_engine_id
             self.scheduler = scheduler
+
+        def get_selected_engine(self):
+            return self.selected_engine_id
+
+        def list_voices(self):
+            return ()
+
+        def get_supported_numeric_settings(self):
+            return ()
+
+        def set_voice(self, voice_id):
+            return None
+
+        def set_rate(self, value):
+            return None
+
+        def set_pitch(self, value):
+            return None
+
+        def set_volume(self, value):
+            return None
 
     class FakeQueuedService:
         def __init__(self, *, speech):
             self.speech = speech
+
+    class FakeConfigStore:
+        def __init__(self, path):
+            self.path = path
+
+        def load_engine_id(self, *, default_engine_id):
+            return "Pyttsx3"
+
+        def save_engine_id(self, engine_id):
+            return None
+
+        def load_voice(self, engine_id):
+            return None
+
+        def save_voice(self, engine_id, voice_id):
+            return None
+
+        def load_numeric_setting(self, engine_id, setting_id):
+            return None
+
+        def save_numeric_setting(self, engine_id, setting_id, value):
+            return None
 
     class FakeKeyboardCapture:
         pass
@@ -2220,10 +2263,13 @@ def test_access8graph_main_build_runtime_injects_tone_output(monkeypatch):
     class FakeAppService:
         enter_usage = HID.F11
 
-        def __init__(self, *, hotkey_capture, input_capture, capabilities, main_thread_dispatch):
+        def __init__(self, *, hotkey_capture, input_capture, capabilities,
+                     on_speech_engine_changed=None, on_voice_changed=None,
+                     on_numeric_setting_changed=None, main_thread_dispatch=None):
             self.hotkey_capture = hotkey_capture
             self.input_capture = input_capture
             self._capabilities = capabilities
+            self.on_speech_engine_changed = on_speech_engine_changed
             self.main_thread_dispatch = main_thread_dispatch
             self.attached_input_service = None
             self.bind_calls = 0
@@ -2245,15 +2291,17 @@ def test_access8graph_main_build_runtime_injects_tone_output(monkeypatch):
     hotkey_capture = FakeHotkeyCapture()
     scheduler = FakeScheduler()
     speech = FakeSpeechService(
-        backend_options=("backend",),
-        selected_backend_id="pyttsx3",
+        engine_options=("engine",),
+        selected_engine_id="pyttsx3",
         scheduler=scheduler,
     )
     speaker = FakeQueuedService(speech=speech)
     capabilities = types.SimpleNamespace(speech=speaker, tone=tone_output)
 
-    def fake_build_app_runtime_parts(*, hotkey_usage, **kwargs):
+    def fake_build_app_runtime_parts(*, hotkey_usage, selected_engine_id,
+                                     fallback_engine_id=None, on_engine_fallback=None, **kwargs):
         assert hotkey_usage == FakeAppService.enter_usage
+        assert selected_engine_id == "Pyttsx3"
         assert kwargs == {}
         return types.SimpleNamespace(
             input_capture=keyboard_capture,
@@ -2267,6 +2315,7 @@ def test_access8graph_main_build_runtime_injects_tone_output(monkeypatch):
             ),
         )
 
+    monkeypatch.setattr(access8graph_main, "SpeechEngineConfigStore", FakeConfigStore)
     monkeypatch.setattr(access8graph_main, "KeyboardInputService", FakeKeyboardInputService)
     monkeypatch.setattr(access8graph_main, "Access8GraphAppService", FakeAppService)
     monkeypatch.setattr(
@@ -2292,3 +2341,4 @@ def test_access8graph_main_build_runtime_injects_tone_output(monkeypatch):
     assert runtime.speaker is speaker
     assert runtime.app_service.bind_calls == 1
     assert runtime.app.controller is runtime.app_service
+    assert runtime.config_store is not None

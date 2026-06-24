@@ -1,9 +1,4 @@
 class SpeechControlsMixin:
-    _DEFAULT_ENGINE_OPTIONS = (
-        ("NvdaController", "Nvda Controller"),
-        ("Pyttsx3", "Pyttsx3"),
-    )
-
     def _build_speech_controls(self, panel, sizer, wx) -> None:
         self._speech_engine_options = self._get_speech_engine_options()
         self.speech_engine_choice = wx.Choice(
@@ -18,10 +13,6 @@ class SpeechControlsMixin:
         self.rate_slider = wx.Slider(panel, value=50, minValue=0, maxValue=100)
         self.pitch_slider = wx.Slider(panel, value=50, minValue=0, maxValue=100)
         self.volume_slider = wx.Slider(panel, value=50, minValue=0, maxValue=100)
-        self.speech_backend_choice = self.speech_engine_choice
-        self.rate_ctrl = self.rate_slider
-        self.pitch_ctrl = self.pitch_slider
-        self.volume_ctrl = self.volume_slider
         for widget in (
             self.speech_engine_choice,
             self.voice_choice,
@@ -53,9 +44,6 @@ class SpeechControlsMixin:
         self._sync_speech_engine_choice()
         self._sync_speech_controls()
 
-    def _on_speech_backend_change(self, event):
-        self._on_speech_engine_change(event)
-
     def _on_voice_change(self, _event):
         if self.controller is None or not hasattr(self.controller, "set_selected_voice"):
             return
@@ -83,9 +71,6 @@ class SpeechControlsMixin:
         if self._speech_engine_options:
             self.speech_engine_choice.SetSelection(0)
 
-    def _sync_speech_backend_choice(self) -> None:
-        self._sync_speech_engine_choice()
-
     def _sync_speech_controls(self) -> None:
         self._voice_options = self._get_available_voices()
         self.voice_choice.Clear()
@@ -103,29 +88,21 @@ class SpeechControlsMixin:
 
     def _get_speech_engine_options(self) -> tuple[tuple[str, str], ...]:
         if self.controller is None or not hasattr(self.controller, "get_speech_engine_options"):
-            return self._DEFAULT_ENGINE_OPTIONS
-        options = self.controller.get_speech_engine_options()
-        return options or self._DEFAULT_ENGINE_OPTIONS
-
-    def _get_speech_backend_options(self) -> tuple[tuple[str, str], ...]:
-        return self._get_speech_engine_options()
+            return ()
+        return self.controller.get_speech_engine_options() or ()
 
     def _get_selected_speech_engine(self) -> str:
+        if not self._speech_engine_options:
+            return ""
         if self.controller is None or not hasattr(self.controller, "get_selected_speech_engine"):
-            return self._DEFAULT_ENGINE_OPTIONS[0][0]
+            return self._speech_engine_options[0][0]
         selected = self.controller.get_selected_speech_engine()
-        return selected or self._DEFAULT_ENGINE_OPTIONS[0][0]
-
-    def _get_selected_speech_backend(self) -> str:
-        return self._get_selected_speech_engine()
+        return selected or self._speech_engine_options[0][0]
 
     def _engine_id_for_selection(self, selection: int) -> str | None:
         if selection < 0 or selection >= len(self._speech_engine_options):
             return None
         return self._speech_engine_options[selection][0]
-
-    def _backend_id_for_selection(self, selection: int) -> str | None:
-        return self._engine_id_for_selection(selection)
 
     def _get_available_voices(self) -> tuple[tuple[str, str], ...]:
         if self.controller is None or not hasattr(self.controller, "get_available_voices"):

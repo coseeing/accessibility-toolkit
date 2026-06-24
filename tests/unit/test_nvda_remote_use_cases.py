@@ -23,15 +23,6 @@ class FakeSpeech:
     def set_engine(self, engine_id):
         self.engine_id = engine_id
 
-    def get_backend_options(self):
-        return self.get_engine_options()
-
-    def get_selected_backend(self):
-        return self.get_selected_engine()
-
-    def set_backend(self, backend_id):
-        self.set_engine(backend_id)
-
     def list_voices(self):
         return ()
 

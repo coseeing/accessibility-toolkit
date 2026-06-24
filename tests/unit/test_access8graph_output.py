@@ -17,14 +17,14 @@ class FakeSpeech:
     def pause(self, is_paused: bool) -> None:
         self.calls.append(("pause", is_paused))
 
-    def get_backend_options(self):
+    def get_engine_options(self):
         return ()
 
-    def get_selected_backend(self):
+    def get_selected_engine(self):
         return "default"
 
-    def set_backend(self, backend_id):
-        self.calls.append(("set_backend", backend_id))
+    def set_engine(self, engine_id):
+        self.calls.append(("set_engine", engine_id))
 
     def list_voices(self):
         return ()

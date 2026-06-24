@@ -35,32 +35,24 @@ class SpeechEngineManager:
     def selected_engine_id(self) -> str:
         return self._selected_engine_id
 
-    @property
-    def selected_backend_id(self) -> str:
-        return self._selected_engine_id
-
     def engine_choices(self) -> tuple[tuple[str, str], ...]:
         return tuple((option.engine_id, option.label) for option in self._options)
-
-    def backend_choices(self) -> tuple[tuple[str, str], ...]:
-        return self.engine_choices()
 
     def set_engine(self, engine_id: str) -> SpeechOutput:
         if engine_id not in self._options_by_id:
             raise ValueError(f"Unknown speech engine: {engine_id}")
         if engine_id == self._selected_engine_id:
             return self._current_output
-        self._current_output.cancel()
-        self._current_output = self._create_output(engine_id)
+        # Build the new engine first so that a factory failure leaves the
+        # currently active engine intact and reported as selected. This keeps
+        # the contract from spec "Error Handling": on a failed engine switch the
+        # previous engine stays active and the UI can restore its selection.
+        new_output = self._create_output(engine_id)
+        previous_output = self._current_output
+        previous_output.cancel()
+        self._current_output = new_output
         self._selected_engine_id = engine_id
         return self._current_output
 
-    def set_backend(self, backend_id: str) -> SpeechOutput:
-        return self.set_engine(backend_id)
-
     def _create_output(self, engine_id: str) -> SpeechOutput:
         return self._options_by_id[engine_id].factory()
-
-
-SpeechBackendOption = SpeechEngineOption
-SpeechBackendManager = SpeechEngineManager

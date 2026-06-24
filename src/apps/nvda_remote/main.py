@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-import inspect
 import logging
 import os
 from adapters.inputs.base import HotkeyCapture, InputCapture
@@ -47,54 +46,26 @@ def build_runtime() -> NvdaRemoteRuntime:
     config_store = SpeechEngineConfigStore(default_config_path())
     provider = PlatformProvider()
     default_engine_id = provider.default_speech_engine_id()
-    if hasattr(config_store, "load_engine_id"):
-        selected_engine_id = config_store.load_engine_id(
-            default_engine_id=default_engine_id
-        )
-    else:
-        selected_engine_id = config_store.load_backend_id(
-            default_backend_id=default_engine_id
-        )
+    selected_engine_id = config_store.load_engine_id(
+        default_engine_id=default_engine_id
+    )
     parts = build_app_runtime_parts(
         provider=provider,
         hotkey_usage=NvdaRemoteAppService.enter_usage,
         selected_engine_id=selected_engine_id,
-        selected_backend_id=selected_engine_id,
         fallback_engine_id=default_engine_id,
-        fallback_backend_id=default_engine_id,
         on_engine_fallback=config_store.save_engine_id,
-        on_backend_fallback=getattr(config_store, "save_backend_id", lambda _engine_id: None),
         include_clipboard=True,
     )
 
     def _apply_saved_speech_settings(speech: SpeechService, engine_id: str) -> None:
-        required_methods = (
-            "list_voices",
-            "get_supported_numeric_settings",
-            "set_rate",
-            "set_pitch",
-            "set_volume",
-        )
-        if not all(hasattr(speech, method_name) for method_name in required_methods):
-            return
-        if not all(
-            hasattr(config_store, method_name)
-            for method_name in ("load_voice", "load_numeric_setting")
-        ):
-            return
-        try:
-            voice_id = config_store.load_voice(engine_id)
-            available_voice_ids = {voice for voice, _label in speech.list_voices()}
-        except AttributeError:
-            return
+        voice_id = config_store.load_voice(engine_id)
+        available_voice_ids = {voice for voice, _label in speech.list_voices()}
         if voice_id is not None and voice_id in available_voice_ids:
             speech.set_voice(voice_id)
-        try:
-            supported_settings = {
-                setting.id for setting in speech.get_supported_numeric_settings()
-            }
-        except AttributeError:
-            return
+        supported_settings = {
+            setting.id for setting in speech.get_supported_numeric_settings()
+        }
         for setting_id, setter in (
             ("rate", speech.set_rate),
             ("pitch", speech.set_pitch),
@@ -104,51 +75,26 @@ def build_runtime() -> NvdaRemoteRuntime:
             if value is not None and setting_id in supported_settings:
                 setter(value)
 
-    if hasattr(parts.output.speech, "get_selected_engine"):
-        selected_runtime_engine_id = parts.output.speech.get_selected_engine()
-    else:
-        selected_runtime_engine_id = parts.output.speech.get_selected_backend()
+    selected_runtime_engine_id = parts.output.speech.get_selected_engine()
     _apply_saved_speech_settings(parts.output.speech, selected_runtime_engine_id)
 
-    if hasattr(config_store, "save_engine_id"):
-        save_engine_id = config_store.save_engine_id
-    else:
-        save_engine_id = config_store.save_backend_id
-    if hasattr(config_store, "save_backend_id"):
-        save_backend_id = config_store.save_backend_id
-    else:
-        save_backend_id = config_store.save_engine_id
-
     def _on_speech_engine_changed(engine_id: str) -> None:
-        save_engine_id(engine_id)
+        config_store.save_engine_id(engine_id)
         _apply_saved_speech_settings(parts.output.speech, engine_id)
 
     transport = RelayTransport(JSONSerializer())
-    app_service_kwargs = {
-        "transport": transport,
-        "input_capture": parts.input_capture,
-        "hotkey_capture": parts.hotkey_capture,
-        "clipboard": parts.clipboard,
-        "capabilities": parts.output.capabilities,
-        "on_speech_engine_changed": _on_speech_engine_changed,
-        "on_voice_changed": getattr(
-            config_store, "save_voice", lambda _engine_id, _voice_id: None
-        ),
-        "on_numeric_setting_changed": getattr(
-            config_store,
-            "save_numeric_setting",
-            lambda _engine_id, _setting_id, _value: None,
-        ),
-        "main_thread_dispatch": getattr(NvdaRemoteApp, "dispatch", None),
-        "use_windows_native_key_payload": _use_windows_native_key_payload(),
-    }
-    if (
-        "on_speech_backend_changed"
-        in inspect.signature(NvdaRemoteAppService).parameters
-    ):
-        app_service_kwargs["on_speech_backend_changed"] = save_backend_id
-
-    app_service = NvdaRemoteAppService(**app_service_kwargs)
+    app_service = NvdaRemoteAppService(
+        transport=transport,
+        input_capture=parts.input_capture,
+        hotkey_capture=parts.hotkey_capture,
+        clipboard=parts.clipboard,
+        capabilities=parts.output.capabilities,
+        on_speech_engine_changed=_on_speech_engine_changed,
+        on_voice_changed=config_store.save_voice,
+        on_numeric_setting_changed=config_store.save_numeric_setting,
+        main_thread_dispatch=getattr(NvdaRemoteApp, "dispatch", None),
+        use_windows_native_key_payload=_use_windows_native_key_payload(),
+    )
     input_service = KeyboardInputService(parts.input_capture, app_service)
     app_service.bind()
     input_service.bind()
@@ -188,6 +134,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
-
-SpeechBackendConfigStore = SpeechEngineConfigStore

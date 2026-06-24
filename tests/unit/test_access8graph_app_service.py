@@ -19,7 +19,7 @@ FIXTURE = Path("Access8Graph/tests/test.graphml")
 class FakeSpeech:
     def __init__(self) -> None:
         self.calls = []
-        self.backend_id = "default"
+        self.engine_id = "default"
 
     def speak(self, sequence: SpeechSequence) -> None:
         self.calls.append(("speak", sequence))
@@ -34,10 +34,10 @@ class FakeSpeech:
         return (("default", "Default"),)
 
     def get_selected_engine(self):
-        return self.backend_id
+        return self.engine_id
 
     def set_engine(self, engine_id):
-        self.backend_id = engine_id
+        self.engine_id = engine_id
 
     def list_voices(self):
         return ()

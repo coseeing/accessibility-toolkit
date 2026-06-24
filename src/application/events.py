@@ -12,9 +12,6 @@ class SpeechEngineChanged:
     engine_id: str
 
 
-SpeechBackendChanged = SpeechEngineChanged
-
-
 @dataclass(frozen=True, slots=True)
 class InputCaptureChanged:
     active: bool

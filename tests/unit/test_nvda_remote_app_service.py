@@ -98,7 +98,7 @@ class FakeSpeechService:
         self.spoken = []
         self.cancelled = 0
         self.paused = []
-        self.backend_options = (("nvda_controller", "NVDA Controller"),)
+        self.engine_options = (("nvda_controller", "NVDA Controller"),)
         self.selected_engine = "nvda_controller"
         self.engine_calls = []
 
@@ -112,7 +112,7 @@ class FakeSpeechService:
         self.paused.append(is_paused)
 
     def get_engine_options(self):
-        return self.backend_options
+        return self.engine_options
 
     def get_selected_engine(self):
         return self.selected_engine
@@ -120,15 +120,6 @@ class FakeSpeechService:
     def set_engine(self, engine_id):
         self.engine_calls.append(engine_id)
         self.selected_engine = engine_id
-
-    def get_backend_options(self):
-        return self.get_engine_options()
-
-    def get_selected_backend(self):
-        return self.get_selected_engine()
-
-    def set_backend(self, backend_id):
-        self.set_engine(backend_id)
 
     def list_voices(self):
         return ()
@@ -603,31 +594,6 @@ def test_nvda_remote_service_dispatches_speech_engine_notifications():
     service.set_speech_engine("pyttsx3")
 
     assert service._capabilities.speech.engine_calls == ["pyttsx3"]
-    assert saved_engine_ids == ["pyttsx3"]
-    assert delivered == []
-    assert len(dispatch_calls) == 1
-
-    pending.pop()()
-
-    assert delivered == [SpeechEngineChanged("pyttsx3")]
-
-
-def test_nvda_remote_service_accepts_backend_changed_callback_alias():
-    delivered = []
-    saved_engine_ids = []
-    pending = []
-
-    def deferred_dispatch(callback):
-        pending.append(callback)
-
-    service, _transport, _capture, _hotkey, dispatch_calls = build_service(
-        dispatch=deferred_dispatch,
-        on_speech_backend_changed=saved_engine_ids.append,
-    )
-    service.set_status_listener(delivered.append)
-
-    service.set_speech_engine("pyttsx3")
-
     assert saved_engine_ids == ["pyttsx3"]
     assert delivered == []
     assert len(dispatch_calls) == 1

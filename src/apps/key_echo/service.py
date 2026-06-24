@@ -1,3 +1,5 @@
+from collections.abc import Callable
+
 from application.events import AppEvent, ErrorRaised, SpeechEngineChanged
 from adapters.inputs.base import HotkeyCapture, InputCapture
 from adapters.inputs.captured_event import CapturedKeyEvent
@@ -53,6 +55,9 @@ class KeyEchoAppService(KeyEventHandler):
         hotkey_capture: HotkeyCapture,
         input_capture: InputCapture,
         capabilities: Capabilities,
+        on_speech_engine_changed: Callable[[str], None] | None = None,
+        on_voice_changed: Callable[[str, str], None] | None = None,
+        on_numeric_setting_changed: Callable[[str, str, int], None] | None = None,
         main_thread_dispatch=None,
     ) -> None:
         self.hotkey_capture = hotkey_capture
@@ -71,6 +76,9 @@ class KeyEchoAppService(KeyEventHandler):
         )
         self._speech_settings = SpeechSettingsController(
             speech=capabilities.speech,
+            on_engine_changed=on_speech_engine_changed,
+            on_voice_changed=on_voice_changed,
+            on_numeric_setting_changed=on_numeric_setting_changed,
         )
         self._activation = InputActivationUseCase(
             input_capture=input_capture,
@@ -133,15 +141,6 @@ class KeyEchoAppService(KeyEventHandler):
     def set_speech_engine(self, engine_id: str) -> None:
         self._speech_settings.set_engine(engine_id)
         self._notify_status_listener(SpeechEngineChanged(engine_id))
-
-    def get_speech_backend_options(self) -> tuple[tuple[str, str], ...]:
-        return self.get_speech_engine_options()
-
-    def get_selected_speech_backend(self) -> str:
-        return self.get_selected_speech_engine()
-
-    def set_speech_backend(self, backend_id: str) -> None:
-        self.set_speech_engine(backend_id)
 
     def get_supported_numeric_settings(self):
         return self._speech_settings.get_supported_numeric_settings()

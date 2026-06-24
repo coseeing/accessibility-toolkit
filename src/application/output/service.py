@@ -22,9 +22,6 @@ class SpeechServiceProtocol(Protocol):
     def get_engine_options(self) -> tuple[tuple[str, str], ...]: ...
     def get_selected_engine(self) -> str: ...
     def set_engine(self, engine_id: str) -> None: ...
-    def get_backend_options(self) -> tuple[tuple[str, str], ...]: ...
-    def get_selected_backend(self) -> str: ...
-    def set_backend(self, backend_id: str) -> None: ...
     def list_voices(self) -> tuple[tuple[str, str], ...]: ...
     def get_voice(self) -> str | None: ...
     def set_voice(self, voice_id: str) -> None: ...
@@ -58,8 +55,8 @@ class QueuedService:
         )
         # SEQUENTIAL mode relies on speech.speak() being synchronous with
         # respect to enqueuing: it must finish adding all chunks/SSML into
-        # the backend's own Scheduler before returning. Both pyttsx3
-        # and nvda_controller backends satisfy this contract because their
+        # the engine's own Scheduler before returning. Both pyttsx3
+        # and nvda_controller engines satisfy this contract because their
         # speak() implementations schedule into a local scheduler synchronously.
         if self._mode == Mode.SEQUENTIAL:
             self._shared_scheduler.schedule(self, lambda: self._speech.speak(sequence))
@@ -82,15 +79,6 @@ class QueuedService:
 
     def set_engine(self, engine_id: str) -> None:
         self._speech.set_engine(engine_id)
-
-    def get_backend_options(self) -> tuple[tuple[str, str], ...]:
-        return self._speech.get_backend_options()
-
-    def get_selected_backend(self) -> str:
-        return self._speech.get_selected_backend()
-
-    def set_backend(self, backend_id: str) -> None:
-        self._speech.set_backend(backend_id)
 
     def list_voices(self) -> tuple[tuple[str, str], ...]:
         return self._speech.list_voices()

@@ -553,6 +553,16 @@ def test_percent_helpers_clamp_and_map_ranges():
     assert range_to_percent(175, 50, 300) == 50
 
 
+def test_percent_to_range_returns_float_and_range_to_percent_returns_int():
+    assert isinstance(percent_to_range(50, 50, 300), float)
+    assert percent_to_range(50, 50.0, 300.0) == 175.0
+    assert isinstance(range_to_percent(175, 50, 300), int)
+
+
+def test_range_to_percent_handles_degenerate_range():
+    assert range_to_percent(50, 100, 100) == 0
+
+
 def test_speech_engine_manager_switches_engine_and_cancels_previous():
     events: list[tuple[str, str]] = []
     manager = SpeechEngineManager(
@@ -597,6 +607,41 @@ def test_speech_engine_manager_rejects_unknown_engine():
 
     with pytest.raises(ValueError, match="Unknown speech engine"):
         manager.set_engine("Pyttsx3")
+
+
+def test_speech_engine_manager_keeps_current_engine_on_factory_failure():
+    events: list[tuple[str, str]] = []
+    current = FakeSpeechOutput("NvdaController", events)
+
+    class FactoryError(RuntimeError):
+        pass
+
+    def failing_factory() -> FakeSpeechOutput:
+        raise FactoryError("engine unavailable")
+
+    manager = SpeechEngineManager(
+        engine_options=(
+            SpeechEngineOption(
+                engine_id="NvdaController",
+                label="Nvda Controller",
+                factory=lambda: current,
+            ),
+            SpeechEngineOption(
+                engine_id="Pyttsx3",
+                label="Pyttsx3",
+                factory=failing_factory,
+            ),
+        ),
+        selected_engine_id="NvdaController",
+    )
+
+    previous_output = manager.current_output
+    with pytest.raises(FactoryError, match="engine unavailable"):
+        manager.set_engine("Pyttsx3")
+
+    assert manager.current_output is previous_output
+    assert manager.selected_engine_id == "NvdaController"
+    assert events == []  # previous engine must not be canceled on failure
 
 
 def test_pyttsx3_backend_schedules_real_breaks_between_text_chunks():
@@ -1172,3 +1217,15 @@ def test_speech_engine_config_store_persists_settings_per_engine(tmp_path):
             },
         }
     }
+
+
+def test_speech_engine_config_store_ignores_bool_numeric_settings(tmp_path):
+    config_path = tmp_path / "client-config.json"
+    config_path.write_text(
+        json.dumps({"speech_engines": {"Pyttsx3": {"rate": True, "pitch": False}}}),
+        encoding="utf-8",
+    )
+    store = SpeechEngineConfigStore(config_path)
+
+    assert store.load_numeric_setting("Pyttsx3", "rate") is None
+    assert store.load_numeric_setting("Pyttsx3", "pitch") is None

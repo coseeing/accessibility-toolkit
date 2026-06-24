@@ -74,6 +74,9 @@ class FakeSpeechOutput:
     def set_volume(self, value: int) -> None:
         self.volume = value
 
+    def get_supported_numeric_settings(self):
+        return ()
+
 
 class FakeCapture:
     def __init__(self) -> None:
@@ -164,6 +167,9 @@ class FakeRuntimeSpeech:
     def set_volume(self, value):
         self.output.set_volume(value)
 
+    def get_supported_numeric_settings(self):
+        return self.output.get_supported_numeric_settings()
+
     def shutdown(self) -> None:
         return None
 
@@ -190,13 +196,13 @@ def install_fake_key_echo_runtime_parts(
     def fake_build_app_runtime_parts(
         *,
         hotkey_usage,
-        selected_backend_id,
-        fallback_backend_id,
+        selected_engine_id,
+        fallback_engine_id,
         include_tone,
         **kwargs,
     ):
-        assert selected_backend_id == "pyttsx3"
-        assert fallback_backend_id == "pyttsx3"
+        assert selected_engine_id == "Pyttsx3"
+        assert fallback_engine_id == "Pyttsx3"
         assert include_tone is False
         assert kwargs == {}
         if requested_hotkeys is not None:
@@ -645,6 +651,7 @@ def test_main_runs_echo_app_main_loop(monkeypatch) -> None:
             return 321
 
     runtime = main_module.KeyEchoRuntime(
+        config_store=object(),
         input_capture=FakeCapture(),
         hotkey_capture=FakeHotkeyCapture(),
         scheduler=object(),

@@ -82,7 +82,6 @@ class NvdaRemoteAppService(KeyEventHandler):
         clipboard: ClipboardService,
         capabilities: Capabilities,
         on_speech_engine_changed: Callable[[str], None] | None = None,
-        on_speech_backend_changed: Callable[[str], None] | None = None,
         on_voice_changed: Callable[[str, str], None] | None = None,
         on_numeric_setting_changed: Callable[[str, str, int], None] | None = None,
         main_thread_dispatch: Callable[[Callable[[], None]], None] | None = None,
@@ -93,9 +92,7 @@ class NvdaRemoteAppService(KeyEventHandler):
         self.hotkey_capture = hotkey_capture
         self.clipboard = clipboard
         self._capabilities = capabilities
-        self._on_speech_engine_changed = (
-            on_speech_engine_changed or on_speech_backend_changed
-        )
+        self._on_speech_engine_changed = on_speech_engine_changed
         self.state = RuntimeState()
         self._status_listener: Callable[[NvdaRemoteEvent], None] | None = None
         self._main_thread_dispatch = main_thread_dispatch or (lambda callback: callback())
@@ -223,15 +220,6 @@ class NvdaRemoteAppService(KeyEventHandler):
     def set_speech_engine(self, engine_id: str) -> None:
         self._speech_settings.set_engine(engine_id)
         self._notify_status_listener(SpeechEngineChanged(engine_id))
-
-    def get_speech_backend_options(self) -> tuple[tuple[str, str], ...]:
-        return self.get_speech_engine_options()
-
-    def get_selected_speech_backend(self) -> str:
-        return self.get_selected_speech_engine()
-
-    def set_speech_backend(self, backend_id: str) -> None:
-        self.set_speech_engine(backend_id)
 
     def get_supported_numeric_settings(self):
         return self._speech_settings.get_supported_numeric_settings()

@@ -274,12 +274,6 @@ class PlatformProvider:
     def default_speech_engine_id(self) -> str:
         return default_speech_engine_id()
 
-    # Temporary aliases until all call sites are migrated.
-    def default_speech_backend_options(
-        self, scheduler: Scheduler
-    ) -> tuple[SpeechEngineOption, ...]:
-        return self.default_speech_engine_options(scheduler)
-
     def build_services(
         self, hotkey_usage: int = _DEFAULT_HOTKEY_USAGE
     ) -> PlatformServices:
@@ -289,10 +283,3 @@ class PlatformProvider:
             clipboard=self.create_clipboard_service(),
             tone_output=self.create_tone_output(),
         )
-
-    def default_speech_backend_id(self) -> str:
-        return self.default_speech_engine_id()
-
-
-default_speech_backend_options = default_speech_engine_options
-default_speech_backend_id = default_speech_engine_id

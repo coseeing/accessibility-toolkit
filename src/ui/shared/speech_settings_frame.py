@@ -12,7 +12,7 @@ class SpeechSettingsFrame(wx.Frame, SpeechControlsMixin):
         self._build_speech_controls(panel, sizer, wx)
         panel.SetSizer(sizer)
         self._bind_speech_control_events(wx)
-        self._sync_speech_backend_choice()
+        self._sync_speech_engine_choice()
         self._sync_speech_controls()
         self.Bind(wx.EVT_CLOSE, self._on_close)
 

@@ -223,6 +223,14 @@ class NvdaControllerSpeechOutput:
 
     @staticmethod
     def _normalized_percent_to_ssml_percent(value: int) -> int:
+        """Map a normalized 0-100 percent to an SSML prosody percent.
+
+        The baseline (normalized value 50) maps to SSML ``100%``. Values at or
+        below ``0`` map to ``0%``: for ``volume`` this means silence, while for
+        ``rate``/``pitch`` the resulting ``rate="0%"``/``pitch="0%"`` semantics
+        are defined by the receiving SSML engine. This mapping is intentionally
+        driver-owned and kept inside the NVDA controller driver per the spec.
+        """
         if value <= 0:
             return 0
         return round((value / 50) * 100)

@@ -20,15 +20,6 @@ class FakeSpeech:
         self.engine_calls.append(engine_id)
         self.engine_id = engine_id
 
-    def get_backend_options(self):
-        return self.get_engine_options()
-
-    def get_selected_backend(self):
-        return self.get_selected_engine()
-
-    def set_backend(self, backend_id):
-        self.set_engine(backend_id)
-
     def list_voices(self):
         return (("voice-1", "Voice 1"), ("voice-2", "Voice 2"))
 
@@ -83,19 +74,6 @@ def test_speech_settings_controller_calls_engine_changed_callback():
     controller = SpeechSettingsController(
         speech=speech,
         on_engine_changed=seen.append,
-    )
-
-    controller.set_engine("alt")
-
-    assert seen == ["alt"]
-
-
-def test_speech_settings_controller_accepts_backend_changed_callback_alias():
-    seen = []
-    speech = FakeSpeech()
-    controller = SpeechSettingsController(
-        speech=speech,
-        on_backend_changed=seen.append,
     )
 
     controller.set_engine("alt")

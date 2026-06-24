@@ -1,11 +1,7 @@
 from typing import TYPE_CHECKING
 
 from adapters.outputs.interfaces import SpeechOutput
-from application.output.speech.backends import (
-    SpeechBackendOption,
-    SpeechEngineManager,
-    SpeechEngineOption,
-)
+from application.output.speech.backends import SpeechEngineManager, SpeechEngineOption
 from application.output.speech.settings import SpeechNumericSetting
 from interop.speech.speech_sequence import SpeechSequence
 
@@ -17,27 +13,13 @@ class SpeechService:
     def __init__(
         self,
         *,
-        engine_options: tuple[SpeechEngineOption, ...] | None = None,
-        selected_engine_id: str | None = None,
-        backend_options: tuple[SpeechBackendOption, ...] | None = None,
-        selected_backend_id: str | None = None,
+        engine_options: tuple[SpeechEngineOption, ...],
+        selected_engine_id: str,
         scheduler: "Scheduler | None" = None,
     ) -> None:
-        resolved_engine_options = (
-            engine_options if engine_options is not None else backend_options
-        )
-        resolved_selected_engine_id = (
-            selected_engine_id
-            if selected_engine_id is not None
-            else selected_backend_id
-        )
-        if resolved_engine_options is None:
-            raise ValueError("speech engine options are required")
-        if resolved_selected_engine_id is None:
-            raise ValueError("selected speech engine id is required")
         self._engine_manager = SpeechEngineManager(
-            engine_options=resolved_engine_options,
-            selected_engine_id=resolved_selected_engine_id,
+            engine_options=engine_options,
+            selected_engine_id=selected_engine_id,
         )
         self._scheduler = scheduler
 
@@ -71,15 +53,6 @@ class SpeechService:
 
     def set_engine(self, engine_id: str) -> None:
         self._engine_manager.set_engine(engine_id)
-
-    def get_backend_options(self) -> tuple[tuple[str, str], ...]:
-        return self._engine_manager.backend_choices()
-
-    def get_selected_backend(self) -> str:
-        return self._engine_manager.selected_backend_id
-
-    def set_backend(self, backend_id: str) -> None:
-        self._engine_manager.set_backend(backend_id)
 
     def list_voices(self) -> tuple[tuple[str, str], ...]:
         return self._engine_manager.current_output.list_voices()
