@@ -87,6 +87,17 @@ Recommended renames:
 
 Driver class names may remain concrete and implementation-specific, but the design treats them as speech engine drivers in the NVDA synth-driver sense.
 
+### Speech Engine IDs And Labels
+
+Speech engine ids and UI labels are fixed as follows:
+
+- `NvdaControllerSpeechOutput` -> id: `NvdaController`, label: `Nvda Controller`
+- `Pyttsx3SpeechOutput` -> id: `Pyttsx3`, label: `Pyttsx3`
+
+The `id` is the internal value used by application logic and persistence.
+
+The `label` is the user-facing string shown in the UI speech engine choice control.
+
 ### Driver-Owned Settings
 
 Each speech engine driver must own its own supported settings and mapping behavior.
@@ -247,10 +258,14 @@ Configuration should store normalized values and use the new `speech engine` ter
 Recommended config shape:
 
 - `speech_engine`
-- `speech_engines.<engine_id>.voice`
-- `speech_engines.<engine_id>.rate`
-- `speech_engines.<engine_id>.pitch`
-- `speech_engines.<engine_id>.volume`
+- `speech_engines.NvdaController.voice`
+- `speech_engines.NvdaController.rate`
+- `speech_engines.NvdaController.pitch`
+- `speech_engines.NvdaController.volume`
+- `speech_engines.Pyttsx3.voice`
+- `speech_engines.Pyttsx3.rate`
+- `speech_engines.Pyttsx3.pitch`
+- `speech_engines.Pyttsx3.volume`
 
 Persistence rules:
 
