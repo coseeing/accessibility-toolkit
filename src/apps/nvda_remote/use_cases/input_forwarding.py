@@ -17,12 +17,14 @@ class NvdaRemoteInputForwardingUseCase:
         send_key: Callable[[dict[str, int | bool]], None],
         on_local_stop: Callable[[], None],
         local_stop_usage: int = 0x44,
+        use_windows_native_key_payload: bool = False,
     ) -> None:
         self._is_connected = is_connected
         self._is_controlling = is_controlling
         self._send_key = send_key
         self._on_local_stop = on_local_stop
         self._local_stop_usage = local_stop_usage
+        self._use_windows_native_key_payload = use_windows_native_key_payload
         self._suppressed_keyups: set[int] = set()
 
     def handle(self, event: CapturedKeyEvent) -> KeyEventDecision:
@@ -40,7 +42,12 @@ class NvdaRemoteInputForwardingUseCase:
         if not self._is_controlling():
             return KeyEventDecision.PASS_THROUGH
         try:
-            self._send_key(legacy_payload_from_captured_event(event))
+            self._send_key(
+                legacy_payload_from_captured_event(
+                    event,
+                    use_windows_native_key_payload=self._use_windows_native_key_payload,
+                )
+            )
         except ValueError:
             _logger.debug(
                 "Cannot forward HID 0x%02X:0x%02X — unsupported usage",

@@ -149,7 +149,7 @@ class FakeSpeechService:
         return None
 
 
-def build_service(*, dispatch=None):
+def build_service(*, dispatch=None, use_windows_native_key_payload=False):
     transport = FakeTransport()
     capture = FakeCapture()
     hotkey = FakeHotkey()
@@ -169,6 +169,7 @@ def build_service(*, dispatch=None):
         clipboard=FakeClipboard(),
         capabilities=Capabilities(speech=FakeSpeechService(), tone=tone),
         main_thread_dispatch=dispatch_wrapper,
+        use_windows_native_key_payload=use_windows_native_key_payload,
     )
     return service, transport, capture, hotkey, dispatch_calls
 
@@ -184,6 +185,52 @@ def test_nvda_remote_service_forwards_keys_when_controlling():
 
     assert decision == KeyboardPipelineResult(send_to_system=False, app_result=AppKeyEventResult.HANDLED_STOP)
     assert transport.sent == [(RemoteMessageType.KEY, {"vk_code": 65, "scan_code": 30, "extended": False, "pressed": True})]
+
+
+def test_nvda_remote_service_defaults_to_hid_payload_forwarding():
+    service, transport, _capture, _hotkey, _dispatch_calls = build_service()
+    service.bind()
+    service.state.connection_state = service.state.connection_state.CONNECTED
+    service.start_control()
+
+    decision = service.handle_key_event(
+        CapturedKeyEvent(
+            key_event=KeyEvent(
+                usage_page=HID.KEYBOARD_PAGE,
+                usage=HID.KEYPAD_5,
+                pressed=True,
+            ),
+            native_context=WindowsNativeKeyContext(vk_code=0x09, scan_code=15, extended=False),
+            num_lock_on=False,
+        )
+    )
+
+    assert decision == KeyboardPipelineResult(send_to_system=False, app_result=AppKeyEventResult.HANDLED_STOP)
+    assert transport.sent == [(RemoteMessageType.KEY, {"vk_code": 0x0C, "scan_code": 76, "extended": False, "pressed": True})]
+
+
+def test_nvda_remote_service_can_forward_windows_native_payloads():
+    service, transport, _capture, _hotkey, _dispatch_calls = build_service(
+        use_windows_native_key_payload=True
+    )
+    service.bind()
+    service.state.connection_state = service.state.connection_state.CONNECTED
+    service.start_control()
+
+    decision = service.handle_key_event(
+        CapturedKeyEvent(
+            key_event=KeyEvent(
+                usage_page=HID.KEYBOARD_PAGE,
+                usage=HID.KEYPAD_5,
+                pressed=True,
+            ),
+            native_context=WindowsNativeKeyContext(vk_code=0x09, scan_code=15, extended=False),
+            num_lock_on=False,
+        )
+    )
+
+    assert decision == KeyboardPipelineResult(send_to_system=False, app_result=AppKeyEventResult.HANDLED_STOP)
+    assert transport.sent == [(RemoteMessageType.KEY, {"vk_code": 0x09, "scan_code": 15, "extended": False, "pressed": True})]
 
 
 def test_nvda_remote_service_passes_num_lock_through_when_controlling_on_windows():

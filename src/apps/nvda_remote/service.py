@@ -83,6 +83,7 @@ class NvdaRemoteAppService(KeyEventHandler):
         capabilities: Capabilities,
         on_speech_backend_changed: Callable[[str], None] | None = None,
         main_thread_dispatch: Callable[[Callable[[], None]], None] | None = None,
+        use_windows_native_key_payload: bool = False,
     ) -> None:
         self.transport = transport
         self.input_capture = input_capture
@@ -119,6 +120,7 @@ class NvdaRemoteAppService(KeyEventHandler):
             send_key=lambda payload: self.transport.send(RemoteMessageType.KEY, **payload),
             on_local_stop=self.stop_control,
             local_stop_usage=self._LOCAL_STOP_USAGE,
+            use_windows_native_key_payload=use_windows_native_key_payload,
         )
 
         def _on_backend_changed_wrapper(backend_id: str) -> None:
