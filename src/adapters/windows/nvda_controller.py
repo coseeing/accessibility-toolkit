@@ -5,6 +5,7 @@ import sys
 from typing import Any
 
 from application.output import Scheduler
+from application.output.speech.settings import SpeechNumericSetting, clamp_percent
 from interop.speech.speech_commands import (
     BreakCommand,
     PitchCommand,
@@ -19,6 +20,11 @@ VENDORED_X64_DLL = "adapters/windows/vendor/nvda/x64/nvdaControllerClient.dll"
 logger = logging.getLogger(__name__)
 SPEAK_SSML_FUNCTION = "nvdaController_speakSsml"
 CANCEL_SPEECH_FUNCTION = "nvdaController_cancelSpeech"
+_SUPPORTED_NUMERIC_SETTINGS = (
+    SpeechNumericSetting(id="rate", label="Rate"),
+    SpeechNumericSetting(id="pitch", label="Pitch"),
+    SpeechNumericSetting(id="volume", label="Volume"),
+)
 
 
 class NvdaControllerSpeechOutput:
@@ -33,9 +39,9 @@ class NvdaControllerSpeechOutput:
         self.available = self.controller is not None
         self.loaded_from = loaded_from
         self._scheduler = scheduler
-        self._rate = 100
-        self._pitch = 100
-        self._volume = 100
+        self._rate = 50
+        self._pitch = 50
+        self._volume = 50
 
     @classmethod
     def load_default(
@@ -132,7 +138,7 @@ class NvdaControllerSpeechOutput:
         return self._rate
 
     def set_rate(self, value: int) -> None:
-        self._rate = int(value)
+        self._rate = clamp_percent(value)
 
     def get_pitch(self) -> int | None:
         if not self.available:
@@ -140,7 +146,7 @@ class NvdaControllerSpeechOutput:
         return self._pitch
 
     def set_pitch(self, value: int) -> None:
-        self._pitch = int(value)
+        self._pitch = clamp_percent(value)
 
     def get_volume(self) -> int | None:
         if not self.available:
@@ -148,11 +154,16 @@ class NvdaControllerSpeechOutput:
         return self._volume
 
     def set_volume(self, value: int) -> None:
-        self._volume = int(value)
+        self._volume = clamp_percent(value)
+
+    def get_supported_numeric_settings(self) -> tuple[SpeechNumericSetting, ...]:
+        if not self.available:
+            return ()
+        return _SUPPORTED_NUMERIC_SETTINGS
 
     def _speech_to_ssml(self, speech: SpeechSequence) -> str:
         segments: list[tuple[dict[str, int], str]] = []
-        active_prosody: dict[str, int] = {}
+        active_prosody = self._baseline_prosody_attrs()
         content_parts: list[str] = []
 
         for item in speech.items:
@@ -198,6 +209,23 @@ class NvdaControllerSpeechOutput:
                 return 100
             return round(((baseline + command.offset) / baseline) * 100)
         return 100
+
+    def _baseline_prosody_attrs(self) -> dict[str, int]:
+        attrs: dict[str, int] = {}
+        for name, value in (
+            ("rate", self._normalized_percent_to_ssml_percent(self._rate)),
+            ("pitch", self._normalized_percent_to_ssml_percent(self._pitch)),
+            ("volume", self._normalized_percent_to_ssml_percent(self._volume)),
+        ):
+            if value != 100:
+                attrs[name] = value
+        return attrs
+
+    @staticmethod
+    def _normalized_percent_to_ssml_percent(value: int) -> int:
+        if value <= 0:
+            return 0
+        return round((value / 50) * 100)
 
     @staticmethod
     def _wrap_prosody(attrs: dict[str, int], content: str) -> str:

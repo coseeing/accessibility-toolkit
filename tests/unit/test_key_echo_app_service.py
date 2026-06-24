@@ -4,7 +4,7 @@ import types
 from adapters.inputs.captured_event import CapturedKeyEvent
 from adapters.windows.native_key_context import WindowsNativeKeyContext
 from application.input.results import AppKeyEventResult, KeyboardPipelineResult
-from application.events import ErrorRaised, ModeChanged, SpeechBackendChanged
+from application.events import ErrorRaised, ModeChanged, SpeechEngineChanged
 from application.keyboard import KeyboardInputService
 from application.output import Capabilities
 from application.output.speech import SpeechService
@@ -37,6 +37,15 @@ class FakeSpeechOutput:
 
     def pause(self, is_paused: bool) -> None:
         return None
+
+    def get_engine_options(self) -> tuple[tuple[str, str], ...]:
+        return (("default", "Default"),)
+
+    def get_selected_engine(self) -> str:
+        return "default"
+
+    def set_engine(self, engine_id: str) -> None:
+        del engine_id
 
     def list_voices(self) -> tuple[tuple[str, str], ...]:
         return ()
@@ -119,14 +128,14 @@ class FakeRuntimeSpeech:
     def pause(self, is_paused: bool) -> None:
         self.output.pause(is_paused)
 
-    def get_backend_options(self):
+    def get_engine_options(self):
         return (("pyttsx3", "pyttsx3"),)
 
-    def get_selected_backend(self):
+    def get_selected_engine(self):
         return "pyttsx3"
 
-    def set_backend(self, backend_id):
-        del backend_id
+    def set_engine(self, engine_id):
+        del engine_id
 
     def list_voices(self):
         return self.output.list_voices()
@@ -387,8 +396,8 @@ def test_key_echo_app_service_exposes_speech_settings_api() -> None:
         capabilities=Capabilities(speech=SpeechService.single_backend(speech_output)),
     )
 
-    assert service.get_speech_backend_options() == (("default", "Default"),)
-    assert service.get_selected_speech_backend() == "default"
+    assert service.get_speech_engine_options() == (("default", "Default"),)
+    assert service.get_selected_speech_engine() == "default"
     service.set_selected_voice("voice-2")
     service.set_rate(120)
     service.set_pitch(3)
@@ -400,7 +409,7 @@ def test_key_echo_app_service_exposes_speech_settings_api() -> None:
     assert service.get_volume() == 80
 
 
-def test_key_echo_app_service_dispatches_typed_speech_backend_notification() -> None:
+def test_key_echo_app_service_dispatches_typed_speech_engine_notification() -> None:
     speech_output = FakeSpeechOutput()
     delivered = []
     service = KeyEchoAppService(
@@ -410,9 +419,9 @@ def test_key_echo_app_service_dispatches_typed_speech_backend_notification() -> 
     )
     service.set_status_listener(delivered.append)
 
-    service.set_speech_backend("default")
+    service.set_speech_engine("default")
 
-    assert delivered == [SpeechBackendChanged("default")]
+    assert delivered == [SpeechEngineChanged("default")]
 
 
 def test_key_echo_app_service_dispatches_typed_error_notification() -> None:
@@ -456,14 +465,14 @@ def test_build_runtime_composes_local_keyboard_and_speech(monkeypatch) -> None:
         def pause(self, is_paused: bool) -> None:
             self.speech.pause(is_paused)
 
-        def get_backend_options(self):
-            return self.speech.get_backend_options()
+        def get_engine_options(self):
+            return self.speech.get_engine_options()
 
-        def get_selected_backend(self):
-            return self.speech.get_selected_backend()
+        def get_selected_engine(self):
+            return self.speech.get_selected_engine()
 
-        def set_backend(self, backend_id):
-            self.speech.set_backend(backend_id)
+        def set_engine(self, engine_id):
+            self.speech.set_engine(engine_id)
 
         def list_voices(self):
             return self.speech.list_voices()
@@ -526,7 +535,7 @@ def test_build_runtime_composes_local_keyboard_and_speech(monkeypatch) -> None:
     assert runtime.input_capture is capture
     assert runtime.hotkey_capture is hotkey
     assert runtime.scheduler is scheduler
-    assert runtime.speech.get_selected_backend() == "pyttsx3"
+    assert runtime.speech.get_selected_engine() == "pyttsx3"
     assert runtime.speaker.speech is runtime.speech
     assert runtime.app is not None
     assert app_calls == [runtime.app_service]
@@ -622,7 +631,7 @@ def test_build_runtime_macos_path_composes_capture(monkeypatch) -> None:
 
     runtime = main_module.build_runtime()
     assert isinstance(runtime.input_capture, MacOSFakeCapture)
-    assert runtime.speech.get_selected_backend() == "pyttsx3"
+    assert runtime.speech.get_selected_engine() == "pyttsx3"
     assert runtime.input_capture.manager is not None
 
 

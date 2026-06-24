@@ -5,20 +5,29 @@ from apps.key_echo.events import EchoStateChanged
 
 class FakeSpeech:
     def __init__(self):
-        self.backend_id = "default"
+        self.engine_id = "default"
         self.voice_id = None
         self.rate = None
         self.pitch = None
         self.volume = None
 
-    def get_backend_options(self):
+    def get_engine_options(self):
         return (("default", "Default"),)
 
+    def get_selected_engine(self):
+        return self.engine_id
+
+    def set_engine(self, engine_id):
+        self.engine_id = engine_id
+
+    def get_backend_options(self):
+        return self.get_engine_options()
+
     def get_selected_backend(self):
-        return self.backend_id
+        return self.get_selected_engine()
 
     def set_backend(self, backend_id):
-        self.backend_id = backend_id
+        self.set_engine(backend_id)
 
     def list_voices(self):
         return ()
@@ -48,17 +57,17 @@ class FakeSpeech:
         self.volume = value
 
 
-def test_key_echo_speech_settings_use_case_proxies_backend_and_voice_controls():
+def test_key_echo_speech_settings_use_case_proxies_engine_and_voice_controls():
     from apps.key_echo.use_cases.speech_settings import KeyEchoSpeechSettingsUseCase
 
     speech = FakeSpeech()
     use_case = KeyEchoSpeechSettingsUseCase(speech=speech)
 
-    use_case.set_backend("pyttsx3")
+    use_case.set_engine("pyttsx3")
     use_case.set_voice("voice-2")
     use_case.set_rate(120)
 
-    assert speech.get_selected_backend() == "pyttsx3"
+    assert speech.get_selected_engine() == "pyttsx3"
     assert speech.get_voice() == "voice-2"
     assert speech.get_rate() == 120
 

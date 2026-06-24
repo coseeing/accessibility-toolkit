@@ -1,6 +1,6 @@
 from adapters.inputs.captured_event import CapturedKeyEvent
 from adapters.windows.native_key_context import WindowsNativeKeyContext
-from application.events import ErrorRaised, ModeChanged, SpeechBackendChanged
+from application.events import ErrorRaised, ModeChanged, SpeechEngineChanged
 from application.input.results import AppKeyEventResult, KeyboardPipelineResult
 from application.output import Capabilities
 from interop.key import HID, KeyEvent
@@ -99,8 +99,8 @@ class FakeSpeechService:
         self.cancelled = 0
         self.paused = []
         self.backend_options = (("nvda_controller", "NVDA Controller"),)
-        self.selected_backend = "nvda_controller"
-        self.backend_calls = []
+        self.selected_engine = "nvda_controller"
+        self.engine_calls = []
 
     def speak(self, sequence):
         self.spoken.append(sequence)
@@ -111,15 +111,24 @@ class FakeSpeechService:
     def pause(self, is_paused):
         self.paused.append(is_paused)
 
-    def get_backend_options(self):
+    def get_engine_options(self):
         return self.backend_options
 
+    def get_selected_engine(self):
+        return self.selected_engine
+
+    def set_engine(self, engine_id):
+        self.engine_calls.append(engine_id)
+        self.selected_engine = engine_id
+
+    def get_backend_options(self):
+        return self.get_engine_options()
+
     def get_selected_backend(self):
-        return self.selected_backend
+        return self.get_selected_engine()
 
     def set_backend(self, backend_id):
-        self.backend_calls.append(backend_id)
-        self.selected_backend = backend_id
+        self.set_engine(backend_id)
 
     def list_voices(self):
         return ()
@@ -149,7 +158,7 @@ class FakeSpeechService:
         return None
 
 
-def build_service(*, dispatch=None, use_windows_native_key_payload=False):
+def build_service(*, dispatch=None, use_windows_native_key_payload=False, **service_kwargs):
     transport = FakeTransport()
     capture = FakeCapture()
     hotkey = FakeHotkey()
@@ -170,6 +179,7 @@ def build_service(*, dispatch=None, use_windows_native_key_payload=False):
         capabilities=Capabilities(speech=FakeSpeechService(), tone=tone),
         main_thread_dispatch=dispatch_wrapper,
         use_windows_native_key_payload=use_windows_native_key_payload,
+        **service_kwargs,
     )
     return service, transport, capture, hotkey, dispatch_calls
 
@@ -576,9 +586,9 @@ def test_nvda_remote_service_stop_control_handles_hotkey_start_failure():
     ]
 
 
-def test_nvda_remote_service_dispatches_speech_backend_notifications():
+def test_nvda_remote_service_dispatches_speech_engine_notifications():
     delivered = []
-    saved_backend_ids = []
+    saved_engine_ids = []
     pending = []
 
     def deferred_dispatch(callback):
@@ -587,19 +597,44 @@ def test_nvda_remote_service_dispatches_speech_backend_notifications():
     service, _transport, _capture, _hotkey, dispatch_calls = build_service(
         dispatch=deferred_dispatch
     )
-    service._on_speech_backend_changed = saved_backend_ids.append
+    service._on_speech_engine_changed = saved_engine_ids.append
     service.set_status_listener(delivered.append)
 
-    service.set_speech_backend("pyttsx3")
+    service.set_speech_engine("pyttsx3")
 
-    assert service._capabilities.speech.backend_calls == ["pyttsx3"]
-    assert saved_backend_ids == ["pyttsx3"]
+    assert service._capabilities.speech.engine_calls == ["pyttsx3"]
+    assert saved_engine_ids == ["pyttsx3"]
     assert delivered == []
     assert len(dispatch_calls) == 1
 
     pending.pop()()
 
-    assert delivered == [SpeechBackendChanged("pyttsx3")]
+    assert delivered == [SpeechEngineChanged("pyttsx3")]
+
+
+def test_nvda_remote_service_accepts_backend_changed_callback_alias():
+    delivered = []
+    saved_engine_ids = []
+    pending = []
+
+    def deferred_dispatch(callback):
+        pending.append(callback)
+
+    service, _transport, _capture, _hotkey, dispatch_calls = build_service(
+        dispatch=deferred_dispatch,
+        on_speech_backend_changed=saved_engine_ids.append,
+    )
+    service.set_status_listener(delivered.append)
+
+    service.set_speech_engine("pyttsx3")
+
+    assert saved_engine_ids == ["pyttsx3"]
+    assert delivered == []
+    assert len(dispatch_calls) == 1
+
+    pending.pop()()
+
+    assert delivered == [SpeechEngineChanged("pyttsx3")]
 
 
 def test_nvda_remote_service_f11_toggles_control_on_keydown_only():

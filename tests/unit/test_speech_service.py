@@ -1,8 +1,7 @@
 import pytest
 
 from application.output import Capabilities
-from application.output.speech import SpeechBackendOption
-from application.output.speech import SpeechService
+from application.output.speech import SpeechEngineOption, SpeechNumericSetting, SpeechService
 from interop.speech.speech_sequence import SpeechSequence
 
 
@@ -16,6 +15,11 @@ class FakeSpeechOutput:
         self.rate = 100
         self.pitch = 100
         self.volume = 100
+        self.supported_numeric_settings = (
+            SpeechNumericSetting(id="rate", label="Rate"),
+            SpeechNumericSetting(id="pitch", label="Pitch"),
+            SpeechNumericSetting(id="volume", label="Volume"),
+        )
 
     def speak(self, sequence: SpeechSequence) -> None:
         self.spoken.append(sequence)
@@ -53,8 +57,11 @@ class FakeSpeechOutput:
     def set_volume(self, value: int) -> None:
         self.volume = value
 
+    def get_supported_numeric_settings(self):
+        return self.supported_numeric_settings
 
-def test_speech_service_switches_backends_and_routes_calls() -> None:
+
+def test_speech_service_switches_engines_and_routes_calls() -> None:
     created: list[FakeSpeechOutput] = []
 
     def build(name: str):
@@ -66,19 +73,19 @@ def test_speech_service_switches_backends_and_routes_calls() -> None:
         return factory
 
     service = SpeechService(
-        backend_options=(
-            SpeechBackendOption(
-                backend_id="nvda_controller",
-                label="NVDA Controller",
+        engine_options=(
+            SpeechEngineOption(
+                engine_id="NvdaController",
+                label="Nvda Controller",
                 factory=build("nvda"),
             ),
-            SpeechBackendOption(
-                backend_id="pyttsx3",
-                label="pyttsx3",
+            SpeechEngineOption(
+                engine_id="Pyttsx3",
+                label="Pyttsx3",
                 factory=build("pyttsx3"),
             ),
         ),
-        selected_backend_id="nvda_controller",
+        selected_engine_id="NvdaController",
     )
 
     speech = SpeechSequence(items=("hello",))
@@ -89,11 +96,11 @@ def test_speech_service_switches_backends_and_routes_calls() -> None:
     service.set_pitch(70)
     service.set_volume(60)
 
-    assert service.get_backend_options() == (
-        ("nvda_controller", "NVDA Controller"),
-        ("pyttsx3", "pyttsx3"),
+    assert service.get_engine_options() == (
+        ("NvdaController", "Nvda Controller"),
+        ("Pyttsx3", "Pyttsx3"),
     )
-    assert service.get_selected_backend() == "nvda_controller"
+    assert service.get_selected_engine() == "NvdaController"
     assert created[0].spoken == [speech]
     assert created[0].paused == [True]
     assert created[0].get_voice() == "voice-1"
@@ -101,11 +108,11 @@ def test_speech_service_switches_backends_and_routes_calls() -> None:
     assert created[0].get_pitch() == 70
     assert created[0].get_volume() == 60
 
-    service.set_backend("pyttsx3")
+    service.set_engine("Pyttsx3")
     service.cancel()
     service.speak(SpeechSequence(items=("world",)))
 
-    assert service.get_selected_backend() == "pyttsx3"
+    assert service.get_selected_engine() == "Pyttsx3"
     assert created[0].cancelled == 1
     assert created[1].cancelled == 1
     assert created[1].spoken == [SpeechSequence(items=("world",))]
@@ -117,22 +124,41 @@ def test_output_capabilities_exposes_shared_outputs() -> None:
 
     capabilities = Capabilities(speech=SpeechService.single_backend(speech))
 
-    assert capabilities.speech.get_selected_backend() == "default"
+    assert capabilities.speech.get_selected_engine() == "default"
     assert capabilities.tone is None
     assert capabilities.braille is None
 
 
-def test_speech_service_rejects_unknown_backend_id() -> None:
+def test_speech_service_rejects_unknown_engine_id() -> None:
     service = SpeechService(
-        backend_options=(
-            SpeechBackendOption(
-                backend_id="nvda_controller",
-                label="NVDA Controller",
+        engine_options=(
+            SpeechEngineOption(
+                engine_id="NvdaController",
+                label="Nvda Controller",
                 factory=lambda: FakeSpeechOutput("nvda"),
             ),
         ),
-        selected_backend_id="nvda_controller",
+        selected_engine_id="NvdaController",
     )
 
-    with pytest.raises(ValueError, match="Unknown speech backend"):
-        service.set_backend("missing")
+    with pytest.raises(ValueError, match="Unknown speech engine"):
+        service.set_engine("missing")
+
+
+def test_speech_service_exposes_supported_numeric_settings() -> None:
+    service = SpeechService(
+        engine_options=(
+            SpeechEngineOption(
+                engine_id="NvdaController",
+                label="Nvda Controller",
+                factory=lambda: FakeSpeechOutput("nvda"),
+            ),
+        ),
+        selected_engine_id="NvdaController",
+    )
+
+    assert service.get_supported_numeric_settings() == (
+        SpeechNumericSetting(id="rate", label="Rate"),
+        SpeechNumericSetting(id="pitch", label="Pitch"),
+        SpeechNumericSetting(id="volume", label="Volume"),
+    )

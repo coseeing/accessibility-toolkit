@@ -10,37 +10,40 @@ from bootstrap.platform import (
     create_hotkey_capture,
     create_clipboard_service,
     create_tone_output,
-    default_speech_backend_id,
-    default_speech_backend_options,
+    default_speech_engine_id,
+    default_speech_engine_options,
     PlatformProvider,
 )
 from interop.key import HID
 
 
-class TestDefaultSpeechBackendId:
+class TestDefaultSpeechEngineId:
     def test_windows_returns_nvda_controller(self, monkeypatch):
         monkeypatch.setattr(sys, "platform", "win32")
-        assert default_speech_backend_id() == "nvda_controller"
+        assert default_speech_engine_id() == "NvdaController"
 
     def test_darwin_returns_pyttsx3(self, monkeypatch):
         monkeypatch.setattr(sys, "platform", "darwin")
-        assert default_speech_backend_id() == "pyttsx3"
+        assert default_speech_engine_id() == "Pyttsx3"
 
     def test_other_platform_returns_pyttsx3(self, monkeypatch):
         monkeypatch.setattr(sys, "platform", "linux")
-        assert default_speech_backend_id() == "pyttsx3"
+        assert default_speech_engine_id() == "Pyttsx3"
 
 
-class TestDefaultSpeechBackendOptions:
+class TestDefaultSpeechEngineOptions:
     def test_windows_includes_nvda_controller_and_pyttsx3(self, monkeypatch):
         from application.output import Scheduler
 
         monkeypatch.setattr(sys, "platform", "win32")
         scheduler = Scheduler()
         try:
-            options = default_speech_backend_options(scheduler)
-            ids = [opt.backend_id for opt in options]
-            assert ids == ["nvda_controller", "pyttsx3"]
+            options = default_speech_engine_options(scheduler)
+            ids = [(opt.engine_id, opt.label) for opt in options]
+            assert ids == [
+                ("NvdaController", "Nvda Controller"),
+                ("Pyttsx3", "Pyttsx3"),
+            ]
         finally:
             scheduler.shutdown()
 
@@ -50,9 +53,9 @@ class TestDefaultSpeechBackendOptions:
         monkeypatch.setattr(sys, "platform", "darwin")
         scheduler = Scheduler()
         try:
-            options = default_speech_backend_options(scheduler)
-            ids = [opt.backend_id for opt in options]
-            assert ids == ["pyttsx3"]
+            options = default_speech_engine_options(scheduler)
+            ids = [(opt.engine_id, opt.label) for opt in options]
+            assert ids == [("Pyttsx3", "Pyttsx3")]
         finally:
             scheduler.shutdown()
 
@@ -275,4 +278,4 @@ class TestPlatformProvider:
         assert not services.hotkey_capture.running
         assert services.clipboard.get_text() == ""
         assert services.tone_output is not None
-        assert PlatformProvider().default_speech_backend_id() == "pyttsx3"
+        assert PlatformProvider().default_speech_engine_id() == "Pyttsx3"

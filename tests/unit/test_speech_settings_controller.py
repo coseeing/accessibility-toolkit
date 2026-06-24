@@ -3,22 +3,31 @@ from apps.shared.speech_settings_controller import SpeechSettingsController
 
 class FakeSpeech:
     def __init__(self):
-        self.backend_id = "default"
+        self.engine_id = "default"
         self.voice_id = "voice-1"
         self.rate = 50
         self.pitch = 40
         self.volume = 90
-        self.backend_calls = []
+        self.engine_calls = []
 
-    def get_backend_options(self):
+    def get_engine_options(self):
         return (("default", "Default"), ("alt", "Alt"))
 
+    def get_selected_engine(self):
+        return self.engine_id
+
+    def set_engine(self, engine_id):
+        self.engine_calls.append(engine_id)
+        self.engine_id = engine_id
+
+    def get_backend_options(self):
+        return self.get_engine_options()
+
     def get_selected_backend(self):
-        return self.backend_id
+        return self.get_selected_engine()
 
     def set_backend(self, backend_id):
-        self.backend_calls.append(backend_id)
-        self.backend_id = backend_id
+        self.set_engine(backend_id)
 
     def list_voices(self):
         return (("voice-1", "Voice 1"), ("voice-2", "Voice 2"))
@@ -47,25 +56,41 @@ class FakeSpeech:
     def set_volume(self, value):
         self.volume = value
 
+    def get_supported_numeric_settings(self):
+        return ("rate", "pitch", "volume")
 
-def test_speech_settings_controller_proxies_backend_and_voice_settings():
+
+def test_speech_settings_controller_proxies_engine_and_voice_settings():
     speech = FakeSpeech()
     controller = SpeechSettingsController(speech=speech)
 
-    controller.set_backend("alt")
+    controller.set_engine("alt")
     controller.set_voice("voice-2")
     controller.set_rate(60)
     controller.set_pitch(55)
     controller.set_volume(80)
 
-    assert controller.get_selected_backend() == "alt"
+    assert controller.get_selected_engine() == "alt"
     assert controller.get_voice() == "voice-2"
     assert controller.get_rate() == 60
     assert controller.get_pitch() == 55
     assert controller.get_volume() == 80
 
 
-def test_speech_settings_controller_calls_backend_changed_callback():
+def test_speech_settings_controller_calls_engine_changed_callback():
+    seen = []
+    speech = FakeSpeech()
+    controller = SpeechSettingsController(
+        speech=speech,
+        on_engine_changed=seen.append,
+    )
+
+    controller.set_engine("alt")
+
+    assert seen == ["alt"]
+
+
+def test_speech_settings_controller_accepts_backend_changed_callback_alias():
     seen = []
     speech = FakeSpeech()
     controller = SpeechSettingsController(
@@ -73,6 +98,40 @@ def test_speech_settings_controller_calls_backend_changed_callback():
         on_backend_changed=seen.append,
     )
 
-    controller.set_backend("alt")
+    controller.set_engine("alt")
 
     assert seen == ["alt"]
+
+
+def test_speech_settings_controller_calls_voice_and_numeric_callbacks():
+    calls = []
+    speech = FakeSpeech()
+    controller = SpeechSettingsController(
+        speech=speech,
+        on_voice_changed=lambda engine_id, voice_id: calls.append(
+            ("voice", engine_id, voice_id)
+        ),
+        on_numeric_setting_changed=lambda engine_id, setting_id, value: calls.append(
+            ("numeric", engine_id, setting_id, value)
+        ),
+    )
+
+    controller.set_engine("alt")
+    controller.set_voice("voice-2")
+    controller.set_rate(60)
+    controller.set_pitch(55)
+    controller.set_volume(80)
+
+    assert calls == [
+        ("voice", "alt", "voice-2"),
+        ("numeric", "alt", "rate", 60),
+        ("numeric", "alt", "pitch", 55),
+        ("numeric", "alt", "volume", 80),
+    ]
+
+
+def test_speech_settings_controller_proxies_supported_numeric_settings():
+    speech = FakeSpeech()
+    controller = SpeechSettingsController(speech=speech)
+
+    assert controller.get_supported_numeric_settings() == ("rate", "pitch", "volume")

@@ -1,105 +1,131 @@
 class SpeechControlsMixin:
-    _DEFAULT_BACKEND_OPTIONS = (
-        ("nvda_controller", "NVDA Controller"),
-        ("pyttsx3", "pyttsx3"),
+    _DEFAULT_ENGINE_OPTIONS = (
+        ("NvdaController", "Nvda Controller"),
+        ("Pyttsx3", "Pyttsx3"),
     )
 
     def _build_speech_controls(self, panel, sizer, wx) -> None:
-        self._speech_backend_options = self._get_speech_backend_options()
-        self.speech_backend_choice = wx.Choice(
+        self._speech_engine_options = self._get_speech_engine_options()
+        self.speech_engine_choice = wx.Choice(
             panel,
-            choices=[label for _backend_id, label in self._speech_backend_options],
+            choices=[label for _engine_id, label in self._speech_engine_options],
         )
         self._voice_options = self._get_available_voices()
         self.voice_choice = wx.Choice(
             panel,
             choices=[label for _voice_id, label in self._voice_options],
         )
-        self.rate_ctrl = wx.TextCtrl(panel, value="")
-        self.pitch_ctrl = wx.TextCtrl(panel, value="")
-        self.volume_ctrl = wx.TextCtrl(panel, value="")
+        self.rate_slider = wx.Slider(panel, value=50, minValue=0, maxValue=100)
+        self.pitch_slider = wx.Slider(panel, value=50, minValue=0, maxValue=100)
+        self.volume_slider = wx.Slider(panel, value=50, minValue=0, maxValue=100)
+        self.speech_backend_choice = self.speech_engine_choice
+        self.rate_ctrl = self.rate_slider
+        self.pitch_ctrl = self.pitch_slider
+        self.volume_ctrl = self.volume_slider
         for widget in (
-            self.speech_backend_choice,
+            self.speech_engine_choice,
             self.voice_choice,
-            self.rate_ctrl,
-            self.pitch_ctrl,
-            self.volume_ctrl,
+            self.rate_slider,
+            self.pitch_slider,
+            self.volume_slider,
         ):
             sizer.Add(widget, 0, wx.EXPAND | wx.ALL, 4)
 
     def _bind_speech_control_events(self, wx) -> None:
-        self.speech_backend_choice.Bind(wx.EVT_CHOICE, self._on_speech_backend_change)
+        self.speech_engine_choice.Bind(wx.EVT_CHOICE, self._on_speech_engine_change)
         self.voice_choice.Bind(wx.EVT_CHOICE, self._on_voice_change)
-        self.rate_ctrl.Bind(wx.EVT_TEXT, self._on_rate_change)
-        self.pitch_ctrl.Bind(wx.EVT_TEXT, self._on_pitch_change)
-        self.volume_ctrl.Bind(wx.EVT_TEXT, self._on_volume_change)
+        self.rate_slider.Bind(wx.EVT_SLIDER, self._on_rate_change)
+        self.pitch_slider.Bind(wx.EVT_SLIDER, self._on_pitch_change)
+        self.volume_slider.Bind(wx.EVT_SLIDER, self._on_volume_change)
 
-    def _on_speech_backend_change(self, _event):
-        if self.controller is None or not hasattr(self.controller, "set_speech_backend"):
+    def _on_speech_engine_change(self, _event):
+        if self.controller is None or not hasattr(self.controller, "set_speech_engine"):
             return
-        backend_id = self._backend_id_for_selection(self.speech_backend_choice.GetSelection())
-        if backend_id is None:
+        engine_id = self._engine_id_for_selection(self.speech_engine_choice.GetSelection())
+        if engine_id is None:
             return
         try:
-            self.controller.set_speech_backend(backend_id)
+            self.controller.set_speech_engine(engine_id)
         except Exception as error:
-            self._sync_speech_backend_choice()
-            self._show_error(str(error), "Speech Backend Error")
+            self._sync_speech_engine_choice()
+            self._show_error(str(error), "Speech Engine Error")
             return
-        self._sync_speech_backend_choice()
+        self._sync_speech_engine_choice()
         self._sync_speech_controls()
+
+    def _on_speech_backend_change(self, event):
+        self._on_speech_engine_change(event)
 
     def _on_voice_change(self, _event):
         if self.controller is None or not hasattr(self.controller, "set_selected_voice"):
+            return
+        if not self._voice_options:
             return
         voice_id = self._voice_id_for_selection(self.voice_choice.GetSelection())
         if voice_id is not None:
             self.controller.set_selected_voice(voice_id)
 
     def _on_rate_change(self, _event):
-        self._set_int_control_value(self.rate_ctrl, "set_rate")
+        self._set_slider_value(self.rate_slider, "set_rate", "rate")
 
     def _on_pitch_change(self, _event):
-        self._set_int_control_value(self.pitch_ctrl, "set_pitch")
+        self._set_slider_value(self.pitch_slider, "set_pitch", "pitch")
 
     def _on_volume_change(self, _event):
-        self._set_int_control_value(self.volume_ctrl, "set_volume")
+        self._set_slider_value(self.volume_slider, "set_volume", "volume")
+
+    def _sync_speech_engine_choice(self) -> None:
+        selected_engine = self._get_selected_speech_engine()
+        for index, (engine_id, _label) in enumerate(self._speech_engine_options):
+            if engine_id == selected_engine:
+                self.speech_engine_choice.SetSelection(index)
+                return
+        if self._speech_engine_options:
+            self.speech_engine_choice.SetSelection(0)
 
     def _sync_speech_backend_choice(self) -> None:
-        selected_backend = self._get_selected_speech_backend()
-        for index, (backend_id, _label) in enumerate(self._speech_backend_options):
-            if backend_id == selected_backend:
-                self.speech_backend_choice.SetSelection(index)
-                return
-        if self._speech_backend_options:
-            self.speech_backend_choice.SetSelection(0)
+        self._sync_speech_engine_choice()
 
     def _sync_speech_controls(self) -> None:
         self._voice_options = self._get_available_voices()
         self.voice_choice.Clear()
         for _voice_id, label in self._voice_options:
             self.voice_choice.Append(label)
-        self.voice_choice.SetSelection(self._voice_selection_for_current_value())
-        self.rate_ctrl.SetValue(self._stringify_optional_int(self._get_rate()))
-        self.pitch_ctrl.SetValue(self._stringify_optional_int(self._get_pitch()))
-        self.volume_ctrl.SetValue(self._stringify_optional_int(self._get_volume()))
+        if self._voice_options:
+            self.voice_choice.Enable(True)
+            self.voice_choice.SetSelection(self._voice_selection_for_current_value())
+        else:
+            self.voice_choice.Disable()
+            self.voice_choice.SetSelection(-1)
+        self._sync_numeric_slider(self.rate_slider, "rate", self._get_rate())
+        self._sync_numeric_slider(self.pitch_slider, "pitch", self._get_pitch())
+        self._sync_numeric_slider(self.volume_slider, "volume", self._get_volume())
+
+    def _get_speech_engine_options(self) -> tuple[tuple[str, str], ...]:
+        if self.controller is None or not hasattr(self.controller, "get_speech_engine_options"):
+            return self._DEFAULT_ENGINE_OPTIONS
+        options = self.controller.get_speech_engine_options()
+        return options or self._DEFAULT_ENGINE_OPTIONS
 
     def _get_speech_backend_options(self) -> tuple[tuple[str, str], ...]:
-        if self.controller is None or not hasattr(self.controller, "get_speech_backend_options"):
-            return self._DEFAULT_BACKEND_OPTIONS
-        options = self.controller.get_speech_backend_options()
-        return options or self._DEFAULT_BACKEND_OPTIONS
+        return self._get_speech_engine_options()
+
+    def _get_selected_speech_engine(self) -> str:
+        if self.controller is None or not hasattr(self.controller, "get_selected_speech_engine"):
+            return self._DEFAULT_ENGINE_OPTIONS[0][0]
+        selected = self.controller.get_selected_speech_engine()
+        return selected or self._DEFAULT_ENGINE_OPTIONS[0][0]
 
     def _get_selected_speech_backend(self) -> str:
-        if self.controller is None or not hasattr(self.controller, "get_selected_speech_backend"):
-            return self._DEFAULT_BACKEND_OPTIONS[0][0]
-        selected = self.controller.get_selected_speech_backend()
-        return selected or self._DEFAULT_BACKEND_OPTIONS[0][0]
+        return self._get_selected_speech_engine()
+
+    def _engine_id_for_selection(self, selection: int) -> str | None:
+        if selection < 0 or selection >= len(self._speech_engine_options):
+            return None
+        return self._speech_engine_options[selection][0]
 
     def _backend_id_for_selection(self, selection: int) -> str | None:
-        if selection < 0 or selection >= len(self._speech_backend_options):
-            return None
-        return self._speech_backend_options[selection][0]
+        return self._engine_id_for_selection(selection)
 
     def _get_available_voices(self) -> tuple[tuple[str, str], ...]:
         if self.controller is None or not hasattr(self.controller, "get_available_voices"):
@@ -126,6 +152,14 @@ class SpeechControlsMixin:
             return None
         return self.controller.get_volume()
 
+    def _get_supported_numeric_settings(self):
+        if self.controller is None or not hasattr(self.controller, "get_supported_numeric_settings"):
+            return ()
+        return self.controller.get_supported_numeric_settings() or ()
+
+    def _supported_numeric_setting_ids(self) -> set[str]:
+        return {setting.id for setting in self._get_supported_numeric_settings()}
+
     def _voice_id_for_selection(self, selection: int) -> str | None:
         if selection < 0 or selection >= len(self._voice_options):
             return None
@@ -142,11 +176,21 @@ class SpeechControlsMixin:
     def _stringify_optional_int(value: int | None) -> str:
         return "" if value is None else str(value)
 
-    def _set_int_control_value(self, control, setter_name: str) -> None:
+    def _sync_numeric_slider(self, slider, setting_id: str, value: int | None) -> None:
+        settings = {setting.id: setting for setting in self._get_supported_numeric_settings()}
+        setting = settings.get(setting_id)
+        if setting is None:
+            slider.SetValue(50)
+            slider.Disable()
+            return
+        slider.SetLineSize(setting.step)
+        slider.SetPageSize(setting.large_step)
+        slider.SetValue(setting.default_percent if value is None else value)
+        slider.Enable(True)
+
+    def _set_slider_value(self, slider, setter_name: str, setting_id: str) -> None:
         if self.controller is None or not hasattr(self.controller, setter_name):
             return
-        try:
-            value = int(control.GetValue())
-        except ValueError:
+        if setting_id not in self._supported_numeric_setting_ids():
             return
-        getattr(self.controller, setter_name)(value)
+        getattr(self.controller, setter_name)(slider.GetValue())

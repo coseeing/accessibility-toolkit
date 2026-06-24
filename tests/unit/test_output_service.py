@@ -1,7 +1,6 @@
 from application.output import QueuedService
 from application.output import Scheduler
-from application.output.speech import SpeechBackendOption
-from application.output.speech import SpeechService
+from application.output.speech import SpeechEngineOption, SpeechService
 from interop.speech.speech_sequence import SpeechSequence
 
 
@@ -15,6 +14,7 @@ class FakeSpeechOutput:
         self.rate: int | None = None
         self.pitch: int | None = None
         self.volume: int | None = None
+        self.supported_numeric_settings = ()
 
     def speak(self, sequence: SpeechSequence) -> None:
         self.spoken.append(sequence)
@@ -52,6 +52,9 @@ class FakeSpeechOutput:
     def set_volume(self, value: int) -> None:
         self.volume = value
 
+    def get_supported_numeric_settings(self):
+        return self.supported_numeric_settings
+
 
 class SchedulerBackedFakeOutput(FakeSpeechOutput):
     """Mimics real backends (pyttsx3/nvda_controller) that schedule speak
@@ -82,19 +85,19 @@ def build_service() -> tuple[QueuedService, list[FakeSpeechOutput], Scheduler]:
 
     scheduler = Scheduler()
     speech = SpeechService(
-        backend_options=(
-            SpeechBackendOption(
-                backend_id="nvda_controller",
-                label="NVDA Controller",
+        engine_options=(
+            SpeechEngineOption(
+                engine_id="NvdaController",
+                label="Nvda Controller",
                 factory=factory("nvda_controller"),
             ),
-            SpeechBackendOption(
-                backend_id="pyttsx3",
-                label="pyttsx3",
+            SpeechEngineOption(
+                engine_id="Pyttsx3",
+                label="Pyttsx3",
                 factory=factory("pyttsx3"),
             ),
         ),
-        selected_backend_id="nvda_controller",
+        selected_engine_id="NvdaController",
         scheduler=scheduler,
     )
     return QueuedService(speech=speech), created, scheduler
@@ -113,19 +116,19 @@ def build_scheduler_backed_service() -> tuple[QueuedService, list[SchedulerBacke
 
     scheduler = Scheduler()
     speech = SpeechService(
-        backend_options=(
-            SpeechBackendOption(
-                backend_id="nvda_controller",
-                label="NVDA Controller",
+        engine_options=(
+            SpeechEngineOption(
+                engine_id="NvdaController",
+                label="Nvda Controller",
                 factory=factory("nvda_controller"),
             ),
-            SpeechBackendOption(
-                backend_id="pyttsx3",
-                label="pyttsx3",
+            SpeechEngineOption(
+                engine_id="Pyttsx3",
+                label="Pyttsx3",
                 factory=factory("pyttsx3"),
             ),
         ),
-        selected_backend_id="nvda_controller",
+        selected_engine_id="NvdaController",
         scheduler=scheduler,
     )
     return QueuedService(speech=speech), created, scheduler
@@ -145,7 +148,7 @@ def test_queued_output_service_proxies_speech_calls() -> None:
     service.shutdown()
 
 
-def test_output_package_re_exports_core_types() -> None:
+def test_application_output_speech_exports_engine_types() -> None:
     from application.output import (
         Capabilities,
         EventCallbacks,
@@ -157,8 +160,8 @@ def test_output_package_re_exports_core_types() -> None:
     )
     from application.output.manager import ClipboardService
     from application.output.speech import (
-        SpeechBackendManager,
-        SpeechBackendOption,
+        SpeechEngineManager,
+        SpeechEngineOption,
         SpeechService,
     )
     from application.output import SpeechServiceProtocol
@@ -171,21 +174,21 @@ def test_output_package_re_exports_core_types() -> None:
     assert QueuedService is not None
     assert ScheduledFuture is not None
     assert Scheduler is not None
-    assert SpeechBackendManager is not None
-    assert SpeechBackendOption is not None
+    assert SpeechEngineManager is not None
+    assert SpeechEngineOption is not None
     assert SpeechService is not None
     assert SpeechServiceProtocol is not None
 
 
-def test_queued_output_service_switches_backend_via_speech_service() -> None:
+def test_queued_output_service_switches_engine_via_speech_service() -> None:
     service, created, _scheduler = build_service()
 
-    service.set_backend("pyttsx3")
+    service.set_engine("Pyttsx3")
     service.speak(SpeechSequence(items=("next",)))
 
     assert created[0].cancelled == 1
     assert created[1].spoken == [SpeechSequence(items=("next",))]
-    assert service.get_selected_backend() == "pyttsx3"
+    assert service.get_selected_engine() == "Pyttsx3"
     service.shutdown()
 
 
@@ -204,6 +207,12 @@ def test_queued_output_service_proxies_configuration_calls() -> None:
     assert service.get_volume() == 80
     assert created[0].voice == "voice-1"
     service.shutdown()
+
+
+def test_queued_output_service_proxies_supported_numeric_settings() -> None:
+    service, _created, _scheduler = build_service()
+
+    assert service.get_supported_numeric_settings() == ()
 
 
 import threading

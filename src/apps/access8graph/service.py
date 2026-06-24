@@ -2,7 +2,7 @@ from pathlib import Path
 
 from adapters.inputs.base import HotkeyCapture, InputCapture
 from adapters.inputs.captured_event import CapturedKeyEvent
-from application.events import AppEvent, ErrorRaised, SpeechBackendChanged
+from application.events import AppEvent, ErrorRaised, SpeechEngineChanged
 from application.input import (
     assemble_pipeline_result,
     InputActivationUseCase,
@@ -168,15 +168,27 @@ class Access8GraphAppService(KeyEventHandler):
         if had_flow:
             self._notify_status_listener(GraphNavigationChanged(active=False))
 
+    def get_speech_engine_options(self) -> tuple[tuple[str, str], ...]:
+        return self._speech_settings.get_engine_options()
+
+    def get_selected_speech_engine(self) -> str:
+        return self._speech_settings.get_selected_engine()
+
+    def set_speech_engine(self, engine_id: str) -> None:
+        self._speech_settings.set_engine(engine_id)
+        self._notify_status_listener(SpeechEngineChanged(engine_id))
+
     def get_speech_backend_options(self) -> tuple[tuple[str, str], ...]:
-        return self._speech_settings.get_backend_options()
+        return self.get_speech_engine_options()
 
     def get_selected_speech_backend(self) -> str:
-        return self._speech_settings.get_selected_backend()
+        return self.get_selected_speech_engine()
 
     def set_speech_backend(self, backend_id: str) -> None:
-        self._speech_settings.set_backend(backend_id)
-        self._notify_status_listener(SpeechBackendChanged(backend_id))
+        self.set_speech_engine(backend_id)
+
+    def get_supported_numeric_settings(self):
+        return self._speech_settings.get_supported_numeric_settings()
 
     def get_available_voices(self) -> tuple[tuple[str, str], ...]:
         return self._speech_settings.list_voices()

@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 from adapters.inputs.captured_event import CapturedKeyEvent
-from application.events import ErrorRaised, SpeechBackendChanged
+from application.events import ErrorRaised, SpeechEngineChanged
 from application.input.results import AppKeyEventResult, KeyboardPipelineResult
 from application.keyboard import KeyboardInputService
 from application.output import Capabilities
@@ -30,14 +30,14 @@ class FakeSpeech:
     def pause(self, is_paused: bool) -> None:
         self.calls.append(("pause", is_paused))
 
-    def get_backend_options(self):
+    def get_engine_options(self):
         return (("default", "Default"),)
 
-    def get_selected_backend(self):
+    def get_selected_engine(self):
         return self.backend_id
 
-    def set_backend(self, backend_id):
-        self.backend_id = backend_id
+    def set_engine(self, engine_id):
+        self.backend_id = engine_id
 
     def list_voices(self):
         return ()
@@ -124,14 +124,14 @@ def test_service_dispatches_status_updates_through_main_thread_callback() -> Non
     )
     service.set_status_listener(delivered.append)
 
-    service.set_speech_backend("default")
+    service.set_speech_engine("default")
 
     assert delivered == []
     assert len(pending) == 1
 
     pending.pop()()
 
-    assert delivered == [SpeechBackendChanged("default")]
+    assert delivered == [SpeechEngineChanged("default")]
 
 
 def test_idle_hotkey_without_selected_graphml_reports_error_without_starting_capture() -> None:

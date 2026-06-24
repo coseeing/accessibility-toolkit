@@ -1,5 +1,5 @@
 from application.output import Scheduler
-from application.output.speech import SpeechBackendOption
+from application.output.speech import SpeechEngineOption
 from bootstrap.app_runtime import build_app_runtime_parts
 from interop.key import HID
 
@@ -96,15 +96,15 @@ class FakeProvider:
         self.tone_calls += 1
         return self.tone_output
 
-    def default_speech_backend_id(self):
+    def default_speech_engine_id(self):
         return "default"
 
-    def default_speech_backend_options(self, scheduler):
+    def default_speech_engine_options(self, scheduler):
         assert isinstance(scheduler, Scheduler)
         self.scheduler = scheduler
         return (
-            SpeechBackendOption("default", "Default", lambda: FakeSpeechOutput()),
-            SpeechBackendOption("selected", "Selected", lambda: FakeSpeechOutput()),
+            SpeechEngineOption("default", "Default", lambda: FakeSpeechOutput()),
+            SpeechEngineOption("selected", "Selected", lambda: FakeSpeechOutput()),
         )
 
 
@@ -114,7 +114,7 @@ def test_build_app_runtime_parts_wires_platform_and_output_services():
     parts = build_app_runtime_parts(
         provider=provider,
         hotkey_usage=HID.ENTER,
-        selected_backend_id="selected",
+        selected_engine_id="selected",
         include_clipboard=True,
     )
     try:
@@ -127,14 +127,14 @@ def test_build_app_runtime_parts_wires_platform_and_output_services():
         assert parts.clipboard is provider.clipboard
         assert parts.tone_output is provider.tone_output
         assert parts.output.scheduler is provider.scheduler
-        assert parts.output.speaker.get_selected_backend() == "selected"
+        assert parts.output.speaker.get_selected_engine() == "selected"
         assert parts.output.capabilities.speech is parts.output.speaker
         assert parts.output.capabilities.tone is provider.tone_output
     finally:
         parts.output.speaker.shutdown()
 
 
-def test_build_app_runtime_parts_uses_default_backend_and_can_exclude_tone():
+def test_build_app_runtime_parts_uses_default_engine_and_can_exclude_tone():
     provider = FakeProvider()
 
     parts = build_app_runtime_parts(
@@ -149,7 +149,7 @@ def test_build_app_runtime_parts_uses_default_backend_and_can_exclude_tone():
         assert provider.tone_calls == 0
         assert parts.clipboard is None
         assert parts.tone_output is None
-        assert parts.output.speaker.get_selected_backend() == "default"
+        assert parts.output.speaker.get_selected_engine() == "default"
         assert parts.output.capabilities.tone is None
     finally:
         parts.output.speaker.shutdown()

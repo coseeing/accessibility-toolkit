@@ -8,8 +8,11 @@ class ErrorRaised:
 
 
 @dataclass(frozen=True, slots=True)
-class SpeechBackendChanged:
-    backend_id: str
+class SpeechEngineChanged:
+    engine_id: str
+
+
+SpeechBackendChanged = SpeechEngineChanged
 
 
 @dataclass(frozen=True, slots=True)
@@ -35,7 +38,7 @@ class ModeChanged:
 
 AppEvent = (
     ErrorRaised
-    | SpeechBackendChanged
+    | SpeechEngineChanged
     | InputCaptureChanged
     | HotkeyCaptureChanged
     | ClipboardAvailabilityChanged

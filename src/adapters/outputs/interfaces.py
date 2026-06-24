@@ -1,6 +1,10 @@
-from typing import Protocol
+from __future__ import annotations
 
+from typing import TYPE_CHECKING, Protocol
 from interop.speech.speech_sequence import SpeechSequence
+
+if TYPE_CHECKING:
+    from application.output.speech.settings import SpeechNumericSetting
 
 
 class SpeechOutput(Protocol):
@@ -27,6 +31,8 @@ class SpeechOutput(Protocol):
     def get_volume(self) -> int | None: ...
 
     def set_volume(self, value: int) -> None: ...
+
+    def get_supported_numeric_settings(self) -> tuple["SpeechNumericSetting", ...]: ...
 
 
 class ToneOutput(Protocol):

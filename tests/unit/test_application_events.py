@@ -5,14 +5,14 @@ from application.events import (
     HotkeyCaptureChanged,
     InputCaptureChanged,
     ModeChanged,
-    SpeechBackendChanged,
+    SpeechEngineChanged,
     StatusEvent,
 )
 
 
 def test_shared_application_events_use_value_equality() -> None:
     assert ErrorRaised("boom") == ErrorRaised("boom")
-    assert SpeechBackendChanged("default") == SpeechBackendChanged("default")
+    assert SpeechEngineChanged("default") == SpeechEngineChanged("default")
     assert InputCaptureChanged(True) == InputCaptureChanged(True)
     assert HotkeyCaptureChanged(False) == HotkeyCaptureChanged(False)
     assert ClipboardAvailabilityChanged(True) == ClipboardAvailabilityChanged(True)
@@ -22,7 +22,7 @@ def test_shared_application_events_use_value_equality() -> None:
 def test_app_event_list_accepts_shared_events() -> None:
     events: list[AppEvent] = [
         ErrorRaised("boom"),
-        SpeechBackendChanged("default"),
+        SpeechEngineChanged("default"),
         InputCaptureChanged(True),
         HotkeyCaptureChanged(False),
         ClipboardAvailabilityChanged(True),
@@ -31,7 +31,7 @@ def test_app_event_list_accepts_shared_events() -> None:
 
     assert events == [
         ErrorRaised("boom"),
-        SpeechBackendChanged("default"),
+        SpeechEngineChanged("default"),
         InputCaptureChanged(True),
         HotkeyCaptureChanged(False),
         ClipboardAvailabilityChanged(True),

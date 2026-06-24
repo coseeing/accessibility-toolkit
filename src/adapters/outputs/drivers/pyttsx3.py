@@ -4,6 +4,11 @@ import time
 from typing import Any
 
 from application.output import Scheduler
+from application.output.speech.settings import (
+    SpeechNumericSetting,
+    clamp_percent,
+    percent_to_range,
+)
 from interop.speech.speech_commands import (
     BreakCommand,
     PitchCommand,
@@ -18,6 +23,13 @@ logger = logging.getLogger(__name__)
 _RUN_AND_WAIT = "run_and_wait"
 _EXTERNAL_LOOP = "external_loop"
 _AUTO = "auto"
+_RATE_RANGE = (50, 300)
+_PITCH_RANGE = (0, 100)
+_SUPPORTED_NUMERIC_SETTINGS = (
+    SpeechNumericSetting(id="rate", label="Rate"),
+    SpeechNumericSetting(id="pitch", label="Pitch"),
+    SpeechNumericSetting(id="volume", label="Volume"),
+)
 
 
 class Pyttsx3SpeechOutput:
@@ -39,9 +51,9 @@ class Pyttsx3SpeechOutput:
         self._cancel_requested = False
         self._utterance_counter = 0
         self._voice_id: str | None = None
-        self._rate = 100
-        self._pitch = 0
-        self._volume = 100
+        self._rate = 50
+        self._pitch = 50
+        self._volume = 50
 
     @classmethod
     def load_default(
@@ -83,13 +95,13 @@ class Pyttsx3SpeechOutput:
                 self._scheduler.add_break_task(self, item.time / 1000.0)
                 continue
             if isinstance(item, PitchCommand):
-                self._pitch = item.offset
+                self._pitch = self._apply_command_to_percent(self._pitch, item)
                 continue
             if isinstance(item, RateCommand):
-                self._rate = int(item.multiplier * 100)
+                self._rate = self._apply_command_to_percent(self._rate, item)
                 continue
             if isinstance(item, VolumeCommand):
-                self._volume = int(item.multiplier * 100)
+                self._volume = self._apply_command_to_percent(self._volume, item)
 
     def cancel(self) -> None:
         with self._lock:
@@ -157,19 +169,22 @@ class Pyttsx3SpeechOutput:
         return self._rate
 
     def set_rate(self, value: int) -> None:
-        self._rate = value
+        self._rate = clamp_percent(value)
 
     def get_pitch(self) -> int | None:
         return self._pitch
 
     def set_pitch(self, value: int) -> None:
-        self._pitch = value
+        self._pitch = clamp_percent(value)
 
     def get_volume(self) -> int | None:
         return self._volume
 
     def set_volume(self, value: int) -> None:
-        self._volume = value
+        self._volume = clamp_percent(value)
+
+    def get_supported_numeric_settings(self) -> tuple[SpeechNumericSetting, ...]:
+        return _SUPPORTED_NUMERIC_SETTINGS
 
     def _speak_text(self, text: str, utterance_id: int) -> None:
         engine = self._acquire_engine()
@@ -185,9 +200,9 @@ class Pyttsx3SpeechOutput:
         try:
             if self._voice_id is not None:
                 engine.setProperty("voice", self._voice_id)
-            engine.setProperty("rate", self._rate)
+            engine.setProperty("rate", percent_to_range(self._rate, *_RATE_RANGE))
             try:
-                engine.setProperty("pitch", self._pitch)
+                engine.setProperty("pitch", percent_to_range(self._pitch, *_PITCH_RANGE))
             except Exception:
                 logger.debug("pyttsx3 engine does not support pitch property")
             engine.setProperty("volume", self._volume / 100.0)
@@ -327,3 +342,14 @@ class Pyttsx3SpeechOutput:
         except Exception:
             logger.debug("pyttsx3 fallback voice enumeration failed", exc_info=True)
             return ()
+
+    @staticmethod
+    def _apply_command_to_percent(
+        current_percent: int,
+        command: PitchCommand | RateCommand | VolumeCommand,
+    ) -> int:
+        if command.mode == "multiplier":
+            return clamp_percent(round(current_percent * command.multiplier))
+        if command.mode == "offset":
+            return clamp_percent(current_percent + command.offset)
+        return clamp_percent(current_percent)

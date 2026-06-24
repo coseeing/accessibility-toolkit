@@ -6,7 +6,7 @@ from adapters.inputs.base import HotkeyCapture, InputCapture, KeyEventDecision
 from adapters.inputs.captured_event import CapturedKeyEvent
 from application.events import (
     ErrorRaised,
-    SpeechBackendChanged,
+    SpeechEngineChanged,
     StatusEvent,
 )
 from application.input import (
@@ -81,7 +81,10 @@ class NvdaRemoteAppService(KeyEventHandler):
         hotkey_capture: HotkeyCapture,
         clipboard: ClipboardService,
         capabilities: Capabilities,
+        on_speech_engine_changed: Callable[[str], None] | None = None,
         on_speech_backend_changed: Callable[[str], None] | None = None,
+        on_voice_changed: Callable[[str, str], None] | None = None,
+        on_numeric_setting_changed: Callable[[str, str, int], None] | None = None,
         main_thread_dispatch: Callable[[Callable[[], None]], None] | None = None,
         use_windows_native_key_payload: bool = False,
     ) -> None:
@@ -90,7 +93,9 @@ class NvdaRemoteAppService(KeyEventHandler):
         self.hotkey_capture = hotkey_capture
         self.clipboard = clipboard
         self._capabilities = capabilities
-        self._on_speech_backend_changed = on_speech_backend_changed
+        self._on_speech_engine_changed = (
+            on_speech_engine_changed or on_speech_backend_changed
+        )
         self.state = RuntimeState()
         self._status_listener: Callable[[NvdaRemoteEvent], None] | None = None
         self._main_thread_dispatch = main_thread_dispatch or (lambda callback: callback())
@@ -123,13 +128,15 @@ class NvdaRemoteAppService(KeyEventHandler):
             use_windows_native_key_payload=use_windows_native_key_payload,
         )
 
-        def _on_backend_changed_wrapper(backend_id: str) -> None:
-            if self._on_speech_backend_changed is not None:
-                self._on_speech_backend_changed(backend_id)
+        def _on_engine_changed_wrapper(engine_id: str) -> None:
+            if self._on_speech_engine_changed is not None:
+                self._on_speech_engine_changed(engine_id)
 
         self._speech_settings = SpeechSettingsController(
             speech=self._capabilities.speech,
-            on_backend_changed=_on_backend_changed_wrapper,
+            on_engine_changed=_on_engine_changed_wrapper,
+            on_voice_changed=on_voice_changed,
+            on_numeric_setting_changed=on_numeric_setting_changed,
         )
 
         self._activation = InputActivationUseCase(
@@ -207,15 +214,27 @@ class NvdaRemoteAppService(KeyEventHandler):
     ) -> None:
         self._status_listener = listener
 
+    def get_speech_engine_options(self) -> tuple[tuple[str, str], ...]:
+        return self._speech_settings.get_engine_options()
+
+    def get_selected_speech_engine(self) -> str:
+        return self._speech_settings.get_selected_engine()
+
+    def set_speech_engine(self, engine_id: str) -> None:
+        self._speech_settings.set_engine(engine_id)
+        self._notify_status_listener(SpeechEngineChanged(engine_id))
+
     def get_speech_backend_options(self) -> tuple[tuple[str, str], ...]:
-        return self._speech_settings.get_backend_options()
+        return self.get_speech_engine_options()
 
     def get_selected_speech_backend(self) -> str:
-        return self._speech_settings.get_selected_backend()
+        return self.get_selected_speech_engine()
 
     def set_speech_backend(self, backend_id: str) -> None:
-        self._speech_settings.set_backend(backend_id)
-        self._notify_status_listener(SpeechBackendChanged(backend_id))
+        self.set_speech_engine(backend_id)
+
+    def get_supported_numeric_settings(self):
+        return self._speech_settings.get_supported_numeric_settings()
 
     def get_available_voices(self) -> tuple[tuple[str, str], ...]:
         return self._speech_settings.list_voices()

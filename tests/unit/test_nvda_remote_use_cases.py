@@ -8,20 +8,29 @@ from adapters.inputs.captured_event import CapturedKeyEvent
 
 class FakeSpeech:
     def __init__(self):
-        self.backend_id = "nvda_controller"
+        self.engine_id = "nvda_controller"
         self.voice_id = None
         self.rate = None
         self.pitch = None
         self.volume = None
 
-    def get_backend_options(self):
+    def get_engine_options(self):
         return (("nvda_controller", "NVDA Controller"),)
 
+    def get_selected_engine(self):
+        return self.engine_id
+
+    def set_engine(self, engine_id):
+        self.engine_id = engine_id
+
+    def get_backend_options(self):
+        return self.get_engine_options()
+
     def get_selected_backend(self):
-        return self.backend_id
+        return self.get_selected_engine()
 
     def set_backend(self, backend_id):
-        self.backend_id = backend_id
+        self.set_engine(backend_id)
 
     def list_voices(self):
         return ()
@@ -51,21 +60,21 @@ class FakeSpeech:
         self.volume = value
 
 
-def test_nvda_speech_settings_use_case_proxies_backend_and_voice_controls():
+def test_nvda_speech_settings_use_case_proxies_engine_and_voice_controls():
     from apps.nvda_remote.use_cases.speech_settings import NvdaRemoteSpeechSettingsUseCase
 
     speech = FakeSpeech()
     saved = []
     use_case = NvdaRemoteSpeechSettingsUseCase(
         speech=speech,
-        on_backend_changed=saved.append,
+        on_engine_changed=saved.append,
     )
 
-    use_case.set_backend("pyttsx3")
+    use_case.set_engine("pyttsx3")
     use_case.set_voice("voice-2")
     use_case.set_rate(120)
 
-    assert speech.get_selected_backend() == "pyttsx3"
+    assert speech.get_selected_engine() == "pyttsx3"
     assert speech.get_voice() == "voice-2"
     assert speech.get_rate() == 120
     assert saved == ["pyttsx3"]

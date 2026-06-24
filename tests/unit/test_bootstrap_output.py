@@ -1,7 +1,7 @@
 import logging
 
 from application.output import Capabilities, QueuedService, Scheduler
-from application.output.speech import SpeechBackendOption, SpeechService
+from application.output.speech import SpeechEngineOption, SpeechService
 import bootstrap.output as bootstrap_output
 from bootstrap.output import build_output_services
 
@@ -44,25 +44,25 @@ class FakeSpeechOutput:
         del value
 
 
-def backend_options_factory(scheduler):
+def engine_options_factory(scheduler):
     assert isinstance(scheduler, Scheduler)
     return (
-        SpeechBackendOption("primary", "Primary", lambda: FakeSpeechOutput()),
-        SpeechBackendOption("fallback", "Fallback", lambda: FakeSpeechOutput()),
+        SpeechEngineOption("primary", "Primary", lambda: FakeSpeechOutput()),
+        SpeechEngineOption("fallback", "Fallback", lambda: FakeSpeechOutput()),
     )
 
 
 def test_build_output_services_wires_scheduler_speech_speaker_and_capabilities():
     services = build_output_services(
-        backend_options_factory=backend_options_factory,
-        selected_backend_id="primary",
+        engine_options_factory=engine_options_factory,
+        selected_engine_id="primary",
     )
     try:
         assert isinstance(services.scheduler, Scheduler)
         assert isinstance(services.speech, SpeechService)
         assert isinstance(services.speaker, QueuedService)
         assert isinstance(services.capabilities, Capabilities)
-        assert services.speaker.get_selected_backend() == "primary"
+        assert services.speaker.get_selected_engine() == "primary"
         assert services.capabilities.speech is services.speaker
         assert services.capabilities.tone is None
     finally:
@@ -73,8 +73,8 @@ def test_build_output_services_includes_tone_capability():
     tone_output = object()
 
     services = build_output_services(
-        backend_options_factory=backend_options_factory,
-        selected_backend_id="primary",
+        engine_options_factory=engine_options_factory,
+        selected_engine_id="primary",
         tone_output=tone_output,
     )
     try:
@@ -83,20 +83,20 @@ def test_build_output_services_includes_tone_capability():
         services.speaker.shutdown()
 
 
-def test_build_output_services_falls_back_and_persists_backend(caplog):
+def test_build_output_services_falls_back_and_persists_engine(caplog):
     persisted = []
 
     with caplog.at_level(logging.WARNING):
         services = build_output_services(
-            backend_options_factory=backend_options_factory,
-            selected_backend_id="missing",
-            fallback_backend_id="fallback",
-            on_backend_fallback=persisted.append,
+            engine_options_factory=engine_options_factory,
+            selected_engine_id="missing",
+            fallback_engine_id="fallback",
+            on_engine_fallback=persisted.append,
         )
     try:
-        assert services.speaker.get_selected_backend() == "fallback"
+        assert services.speaker.get_selected_engine() == "fallback"
         assert persisted == ["fallback"]
-        assert "Unknown configured speech backend" in caplog.text
+        assert "Unknown configured speech engine" in caplog.text
     finally:
         services.speaker.shutdown()
 
@@ -120,8 +120,8 @@ def test_build_output_services_shuts_down_scheduler_when_options_factory_raises(
 
     try:
         build_output_services(
-            backend_options_factory=raise_options,
-            selected_backend_id="primary",
+            engine_options_factory=raise_options,
+            selected_engine_id="primary",
         )
     except RuntimeError as error:
         assert str(error) == "options failed"
@@ -146,22 +146,22 @@ def test_build_output_services_shuts_down_scheduler_when_fallback_callback_raise
 
     monkeypatch.setattr(bootstrap_output, "Scheduler", FakeScheduler)
 
-    def raise_fallback(backend_id):
-        assert backend_id == "fallback"
+    def raise_fallback(engine_id):
+        assert engine_id == "fallback"
         raise RuntimeError("persist failed")
 
     try:
         build_output_services(
-            backend_options_factory=lambda scheduler: (
-                SpeechBackendOption(
+            engine_options_factory=lambda scheduler: (
+                SpeechEngineOption(
                     "fallback",
                     "Fallback",
                     lambda: FakeSpeechOutput(),
                 ),
             ),
-            selected_backend_id="missing",
-            fallback_backend_id="fallback",
-            on_backend_fallback=raise_fallback,
+            selected_engine_id="missing",
+            fallback_engine_id="fallback",
+            on_engine_fallback=raise_fallback,
         )
     except RuntimeError as error:
         assert str(error) == "persist failed"

@@ -5,9 +5,18 @@ import time
 import pytest
 
 from adapters.outputs.drivers.pyttsx3 import Pyttsx3SpeechOutput
-from application.config import SpeechBackendConfigStore
-from application.output.speech import SpeechBackendManager, SpeechBackendOption
+from application.config import SpeechEngineConfigStore
 from application.output import Manager
+from application.output.speech import (
+    SpeechEngineManager,
+    SpeechEngineOption,
+    SpeechNumericSetting,
+)
+from application.output.speech.settings import (
+    clamp_percent,
+    percent_to_range,
+    range_to_percent,
+)
 from adapters.windows.nvda_controller import NvdaControllerSpeechOutput
 from interop.speech.speech_commands import (
     BreakCommand,
@@ -61,6 +70,9 @@ class FakeSpeechOutput:
 
     def set_volume(self, value: int) -> None:
         return None
+
+    def get_supported_numeric_settings(self) -> tuple[SpeechNumericSetting, ...]:
+        return ()
 
 
 class FakeEngine:
@@ -517,46 +529,74 @@ class LegacyOnlyNvdaController:
         return 0
 
 
-def test_speech_backend_manager_switches_backend_and_cancels_previous():
+def test_speech_numeric_setting_defaults_to_zero_to_one_hundred_percent():
+    setting = SpeechNumericSetting(id="rate", label="Rate")
+
+    assert setting.id == "rate"
+    assert setting.label == "Rate"
+    assert setting.default_percent == 50
+    assert setting.min_percent == 0
+    assert setting.max_percent == 100
+    assert setting.step == 1
+    assert setting.large_step == 10
+
+
+def test_percent_helpers_clamp_and_map_ranges():
+    assert clamp_percent(-1) == 0
+    assert clamp_percent(0) == 0
+    assert clamp_percent(50) == 50
+    assert clamp_percent(100) == 100
+    assert clamp_percent(101) == 100
+    assert percent_to_range(50, 50, 300) == 175
+    assert percent_to_range(0, 50, 300) == 50
+    assert percent_to_range(100, 50, 300) == 300
+    assert range_to_percent(175, 50, 300) == 50
+
+
+def test_speech_engine_manager_switches_engine_and_cancels_previous():
     events: list[tuple[str, str]] = []
-    manager = SpeechBackendManager(
-        backend_options=(
-            SpeechBackendOption(
-                backend_id="nvda_controller",
-                label="NVDA Controller",
-                factory=lambda: FakeSpeechOutput("nvda_controller", events),
+    manager = SpeechEngineManager(
+        engine_options=(
+            SpeechEngineOption(
+                engine_id="NvdaController",
+                label="Nvda Controller",
+                factory=lambda: FakeSpeechOutput("NvdaController", events),
             ),
-            SpeechBackendOption(
-                backend_id="pyttsx3",
-                label="pyttsx3",
-                factory=lambda: FakeSpeechOutput("pyttsx3", events),
+            SpeechEngineOption(
+                engine_id="Pyttsx3",
+                label="Pyttsx3",
+                factory=lambda: FakeSpeechOutput("Pyttsx3", events),
             ),
         ),
-        selected_backend_id="nvda_controller",
+        selected_engine_id="NvdaController",
     )
 
     previous = manager.current_output
-    manager.set_backend("pyttsx3")
+    manager.set_engine("Pyttsx3")
 
     assert previous is not manager.current_output
-    assert manager.selected_backend_id == "pyttsx3"
-    assert events == [("cancel", "nvda_controller")]
+    assert manager.selected_engine_id == "Pyttsx3"
+    assert manager.engine_choices() == (
+        ("NvdaController", "Nvda Controller"),
+        ("Pyttsx3", "Pyttsx3"),
+    )
+    assert events == [("cancel", "NvdaController")]
 
 
-def test_speech_backend_manager_rejects_unknown_backend():
-    manager = SpeechBackendManager(
-        backend_options=(
-            SpeechBackendOption(
-                backend_id="nvda_controller",
-                label="NVDA Controller",
-                factory=lambda: FakeSpeechOutput("nvda_controller", []),
+def test_speech_engine_manager_rejects_unknown_engine():
+    manager = SpeechEngineManager(
+        engine_options=(
+            SpeechEngineOption(
+                engine_id="NvdaController",
+                label="Nvda Controller",
+                factory=lambda: FakeSpeechOutput("NvdaController", []),
             ),
         ),
-        selected_backend_id="nvda_controller",
+        selected_engine_id="NvdaController",
     )
 
-    with pytest.raises(ValueError, match="Unknown speech backend"):
-        manager.set_backend("pyttsx3")
+    with pytest.raises(ValueError, match="Unknown speech engine"):
+        manager.set_engine("Pyttsx3")
 
 
 def test_pyttsx3_backend_schedules_real_breaks_between_text_chunks():
@@ -601,7 +641,7 @@ def test_raw_json_speak_payload_reaches_real_pyttsx3_sequence_path():
         ("speak", "world"),
     ]
     assert engine.say_calls == ["hello", "world"]
-    assert engine.properties["pitch"] == 2
+    assert engine.properties["pitch"] == 52
 
 
 def test_raw_json_speak_payload_reaches_real_nvda_controller_sequence_path():
@@ -624,7 +664,7 @@ def test_raw_json_speak_payload_reaches_real_nvda_controller_sequence_path():
     router.handle_message(payload)
 
     assert controller.speak_ssml_calls == [
-        ("<speak>hello<prosody pitch=\"120%\">W</prosody></speak>", 0, 0, True)
+        ("<speak>hello<prosody pitch=\"140%\">W</prosody></speak>", 0, 0, True)
     ]
 
 
@@ -680,7 +720,7 @@ def test_nvda_controller_backend_maps_prosody_commands_into_nested_ssml():
 
     assert controller.speak_ssml_calls == [
         (
-            '<speak><prosody pitch="120%"><prosody rate="110%"><prosody volume="80%">hello'
+            '<speak><prosody pitch="120%"><prosody rate="120%"><prosody volume="80%">hello'
             "</prosody></prosody></prosody></speak>",
             0,
             0,
@@ -713,6 +753,66 @@ def test_nvda_controller_backend_uses_local_state_as_offset_baseline():
     assert controller.speak_ssml_calls == [
         (
             '<speak><prosody rate="125%"><prosody pitch="111%"><prosody volume="120%">hello'
+            "</prosody></prosody></prosody></speak>",
+            0,
+            0,
+            True,
+        )
+    ]
+
+
+def test_nvda_controller_backend_declares_supported_numeric_settings():
+    output = NvdaControllerSpeechOutput(controller=FakeNvdaController())
+
+    settings = {setting.id: setting for setting in output.get_supported_numeric_settings()}
+
+    assert tuple(settings) == ("rate", "pitch", "volume")
+    assert output.get_rate() == 50
+    assert output.get_pitch() == 50
+    assert output.get_volume() == 50
+
+
+def test_nvda_controller_backend_uses_normalized_baseline_for_offsets():
+    controller = FakeNvdaController()
+    output = NvdaControllerSpeechOutput(controller=controller)
+    output.set_rate(80)
+    output.set_pitch(40)
+    output.set_volume(60)
+
+    output.speak(
+        SpeechSequence(
+            items=(
+                RateCommand(offset=20),
+                PitchCommand(offset=10),
+                VolumeCommand(offset=30),
+                "hello",
+            )
+        )
+    )
+
+    assert controller.speak_ssml_calls == [
+        (
+            '<speak><prosody rate="125%"><prosody pitch="125%"><prosody volume="150%">hello'
+            "</prosody></prosody></prosody></speak>",
+            0,
+            0,
+            True,
+        )
+    ]
+
+
+def test_nvda_controller_backend_applies_normalized_baseline_to_plain_speech():
+    controller = FakeNvdaController()
+    output = NvdaControllerSpeechOutput(controller=controller)
+    output.set_rate(80)
+    output.set_pitch(40)
+    output.set_volume(60)
+
+    output.speak(SpeechSequence(items=("hello",)))
+
+    assert controller.speak_ssml_calls == [
+        (
+            '<speak><prosody rate="160%"><prosody pitch="80%"><prosody volume="120%">hello'
             "</prosody></prosody></prosody></speak>",
             0,
             0,
@@ -762,10 +862,50 @@ def test_pyttsx3_backend_tracks_rate_pitch_and_volume_commands():
 
     output.speak(sequence)
 
-    assert output.get_pitch() == 3
-    assert output.get_rate() == 120
-    assert output.get_volume() == 80
-    assert engine.properties["pitch"] == 3
+    assert output.get_pitch() == 53
+    assert output.get_rate() == 60
+    assert output.get_volume() == 40
+    assert engine.properties["pitch"] == 53
+
+
+def test_pyttsx3_backend_declares_supported_numeric_settings():
+    output = Pyttsx3SpeechOutput(engine=FakeEngine(), task_manager=FakeTaskManager())
+
+    settings = {setting.id: setting for setting in output.get_supported_numeric_settings()}
+
+    assert tuple(settings) == ("rate", "pitch", "volume")
+    assert settings["rate"].label == "Rate"
+    assert settings["pitch"].label == "Pitch"
+    assert settings["volume"].label == "Volume"
+    assert output.get_rate() == 50
+    assert output.get_pitch() == 50
+    assert output.get_volume() == 50
+
+
+def test_pyttsx3_backend_maps_normalized_values_to_engine_properties():
+    engine = FakeEngine()
+    output = Pyttsx3SpeechOutput(engine=engine, task_manager=FakeTaskManager())
+
+    output.set_rate(100)
+    output.set_pitch(80)
+    output.set_volume(25)
+    output.speak(SpeechSequence(items=("hello",)))
+
+    assert engine.properties["rate"] == 300
+    assert engine.properties["pitch"] == 80
+    assert engine.properties["volume"] == 0.25
+
+
+def test_pyttsx3_backend_clamps_normalized_values():
+    output = Pyttsx3SpeechOutput(engine=FakeEngine(), task_manager=FakeTaskManager())
+
+    output.set_rate(999)
+    output.set_pitch(-1)
+    output.set_volume(150)
+
+    assert output.get_rate() == 100
+    assert output.get_pitch() == 0
+    assert output.get_volume() == 100
 
 
 def test_pyttsx3_backend_ignores_unsupported_pitch_property():
@@ -995,15 +1135,40 @@ def test_pyttsx3_driver_execution_strategy_is_explicit_per_driver():
     )
 
 
-def test_speech_backend_config_store_loads_and_saves_backend_id(tmp_path):
+def test_speech_engine_config_store_loads_and_saves_engine_id(tmp_path):
     config_path = tmp_path / "client-config.json"
-    store = SpeechBackendConfigStore(config_path)
+    store = SpeechEngineConfigStore(config_path)
 
-    assert store.load_backend_id(default_backend_id="nvda_controller") == "nvda_controller"
+    assert store.load_engine_id(default_engine_id="NvdaController") == "NvdaController"
 
-    store.save_backend_id("pyttsx3")
+    store.save_engine_id("Pyttsx3")
 
     assert json.loads(config_path.read_text(encoding="utf-8")) == {
-        "speech_backend": "pyttsx3"
+        "speech_engine": "Pyttsx3"
     }
-    assert store.load_backend_id(default_backend_id="nvda_controller") == "pyttsx3"
+    assert store.load_engine_id(default_engine_id="NvdaController") == "Pyttsx3"
+
+
+def test_speech_engine_config_store_persists_settings_per_engine(tmp_path):
+    config_path = tmp_path / "client-config.json"
+    store = SpeechEngineConfigStore(config_path)
+
+    store.save_voice("NvdaController", "voice-a")
+    store.save_numeric_setting("NvdaController", "rate", 120)
+    store.save_numeric_setting("Pyttsx3", "rate", -10)
+
+    assert store.load_voice("NvdaController") == "voice-a"
+    assert store.load_numeric_setting("NvdaController", "rate") == 100
+    assert store.load_numeric_setting("Pyttsx3", "rate") == 0
+    assert store.load_numeric_setting("NvdaController", "pitch") is None
+    assert json.loads(config_path.read_text(encoding="utf-8")) == {
+        "speech_engines": {
+            "NvdaController": {
+                "voice": "voice-a",
+                "rate": 100,
+            },
+            "Pyttsx3": {
+                "rate": 0,
+            },
+        }
+    }

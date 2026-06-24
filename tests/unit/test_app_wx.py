@@ -7,8 +7,8 @@ import pytest
 
 import bootstrap.platform
 import bootstrap.runtime
-from application.events import ErrorRaised, SpeechBackendChanged
-from application.output.speech import SpeechBackendOption
+from application.events import ErrorRaised, SpeechEngineChanged
+from application.output.speech import SpeechEngineOption, SpeechNumericSetting
 from apps.key_echo.events import EchoStateChanged
 from apps.nvda_remote.events import RemoteConnectionChanged
 from interop.key import HID
@@ -70,15 +70,18 @@ class FakeBootstrapSpeechOutput:
         del value
 
 
-def fake_bootstrap_speech_backend_options(scheduler):
+def fake_bootstrap_speech_engine_options(scheduler):
     del scheduler
     return (
-        SpeechBackendOption(
-            backend_id="pyttsx3",
-            label="pyttsx3",
+        SpeechEngineOption(
+            engine_id="Pyttsx3",
+            label="Pyttsx3",
             factory=FakeBootstrapSpeechOutput,
         ),
     )
+
+
+fake_bootstrap_speech_backend_options = fake_bootstrap_speech_engine_options
 
 
 def clear_ui_modules():
@@ -103,6 +106,7 @@ def install_fake_wx(monkeypatch):
     fake_wx.EVT_BUTTON = object()
     fake_wx.EVT_CHOICE = object()
     fake_wx.EVT_TEXT = object()
+    fake_wx.EVT_SLIDER = object()
     fake_wx.EVT_CLOSE = object()
     fake_wx.EVT_MENU = object()
     fake_wx.OK = 16
@@ -191,6 +195,38 @@ def install_fake_wx(monkeypatch):
 
         def Bind(self, event, handler):
             self.bindings[event] = handler
+
+    class Slider:
+        def __init__(self, parent, value=0, minValue=0, maxValue=100):
+            self.parent = parent
+            self._value = value
+            self.minValue = minValue
+            self.maxValue = maxValue
+            self.enabled = True
+            self.bindings = {}
+            self.line_size = 1
+            self.page_size = 10
+
+        def GetValue(self):
+            return self._value
+
+        def SetValue(self, value):
+            self._value = value
+
+        def Enable(self, enabled=True):
+            self.enabled = enabled
+
+        def Disable(self):
+            self.enabled = False
+
+        def Bind(self, event, handler):
+            self.bindings[event] = handler
+
+        def SetLineSize(self, size):
+            self.line_size = size
+
+        def SetPageSize(self, size):
+            self.page_size = size
 
     class Button:
         def __init__(self, parent, label):
@@ -307,6 +343,7 @@ def install_fake_wx(monkeypatch):
     fake_wx.StaticText = StaticText
     fake_wx.BoxSizer = BoxSizer
     fake_wx.TextCtrl = TextCtrl
+    fake_wx.Slider = Slider
     fake_wx.Button = Button
     fake_wx.Choice = Choice
     fake_wx.Menu = Menu
@@ -358,9 +395,9 @@ class FakeController:
             control_state="idle",
         )
         self.status_listener = None
-        self.speech_backend_id = "nvda_controller"
-        self.speech_backend_calls = []
-        self.backend_switch_error = None
+        self.speech_engine_id = "NvdaController"
+        self.speech_engine_calls = []
+        self.engine_switch_error = None
         self.available_voices = ()
         self.selected_voice = None
         self.rate = None
@@ -410,22 +447,22 @@ class FakeController:
     def set_status_listener(self, listener):
         self.status_listener = listener
 
-    def get_speech_backend_options(self):
+    def get_speech_engine_options(self):
         return (
-            ("nvda_controller", "NVDA Controller"),
-            ("pyttsx3", "pyttsx3"),
+            ("NvdaController", "Nvda Controller"),
+            ("Pyttsx3", "Pyttsx3"),
         )
 
-    def get_selected_speech_backend(self):
-        return self.speech_backend_id
+    def get_selected_speech_engine(self):
+        return self.speech_engine_id
 
-    def set_speech_backend(self, backend_id):
-        self.speech_backend_calls.append(backend_id)
-        if self.backend_switch_error is not None:
-            raise self.backend_switch_error
-        self.speech_backend_id = backend_id
+    def set_speech_engine(self, engine_id):
+        self.speech_engine_calls.append(engine_id)
+        if self.engine_switch_error is not None:
+            raise self.engine_switch_error
+        self.speech_engine_id = engine_id
         if self.status_listener is not None:
-            self.status_listener(SpeechBackendChanged(backend_id))
+            self.status_listener(SpeechEngineChanged(engine_id))
 
     def get_available_voices(self):
         return self.available_voices
@@ -465,9 +502,9 @@ class FakeEchoController:
         self.running = False
         self.started = 0
         self.stopped = 0
-        self.speech_backend_id = "default"
-        self.speech_backend_calls = []
-        self.backend_switch_error = None
+        self.speech_engine_id = "Pyttsx3"
+        self.speech_engine_calls = []
+        self.engine_switch_error = None
         self.available_voices = ()
         self.selected_voice = None
         self.rate = None
@@ -496,22 +533,22 @@ class FakeEchoController:
     def is_echo_running(self):
         return self.running
 
-    def get_speech_backend_options(self):
+    def get_speech_engine_options(self):
         return (
-            ("default", "Default"),
-            ("pyttsx3", "pyttsx3"),
+            ("NvdaController", "Nvda Controller"),
+            ("Pyttsx3", "Pyttsx3"),
         )
 
-    def get_selected_speech_backend(self):
-        return self.speech_backend_id
+    def get_selected_speech_engine(self):
+        return self.speech_engine_id
 
-    def set_speech_backend(self, backend_id):
-        self.speech_backend_calls.append(backend_id)
-        if self.backend_switch_error is not None:
-            raise self.backend_switch_error
-        self.speech_backend_id = backend_id
+    def set_speech_engine(self, engine_id):
+        self.speech_engine_calls.append(engine_id)
+        if self.engine_switch_error is not None:
+            raise self.engine_switch_error
+        self.speech_engine_id = engine_id
         if self.status_listener is not None:
-            self.status_listener(SpeechBackendChanged(backend_id))
+            self.status_listener(SpeechEngineChanged(engine_id))
 
     def get_available_voices(self):
         return self.available_voices
@@ -816,17 +853,55 @@ def test_nvda_remote_main_build_runtime_composes_app_service_and_gui(monkeypatch
             self.path = path
             self.saved = []
 
-        def load_backend_id(self, *, default_backend_id):
-            self.default_backend_id = default_backend_id
-            return "pyttsx3"
+        def load_engine_id(self, *, default_engine_id):
+            self.default_engine_id = default_engine_id
+            return "Pyttsx3"
 
-        def save_backend_id(self, backend_id):
-            self.saved.append(backend_id)
+        def save_engine_id(self, engine_id):
+            self.saved.append(engine_id)
+
+        def load_voice(self, engine_id):
+            return None
+
+        def save_voice(self, engine_id, voice_id):
+            self.saved.append((engine_id, voice_id))
+
+        def load_numeric_setting(self, engine_id, setting_id):
+            return None
+
+        def save_numeric_setting(self, engine_id, setting_id, value):
+            self.saved.append((engine_id, setting_id, value))
 
     class FakeSpeechService:
-        def __init__(self, *, backend_options, selected_backend_id, scheduler=None):
-            self.backend_options = backend_options
-            self.selected_backend_id = selected_backend_id
+        def __init__(self, *, engine_options, selected_engine_id, scheduler=None):
+            self.engine_options = engine_options
+            self.selected_engine_id = selected_engine_id
+            self.scheduler = scheduler
+            self.voice = None
+            self.rate = None
+            self.pitch = None
+            self.volume = None
+
+        def get_selected_engine(self):
+            return self.selected_engine_id
+
+        def list_voices(self):
+            return ()
+
+        def set_voice(self, voice_id):
+            self.voice = voice_id
+
+        def get_supported_numeric_settings(self):
+            return ()
+
+        def set_rate(self, value):
+            self.rate = value
+
+        def set_pitch(self, value):
+            self.pitch = value
+
+        def set_volume(self, value):
+            self.volume = value
 
     class FakeScheduler:
         pass
@@ -875,7 +950,9 @@ def test_nvda_remote_main_build_runtime_composes_app_service_and_gui(monkeypatch
             hotkey_capture,
             clipboard,
             capabilities,
-            on_speech_backend_changed,
+            on_speech_engine_changed,
+            on_voice_changed,
+            on_numeric_setting_changed,
             main_thread_dispatch,
             use_windows_native_key_payload,
         ):
@@ -884,7 +961,9 @@ def test_nvda_remote_main_build_runtime_composes_app_service_and_gui(monkeypatch
             self.hotkey_capture = hotkey_capture
             self.clipboard = clipboard
             self.capabilities = capabilities
-            self.on_speech_backend_changed = on_speech_backend_changed
+            self.on_speech_engine_changed = on_speech_engine_changed
+            self.on_voice_changed = on_voice_changed
+            self.on_numeric_setting_changed = on_numeric_setting_changed
             self.main_thread_dispatch = main_thread_dispatch
             self.use_windows_native_key_payload = use_windows_native_key_payload
             self.bind_calls = 0
@@ -901,7 +980,11 @@ def test_nvda_remote_main_build_runtime_composes_app_service_and_gui(monkeypatch
         def MainLoop(self):
             return 77
 
-    monkeypatch.setattr(nvda_remote_main, "SpeechBackendConfigStore", FakeConfigStore)
+    monkeypatch.setitem(
+        nvda_remote_main.build_runtime.__globals__,
+        "SpeechEngineConfigStore",
+        FakeConfigStore,
+    )
     monkeypatch.setattr(nvda_remote_main, "RelayTransport", FakeTransport)
     monkeypatch.setattr(bootstrap.platform.sys, "platform", "win32")
     input_capture = FakeKeyboardCapture()
@@ -910,8 +993,8 @@ def test_nvda_remote_main_build_runtime_composes_app_service_and_gui(monkeypatch
     tone_output = FakeToneOutput()
     scheduler = FakeScheduler()
     speech = FakeSpeechService(
-        backend_options=("backend",),
-        selected_backend_id="pyttsx3",
+        engine_options=("engine",),
+        selected_engine_id="Pyttsx3",
         scheduler=scheduler,
     )
     speaker = FakeQueuedService(speech=speech)
@@ -919,10 +1002,10 @@ def test_nvda_remote_main_build_runtime_composes_app_service_and_gui(monkeypatch
 
     def fake_build_app_runtime_parts(**kwargs):
         assert kwargs["hotkey_usage"] == FakeAppService.enter_usage
-        assert kwargs["selected_backend_id"] == "pyttsx3"
-        assert kwargs["fallback_backend_id"] == "nvda_controller"
+        assert kwargs["selected_engine_id"] == "Pyttsx3"
+        assert kwargs["fallback_engine_id"] == "NvdaController"
         assert kwargs["include_clipboard"] is True
-        assert callable(kwargs["on_backend_fallback"])
+        assert callable(kwargs["on_engine_fallback"])
         return types.SimpleNamespace(
             input_capture=input_capture,
             hotkey_capture=hotkey_capture,
@@ -956,17 +1039,174 @@ def test_nvda_remote_main_build_runtime_composes_app_service_and_gui(monkeypatch
     assert runtime.scheduler is scheduler
     assert runtime.speech is speech
     assert runtime.speaker is speaker
-    assert runtime.speech.selected_backend_id == "pyttsx3"
+    assert runtime.speech.selected_engine_id == "Pyttsx3"
     assert runtime.speaker.speech is runtime.speech
     assert runtime.app_service.capabilities.speech is runtime.speaker
     assert runtime.app_service.capabilities.tone is tone_output
-    assert runtime.app_service.on_speech_backend_changed == runtime.config_store.save_backend_id
+    assert callable(runtime.app_service.on_speech_engine_changed)
+    assert runtime.app_service.on_voice_changed == runtime.config_store.save_voice
+    assert runtime.app_service.on_numeric_setting_changed == runtime.config_store.save_numeric_setting
     assert runtime.app_service.main_thread_dispatch is FakeApp.dispatch
     assert runtime.app_service.bind_calls == 1
     assert runtime.input_service.capture is runtime.input_capture
     assert runtime.input_service.handler is runtime.app_service
     assert runtime.input_service.bind_calls == 1
     assert runtime.app.controller is runtime.app_service
+
+
+def test_nvda_remote_main_build_runtime_reloads_saved_settings_when_engine_changes(
+    monkeypatch,
+):
+    install_fake_wx(monkeypatch)
+    nvda_remote_main = importlib.import_module("apps.nvda_remote.main")
+
+    class FakeConfigStore:
+        def __init__(self, path):
+            self.path = path
+            self.saved_engine_ids = []
+
+        def load_engine_id(self, *, default_engine_id):
+            self.default_engine_id = default_engine_id
+            return "Pyttsx3"
+
+        def save_engine_id(self, engine_id):
+            self.saved_engine_ids.append(engine_id)
+
+        def load_voice(self, engine_id):
+            return {
+                "Pyttsx3": "voice-p",
+                "NvdaController": "voice-n",
+            }.get(engine_id)
+
+        def save_voice(self, engine_id, voice_id):
+            return None
+
+        def load_numeric_setting(self, engine_id, setting_id):
+            return {
+                ("Pyttsx3", "rate"): 25,
+                ("Pyttsx3", "volume"): 40,
+                ("NvdaController", "rate"): 80,
+                ("NvdaController", "pitch"): 65,
+            }.get((engine_id, setting_id))
+
+        def save_numeric_setting(self, engine_id, setting_id, value):
+            return None
+
+    class FakeSpeechService:
+        def __init__(self):
+            self.selected_engine_id = "Pyttsx3"
+            self.voice_calls = []
+            self.rate_calls = []
+            self.pitch_calls = []
+            self.volume_calls = []
+
+        def get_selected_engine(self):
+            return self.selected_engine_id
+
+        def list_voices(self):
+            return (
+                ("voice-p", "Voice P"),
+                ("voice-n", "Voice N"),
+            )
+
+        def set_voice(self, voice_id):
+            self.voice_calls.append((self.selected_engine_id, voice_id))
+
+        def get_supported_numeric_settings(self):
+            return (
+                SpeechNumericSetting(id="rate", label="Rate"),
+                SpeechNumericSetting(id="pitch", label="Pitch"),
+            )
+
+        def set_rate(self, value):
+            self.rate_calls.append((self.selected_engine_id, value))
+
+        def set_pitch(self, value):
+            self.pitch_calls.append((self.selected_engine_id, value))
+
+        def set_volume(self, value):
+            self.volume_calls.append((self.selected_engine_id, value))
+
+    class FakeKeyboardInputService:
+        def __init__(self, capture, handler):
+            self.capture = capture
+            self.handler = handler
+
+        def bind(self):
+            return None
+
+    class FakeAppService:
+        enter_usage = HID.F11
+
+        def __init__(self, **kwargs):
+            self.__dict__.update(kwargs)
+
+        def bind(self):
+            return None
+
+    class FakeTransport:
+        def __init__(self, serializer):
+            self.serializer = serializer
+
+    class FakeApp:
+        dispatch = staticmethod(lambda callback: callback())
+
+        def __init__(self, controller):
+            self.controller = controller
+
+        def MainLoop(self):
+            return 0
+
+    speech = FakeSpeechService()
+    speaker = types.SimpleNamespace(speech=speech)
+
+    def fake_build_app_runtime_parts(**kwargs):
+        return types.SimpleNamespace(
+            input_capture=object(),
+            hotkey_capture=object(),
+            clipboard=object(),
+            tone_output=None,
+            output=types.SimpleNamespace(
+                scheduler=object(),
+                speech=speech,
+                speaker=speaker,
+                capabilities=types.SimpleNamespace(speech=speaker, tone=None),
+            ),
+        )
+
+    monkeypatch.setitem(
+        nvda_remote_main.build_runtime.__globals__,
+        "SpeechEngineConfigStore",
+        FakeConfigStore,
+    )
+    monkeypatch.setattr(nvda_remote_main, "RelayTransport", FakeTransport)
+    monkeypatch.setattr(nvda_remote_main, "build_app_runtime_parts", fake_build_app_runtime_parts)
+    monkeypatch.setattr(nvda_remote_main, "KeyboardInputService", FakeKeyboardInputService)
+    monkeypatch.setattr(nvda_remote_main, "NvdaRemoteAppService", FakeAppService)
+    monkeypatch.setattr(nvda_remote_main, "NvdaRemoteApp", FakeApp)
+    monkeypatch.setattr(nvda_remote_main, "default_config_path", lambda: "config.json")
+
+    runtime = nvda_remote_main.build_runtime()
+
+    assert speech.voice_calls == [("Pyttsx3", "voice-p")]
+    assert speech.rate_calls == [("Pyttsx3", 25)]
+    assert speech.pitch_calls == []
+    assert speech.volume_calls == []
+
+    speech.selected_engine_id = "NvdaController"
+    runtime.app_service.on_speech_engine_changed("NvdaController")
+
+    assert runtime.config_store.saved_engine_ids == ["NvdaController"]
+    assert speech.voice_calls == [
+        ("Pyttsx3", "voice-p"),
+        ("NvdaController", "voice-n"),
+    ]
+    assert speech.rate_calls == [
+        ("Pyttsx3", 25),
+        ("NvdaController", 80),
+    ]
+    assert speech.pitch_calls == [("NvdaController", 65)]
+    assert speech.volume_calls == []
 
 
 def test_nvda_remote_build_runtime_uses_mode_enter_hotkey_as_single_source_of_truth(
@@ -981,16 +1221,49 @@ def test_nvda_remote_build_runtime_uses_mode_enter_hotkey_as_single_source_of_tr
         def __init__(self, path):
             self.path = path
 
-        def load_backend_id(self, *, default_backend_id):
-            return "pyttsx3"
+        def load_engine_id(self, *, default_engine_id):
+            return "Pyttsx3"
 
-        def save_backend_id(self, backend_id):
+        def save_engine_id(self, engine_id):
+            return None
+
+        def load_voice(self, engine_id):
+            return None
+
+        def save_voice(self, engine_id, voice_id):
+            return None
+
+        def load_numeric_setting(self, engine_id, setting_id):
+            return None
+
+        def save_numeric_setting(self, engine_id, setting_id, value):
             return None
 
     class FakeSpeechService:
-        def __init__(self, *, backend_options, selected_backend_id, scheduler=None):
-            self.backend_options = backend_options
-            self.selected_backend_id = selected_backend_id
+        def __init__(self, *, engine_options, selected_engine_id, scheduler=None):
+            self.engine_options = engine_options
+            self.selected_engine_id = selected_engine_id
+
+        def get_selected_engine(self):
+            return self.selected_engine_id
+
+        def list_voices(self):
+            return ()
+
+        def set_voice(self, voice_id):
+            return None
+
+        def get_supported_numeric_settings(self):
+            return ()
+
+        def set_rate(self, value):
+            return None
+
+        def set_pitch(self, value):
+            return None
+
+        def set_volume(self, value):
+            return None
 
     class FakeScheduler:
         pass
@@ -1038,12 +1311,16 @@ def test_nvda_remote_build_runtime_uses_mode_enter_hotkey_as_single_source_of_tr
         def MainLoop(self):
             return 0
 
-    monkeypatch.setattr(nvda_remote_main, "SpeechBackendConfigStore", FakeConfigStore)
+    monkeypatch.setitem(
+        nvda_remote_main.build_runtime.__globals__,
+        "SpeechEngineConfigStore",
+        FakeConfigStore,
+    )
     monkeypatch.setattr(nvda_remote_main, "RelayTransport", FakeTransport)
     scheduler = FakeScheduler()
     speech = FakeSpeechService(
-        backend_options=("backend",),
-        selected_backend_id="pyttsx3",
+        engine_options=("engine",),
+        selected_engine_id="Pyttsx3",
         scheduler=scheduler,
     )
     speaker = FakeQueuedService(speech=speech)
@@ -1087,17 +1364,50 @@ def test_build_runtime_uses_macos_input_and_hotkey_on_darwin(monkeypatch):
         def __init__(self, path):
             self.path = path
 
-        def load_backend_id(self, *, default_backend_id):
-            self.default_backend_id = default_backend_id
-            return "pyttsx3"
+        def load_engine_id(self, *, default_engine_id):
+            self.default_engine_id = default_engine_id
+            return "Pyttsx3"
 
-        def save_backend_id(self, backend_id):
-            self.saved_backend_id = backend_id
+        def save_engine_id(self, engine_id):
+            self.saved_engine_id = engine_id
+
+        def load_voice(self, engine_id):
+            return None
+
+        def save_voice(self, engine_id, voice_id):
+            return None
+
+        def load_numeric_setting(self, engine_id, setting_id):
+            return None
+
+        def save_numeric_setting(self, engine_id, setting_id, value):
+            return None
 
     class FakeSpeechService:
-        def __init__(self, *, backend_options, selected_backend_id, scheduler=None):
-            self.backend_options = backend_options
-            self.selected_backend_id = selected_backend_id
+        def __init__(self, *, engine_options, selected_engine_id, scheduler=None):
+            self.engine_options = engine_options
+            self.selected_engine_id = selected_engine_id
+
+        def get_selected_engine(self):
+            return self.selected_engine_id
+
+        def list_voices(self):
+            return ()
+
+        def set_voice(self, voice_id):
+            return None
+
+        def get_supported_numeric_settings(self):
+            return ()
+
+        def set_rate(self, value):
+            return None
+
+        def set_pitch(self, value):
+            return None
+
+        def set_volume(self, value):
+            return None
 
     class FakeScheduler:
         pass
@@ -1157,7 +1467,11 @@ def test_build_runtime_uses_macos_input_and_hotkey_on_darwin(monkeypatch):
         def MainLoop(self):
             return 0
 
-    monkeypatch.setattr(nvda_remote_main, "SpeechBackendConfigStore", FakeConfigStore)
+    monkeypatch.setitem(
+        nvda_remote_main.build_runtime.__globals__,
+        "SpeechEngineConfigStore",
+        FakeConfigStore,
+    )
     monkeypatch.setattr(nvda_remote_main, "RelayTransport", FakeTransport)
     monkeypatch.setattr(bootstrap.platform, "_MacOSEventTapManager", FakeManager)
     monkeypatch.setattr(bootstrap.platform, "_MacOSEventTapBackend", lambda: fake_backend)
@@ -1175,8 +1489,8 @@ def test_build_runtime_uses_macos_input_and_hotkey_on_darwin(monkeypatch):
     monkeypatch.setattr(bootstrap.platform, "create_clipboard_service", lambda: FakeClipboard())
     monkeypatch.setattr(
         bootstrap.platform,
-        "default_speech_backend_options",
-        fake_bootstrap_speech_backend_options,
+        "default_speech_engine_options",
+        fake_bootstrap_speech_engine_options,
     )
     monkeypatch.setattr(nvda_remote_main, "KeyboardInputService", FakeKeyboardInputService)
     monkeypatch.setattr(nvda_remote_main, "NvdaRemoteAppService", FakeAppService)
@@ -1203,16 +1517,49 @@ def test_build_runtime_uses_safe_clipboard_on_darwin(monkeypatch):
         def __init__(self, path):
             self.path = path
 
-        def load_backend_id(self, *, default_backend_id):
-            return "pyttsx3"
+        def load_engine_id(self, *, default_engine_id):
+            return "Pyttsx3"
 
-        def save_backend_id(self, backend_id):
+        def save_engine_id(self, engine_id):
+            return None
+
+        def load_voice(self, engine_id):
+            return None
+
+        def save_voice(self, engine_id, voice_id):
+            return None
+
+        def load_numeric_setting(self, engine_id, setting_id):
+            return None
+
+        def save_numeric_setting(self, engine_id, setting_id, value):
             return None
 
     class FakeSpeechService:
-        def __init__(self, *, backend_options, selected_backend_id, scheduler=None):
-            self.backend_options = backend_options
-            self.selected_backend_id = selected_backend_id
+        def __init__(self, *, engine_options, selected_engine_id, scheduler=None):
+            self.engine_options = engine_options
+            self.selected_engine_id = selected_engine_id
+
+        def get_selected_engine(self):
+            return self.selected_engine_id
+
+        def list_voices(self):
+            return ()
+
+        def set_voice(self, voice_id):
+            return None
+
+        def get_supported_numeric_settings(self):
+            return ()
+
+        def set_rate(self, value):
+            return None
+
+        def set_pitch(self, value):
+            return None
+
+        def set_volume(self, value):
+            return None
 
     class FakeScheduler:
         pass
@@ -1265,7 +1612,11 @@ def test_build_runtime_uses_safe_clipboard_on_darwin(monkeypatch):
         def MainLoop(self):
             return 0
 
-    monkeypatch.setattr(nvda_remote_main, "SpeechBackendConfigStore", FakeConfigStore)
+    monkeypatch.setitem(
+        nvda_remote_main.build_runtime.__globals__,
+        "SpeechEngineConfigStore",
+        FakeConfigStore,
+    )
     monkeypatch.setattr(nvda_remote_main, "RelayTransport", FakeTransport)
     monkeypatch.setattr(bootstrap.platform, "_MacOSEventTapManager", FakeManager)
     monkeypatch.setattr(bootstrap.platform, "_MacOSEventTapBackend", lambda: object())
@@ -1282,8 +1633,8 @@ def test_build_runtime_uses_safe_clipboard_on_darwin(monkeypatch):
     )
     monkeypatch.setattr(
         bootstrap.platform,
-        "default_speech_backend_options",
-        fake_bootstrap_speech_backend_options,
+        "default_speech_engine_options",
+        fake_bootstrap_speech_engine_options,
     )
     monkeypatch.setattr(nvda_remote_main, "KeyboardInputService", FakeKeyboardInputService)
     monkeypatch.setattr(nvda_remote_main, "NvdaRemoteAppService", FakeAppService)
@@ -1308,7 +1659,7 @@ def test_unavailable_macos_permissions_exposes_input_monitoring_error(monkeypatc
         permissions.has_listen_event_access(prompt=False)
 
 
-def test_nvda_remote_main_build_runtime_falls_back_for_unknown_backend(monkeypatch):
+def test_nvda_remote_main_build_runtime_falls_back_for_unknown_engine(monkeypatch):
     install_fake_wx(monkeypatch)
     nvda_remote_main = importlib.import_module("apps.nvda_remote.main")
 
@@ -1317,22 +1668,55 @@ def test_nvda_remote_main_build_runtime_falls_back_for_unknown_backend(monkeypat
             self.path = path
             self.saved = []
 
-        def load_backend_id(self, *, default_backend_id):
-            self.default_backend_id = default_backend_id
+        def load_engine_id(self, *, default_engine_id):
+            self.default_engine_id = default_engine_id
             return "missing"
 
-        def save_backend_id(self, backend_id):
-            self.saved.append(backend_id)
+        def save_engine_id(self, engine_id):
+            self.saved.append(engine_id)
+
+        def load_voice(self, engine_id):
+            return None
+
+        def save_voice(self, engine_id, voice_id):
+            return None
+
+        def load_numeric_setting(self, engine_id, setting_id):
+            return None
+
+        def save_numeric_setting(self, engine_id, setting_id, value):
+            return None
 
     class FakeSpeechService:
         init_calls = []
 
-        def __init__(self, *, backend_options, selected_backend_id, scheduler=None):
-            self.backend_options = backend_options
-            self.selected_backend_id = selected_backend_id
-            type(self).init_calls.append(selected_backend_id)
-            if selected_backend_id == "missing":
-                raise ValueError("Unknown speech backend: missing")
+        def __init__(self, *, engine_options, selected_engine_id, scheduler=None):
+            self.engine_options = engine_options
+            self.selected_engine_id = selected_engine_id
+            type(self).init_calls.append(selected_engine_id)
+            if selected_engine_id == "missing":
+                raise ValueError("Unknown speech engine: missing")
+
+        def get_selected_engine(self):
+            return self.selected_engine_id
+
+        def list_voices(self):
+            return ()
+
+        def set_voice(self, voice_id):
+            return None
+
+        def get_supported_numeric_settings(self):
+            return ()
+
+        def set_rate(self, value):
+            return None
+
+        def set_pitch(self, value):
+            return None
+
+        def set_volume(self, value):
+            return None
 
     class FakeScheduler:
         pass
@@ -1380,13 +1764,17 @@ def test_nvda_remote_main_build_runtime_falls_back_for_unknown_backend(monkeypat
         def MainLoop(self):
             return 0
 
-    monkeypatch.setattr(nvda_remote_main, "SpeechBackendConfigStore", FakeConfigStore)
+    monkeypatch.setitem(
+        nvda_remote_main.build_runtime.__globals__,
+        "SpeechEngineConfigStore",
+        FakeConfigStore,
+    )
     monkeypatch.setattr(nvda_remote_main, "RelayTransport", FakeTransport)
     monkeypatch.setattr(bootstrap.platform.sys, "platform", "win32")
     scheduler = FakeScheduler()
     speech = FakeSpeechService(
-        backend_options=("backend",),
-        selected_backend_id="nvda_controller",
+        engine_options=("engine",),
+        selected_engine_id="NvdaController",
         scheduler=scheduler,
     )
     speaker = FakeQueuedService(speech=speech)
@@ -1394,10 +1782,10 @@ def test_nvda_remote_main_build_runtime_falls_back_for_unknown_backend(monkeypat
 
     def fake_build_app_runtime_parts(**kwargs):
         build_calls.append(kwargs)
-        assert kwargs["selected_backend_id"] == "missing"
-        assert kwargs["fallback_backend_id"] == "nvda_controller"
+        assert kwargs["selected_engine_id"] == "missing"
+        assert kwargs["fallback_engine_id"] == "NvdaController"
         assert kwargs["include_clipboard"] is True
-        kwargs["on_backend_fallback"]("nvda_controller")
+        kwargs["on_engine_fallback"]("NvdaController")
         return types.SimpleNamespace(
             input_capture=FakeKeyboardCapture(),
             hotkey_capture=FakeHotkeyCapture(),
@@ -1424,9 +1812,9 @@ def test_nvda_remote_main_build_runtime_falls_back_for_unknown_backend(monkeypat
     runtime = nvda_remote_main.build_runtime()
 
     assert len(build_calls) == 1
-    assert runtime.config_store.saved == ["nvda_controller"]
+    assert runtime.config_store.saved == ["NvdaController"]
     assert runtime.scheduler is scheduler
-    assert runtime.speech.selected_backend_id == "nvda_controller"
+    assert runtime.speech.selected_engine_id == "NvdaController"
     assert runtime.speaker.speech is runtime.speech
     assert runtime.app_service.use_windows_native_key_payload is False
 
@@ -1439,12 +1827,24 @@ def test_nvda_remote_main_build_runtime_enables_windows_native_payload_from_env(
         def __init__(self, path):
             self.path = path
 
-        def load_backend_id(self, *, default_backend_id):
-            self.default_backend_id = default_backend_id
-            return default_backend_id
+        def load_engine_id(self, *, default_engine_id):
+            self.default_engine_id = default_engine_id
+            return default_engine_id
 
-        def save_backend_id(self, backend_id):
-            self.saved_backend_id = backend_id
+        def save_engine_id(self, engine_id):
+            self.saved_engine_id = engine_id
+
+        def load_voice(self, engine_id):
+            return None
+
+        def save_voice(self, engine_id, voice_id):
+            return None
+
+        def load_numeric_setting(self, engine_id, setting_id):
+            return None
+
+        def save_numeric_setting(self, engine_id, setting_id, value):
+            return None
 
     class FakeTransport:
         def __init__(self, serializer):
@@ -1472,7 +1872,28 @@ def test_nvda_remote_main_build_runtime_enables_windows_native_payload_from_env(
 
     class FakeSpeechService:
         def __init__(self):
-            self.selected_backend_id = "nvda_controller"
+            self.selected_engine_id = "NvdaController"
+
+        def get_selected_engine(self):
+            return self.selected_engine_id
+
+        def list_voices(self):
+            return ()
+
+        def set_voice(self, voice_id):
+            return None
+
+        def get_supported_numeric_settings(self):
+            return ()
+
+        def set_rate(self, value):
+            return None
+
+        def set_pitch(self, value):
+            return None
+
+        def set_volume(self, value):
+            return None
 
     class FakeQueuedService:
         def __init__(self, speech):
@@ -1504,7 +1925,11 @@ def test_nvda_remote_main_build_runtime_enables_windows_native_payload_from_env(
         def MainLoop(self):
             return 0
 
-    monkeypatch.setattr(nvda_remote_main, "SpeechBackendConfigStore", FakeConfigStore)
+    monkeypatch.setitem(
+        nvda_remote_main.build_runtime.__globals__,
+        "SpeechEngineConfigStore",
+        FakeConfigStore,
+    )
     monkeypatch.setattr(nvda_remote_main, "RelayTransport", FakeTransport)
     monkeypatch.setattr(bootstrap.platform.sys, "platform", "win32")
     scheduler = FakeScheduler()
@@ -1683,24 +2108,24 @@ def test_speech_settings_frame_reads_and_writes_controller_values(monkeypatch):
 
     class FakeController:
         def __init__(self):
-            self.speech_backend_id = "pyttsx3"
-            self.speech_backend_calls = []
-            self.available_voices = (("voice-1", "Voice 1"),)
-            self.selected_voice = "voice-1"
-            self.rate = 120
-            self.pitch = 3
+            self.speech_engine_id = "Pyttsx3"
+            self.speech_engine_calls = []
+            self.available_voices = ()
+            self.selected_voice = None
+            self.rate = 60
+            self.pitch = 50
             self.volume = 80
             self.voice_calls = []
 
-        def get_speech_backend_options(self):
-            return (("default", "Default"), ("pyttsx3", "pyttsx3"))
+        def get_speech_engine_options(self):
+            return (("NvdaController", "Nvda Controller"), ("Pyttsx3", "Pyttsx3"))
 
-        def get_selected_speech_backend(self):
-            return self.speech_backend_id
+        def get_selected_speech_engine(self):
+            return self.speech_engine_id
 
-        def set_speech_backend(self, backend_id):
-            self.speech_backend_calls.append(backend_id)
-            self.speech_backend_id = backend_id
+        def set_speech_engine(self, engine_id):
+            self.speech_engine_calls.append(engine_id)
+            self.speech_engine_id = engine_id
 
         def get_available_voices(self):
             return self.available_voices
@@ -1730,20 +2155,27 @@ def test_speech_settings_frame_reads_and_writes_controller_values(monkeypatch):
         def set_volume(self, value):
             self.volume = value
 
+        def get_supported_numeric_settings(self):
+            return (
+                SpeechNumericSetting("rate", "Rate"),
+                SpeechNumericSetting("pitch", "Pitch"),
+                SpeechNumericSetting("volume", "Volume"),
+            )
+
     SpeechSettingsFrame = importlib.import_module("ui.shared.speech_settings_frame").SpeechSettingsFrame
     controller = FakeController()
     frame = SpeechSettingsFrame(controller=controller)
 
-    assert frame.speech_backend_choice.GetCount() >= 1
-    assert frame.voice_choice.GetCount() == 1
-    assert frame.rate_ctrl.GetValue() == "120"
-    assert frame.pitch_ctrl.GetValue() == "3"
-    assert frame.volume_ctrl.GetValue() == "80"
+    assert frame.speech_engine_choice.GetString(0) == "Nvda Controller"
+    assert frame.voice_choice.enabled is False
+    assert frame.rate_slider.GetValue() == 60
+    assert frame.pitch_slider.GetValue() == 50
+    assert frame.volume_slider.GetValue() == 80
     assert frame.GetTitle() == "Speech Settings"
 
-    frame.speech_backend_choice.SetSelection(1)
-    frame._on_speech_backend_change(None)
-    assert controller.speech_backend_calls == ["pyttsx3"]
+    frame.speech_engine_choice.SetSelection(1)
+    frame._on_speech_engine_change(None)
+    assert controller.speech_engine_calls == ["Pyttsx3"]
 
 
 def test_access8graph_main_build_runtime_injects_tone_output(monkeypatch):

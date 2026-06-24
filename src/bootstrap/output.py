@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from adapters.outputs.interfaces import ToneOutput
 from application.output import Capabilities, QueuedService, Scheduler
-from application.output.speech import SpeechBackendOption, SpeechService
+from application.output.speech import SpeechEngineOption, SpeechService
 
 _logger = logging.getLogger(__name__)
 
@@ -19,35 +19,45 @@ class OutputServices:
 
 def build_output_services(
     *,
-    backend_options_factory: Callable[[Scheduler], tuple[SpeechBackendOption, ...]],
-    selected_backend_id: str,
+    engine_options_factory: Callable[[Scheduler], tuple[SpeechEngineOption, ...]] | None = None,
+    selected_engine_id: str | None = None,
+    fallback_engine_id: str | None = None,
+    backend_options_factory: Callable[[Scheduler], tuple[SpeechEngineOption, ...]] | None = None,
+    selected_backend_id: str | None = None,
     fallback_backend_id: str | None = None,
     tone_output: ToneOutput | None = None,
+    on_engine_fallback: Callable[[str], None] | None = None,
     on_backend_fallback: Callable[[str], None] | None = None,
 ) -> OutputServices:
+    resolved_options_factory = engine_options_factory or backend_options_factory
+    resolved_selected_engine_id = selected_engine_id or selected_backend_id
+    resolved_fallback_engine_id = fallback_engine_id or fallback_backend_id
+    resolved_on_engine_fallback = on_engine_fallback or on_backend_fallback
+    if resolved_options_factory is None or resolved_selected_engine_id is None:
+        raise TypeError("speech engine factory and selected engine id are required")
     scheduler = Scheduler()
     try:
-        backend_options = backend_options_factory(scheduler)
+        engine_options = resolved_options_factory(scheduler)
         try:
             speech = SpeechService(
-                backend_options=backend_options,
-                selected_backend_id=selected_backend_id,
+                engine_options=engine_options,
+                selected_engine_id=resolved_selected_engine_id,
                 scheduler=scheduler,
             )
         except ValueError:
-            fallback_id = fallback_backend_id or selected_backend_id
+            fallback_id = resolved_fallback_engine_id or resolved_selected_engine_id
             _logger.warning(
-                "Unknown configured speech backend %r; falling back to %s",
-                selected_backend_id,
+                "Unknown configured speech engine %r; falling back to %s",
+                resolved_selected_engine_id,
                 fallback_id,
             )
             speech = SpeechService(
-                backend_options=backend_options,
-                selected_backend_id=fallback_id,
+                engine_options=engine_options,
+                selected_engine_id=fallback_id,
                 scheduler=scheduler,
             )
-            if on_backend_fallback is not None:
-                on_backend_fallback(fallback_id)
+            if resolved_on_engine_fallback is not None:
+                resolved_on_engine_fallback(fallback_id)
         speaker = QueuedService(speech=speech)
         return OutputServices(
             scheduler=scheduler,

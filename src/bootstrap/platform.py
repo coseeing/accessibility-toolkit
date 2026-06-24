@@ -9,7 +9,7 @@ from adapters.outputs.drivers.pyttsx3 import Pyttsx3SpeechOutput
 from adapters.outputs.tone import DefaultToneOutput
 from application.output import Scheduler
 from application.output import ClipboardService
-from application.output.speech import SpeechBackendOption
+from application.output.speech import SpeechEngineOption
 from interop.key import HID
 
 _logger = logging.getLogger(__name__)
@@ -223,22 +223,22 @@ def create_tone_output() -> DefaultToneOutput:
     return DefaultToneOutput.load_default()
 
 
-def default_speech_backend_options(
+def default_speech_engine_options(
     scheduler: Scheduler,
-) -> tuple[SpeechBackendOption, ...]:
+) -> tuple[SpeechEngineOption, ...]:
     options = [
-        SpeechBackendOption(
-            backend_id="pyttsx3",
-            label="pyttsx3",
+        SpeechEngineOption(
+            engine_id="Pyttsx3",
+            label="Pyttsx3",
             factory=lambda: Pyttsx3SpeechOutput.load_default(scheduler=scheduler),
         ),
     ]
     if sys.platform == "win32":
         options.insert(
             0,
-            SpeechBackendOption(
-                backend_id="nvda_controller",
-                label="NVDA Controller",
+            SpeechEngineOption(
+                engine_id="NvdaController",
+                label="Nvda Controller",
                 factory=lambda: _get_nvda_controller_speech_output_class().load_default(
                     scheduler=scheduler
                 ),
@@ -247,8 +247,8 @@ def default_speech_backend_options(
     return tuple(options)
 
 
-def default_speech_backend_id() -> str:
-    return "nvda_controller" if sys.platform == "win32" else "pyttsx3"
+def default_speech_engine_id() -> str:
+    return "NvdaController" if sys.platform == "win32" else "Pyttsx3"
 
 
 class PlatformProvider:
@@ -266,13 +266,19 @@ class PlatformProvider:
     def create_tone_output(self) -> DefaultToneOutput:
         return create_tone_output()
 
+    def default_speech_engine_options(
+        self, scheduler: Scheduler
+    ) -> tuple[SpeechEngineOption, ...]:
+        return default_speech_engine_options(scheduler)
+
+    def default_speech_engine_id(self) -> str:
+        return default_speech_engine_id()
+
+    # Temporary aliases until all call sites are migrated.
     def default_speech_backend_options(
         self, scheduler: Scheduler
-    ) -> tuple[SpeechBackendOption, ...]:
-        return default_speech_backend_options(scheduler)
-
-    def default_speech_backend_id(self) -> str:
-        return default_speech_backend_id()
+    ) -> tuple[SpeechEngineOption, ...]:
+        return self.default_speech_engine_options(scheduler)
 
     def build_services(
         self, hotkey_usage: int = _DEFAULT_HOTKEY_USAGE
@@ -283,3 +289,10 @@ class PlatformProvider:
             clipboard=self.create_clipboard_service(),
             tone_output=self.create_tone_output(),
         )
+
+    def default_speech_backend_id(self) -> str:
+        return self.default_speech_engine_id()
+
+
+default_speech_backend_options = default_speech_engine_options
+default_speech_backend_id = default_speech_engine_id
