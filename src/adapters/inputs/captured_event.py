@@ -7,3 +7,4 @@ from interop.key.key_event import KeyEvent
 class CapturedKeyEvent:
     key_event: KeyEvent
     native_context: object | None = None
+    num_lock_on: bool | None = None

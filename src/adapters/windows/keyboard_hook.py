@@ -155,14 +155,21 @@ class WindowsKeyboardCapture:
                     else "None"
                 ),
             )
-            result = self._emit_for_tests(event, vk_code, scan_code, extended)
+            result = self._emit_for_tests(event, vk_code, scan_code, extended, num_lock_on)
             if not result.send_to_system:
                 return 1
         if self._user32 is None:
             return 0
         return int(self._user32.CallNextHookEx(self._hook_handle, n_code, w_param, l_param))
 
-    def _emit_for_tests(self, event: KeyEvent | None, vk_code: int, scan_code: int, extended: bool) -> KeyboardPipelineResult:
+    def _emit_for_tests(
+        self,
+        event: KeyEvent | None,
+        vk_code: int,
+        scan_code: int,
+        extended: bool,
+        num_lock_on: bool | None,
+    ) -> KeyboardPipelineResult:
         if event is None or self._listener is None:
             return KeyboardPipelineResult(send_to_system=True, app_result=AppKeyEventResult.UNHANDLED)
         return self._listener(
@@ -173,5 +180,6 @@ class WindowsKeyboardCapture:
                     scan_code=scan_code,
                     extended=extended,
                 ),
+                num_lock_on=num_lock_on,
             )
         )
