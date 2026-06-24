@@ -21,6 +21,7 @@ WM_KEYDOWN = 0x0100
 WM_KEYUP = 0x0101
 WM_QUIT = 0x0012
 LLKHF_EXTENDED = 0x01
+VK_NUMLOCK = 0x90
 
 
 class FakeKbdLlHookStruct(ctypes.Structure):
@@ -52,8 +53,26 @@ class FakeKeyboardUser32:
         return 0
 
     def GetKeyState(self, vk_code):
-        assert vk_code == 0x90
+        assert vk_code == VK_NUMLOCK
         return self.key_state
+
+
+class FakeKeyboardUser32WithoutKeyState:
+    def __init__(self, hook_handle=123):
+        self.hook_handle = hook_handle
+        self.installed = []
+        self.unhooked = []
+
+    def SetWindowsHookExW(self, hook_id, callback, instance, thread_id):
+        self.installed.append((hook_id, callback, instance, thread_id))
+        return self.hook_handle
+
+    def UnhookWindowsHookEx(self, handle):
+        self.unhooked.append(handle)
+        return 1
+
+    def CallNextHookEx(self, hook, n_code, w_param, l_param):
+        return 0
 
 
 class FakeKeyboardKernel32:
@@ -138,6 +157,55 @@ def test_windows_keyboard_hook_callback_emits_num_lock_state():
         CapturedKeyEvent(
             key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.TAB, pressed=True),
             native_context=WindowsNativeKeyContext(vk_code=0x09, scan_code=15, extended=False),
+            num_lock_on=True,
+        ),
+    ]
+
+
+def test_windows_keyboard_hook_callback_emits_none_num_lock_state_when_get_key_state_is_unavailable():
+    user32 = FakeKeyboardUser32WithoutKeyState()
+    capture = WindowsKeyboardCapture(
+        user32=user32,
+        kernel32=FakeKeyboardKernel32(),
+        is_windows=True,
+    )
+    seen = []
+    capture.set_listener(_passthrough(seen))
+    capture.start()
+    callback = user32.installed[0][1]
+    key_data = FakeKbdLlHookStruct(vkCode=0x09, scanCode=15, flags=0)
+
+    callback(0, WM_KEYDOWN, ctypes.addressof(key_data))
+
+    assert seen == [
+        CapturedKeyEvent(
+            key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.TAB, pressed=True),
+            native_context=WindowsNativeKeyContext(vk_code=0x09, scan_code=15, extended=False),
+            num_lock_on=None,
+        ),
+    ]
+
+
+def test_windows_keyboard_hook_emits_num_lock_key_event_state():
+    user32 = FakeKeyboardUser32()
+    user32.key_state = 1
+    capture = WindowsKeyboardCapture(
+        user32=user32,
+        kernel32=FakeKeyboardKernel32(),
+        is_windows=True,
+    )
+    seen = []
+    capture.set_listener(_passthrough(seen))
+    capture.start()
+    callback = user32.installed[0][1]
+    key_data = FakeKbdLlHookStruct(vkCode=VK_NUMLOCK, scanCode=69, flags=LLKHF_EXTENDED)
+
+    callback(0, WM_KEYDOWN, ctypes.addressof(key_data))
+
+    assert seen == [
+        CapturedKeyEvent(
+            key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.NUM_LOCK, pressed=True),
+            native_context=WindowsNativeKeyContext(vk_code=VK_NUMLOCK, scan_code=69, extended=True),
             num_lock_on=True,
         ),
     ]
@@ -721,7 +789,7 @@ def test_windows_keyboard_hook_emits_hid_for_print_screen_scroll_lock_pause_num_
     callback(0, WM_KEYDOWN, ctypes.addressof(key_data))
     key_data = FakeKbdLlHookStruct(vkCode=0x13, scanCode=69, flags=0)
     callback(0, WM_KEYDOWN, ctypes.addressof(key_data))
-    key_data = FakeKbdLlHookStruct(vkCode=0x90, scanCode=69, flags=LLKHF_EXTENDED)
+    key_data = FakeKbdLlHookStruct(vkCode=VK_NUMLOCK, scanCode=69, flags=LLKHF_EXTENDED)
     callback(0, WM_KEYDOWN, ctypes.addressof(key_data))
     key_data = FakeKbdLlHookStruct(vkCode=0x5D, scanCode=93, flags=LLKHF_EXTENDED)
     callback(0, WM_KEYDOWN, ctypes.addressof(key_data))
@@ -744,7 +812,7 @@ def test_windows_keyboard_hook_emits_hid_for_print_screen_scroll_lock_pause_num_
         ),
         CapturedKeyEvent(
             key_event=KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.NUM_LOCK, pressed=True),
-            native_context=WindowsNativeKeyContext(vk_code=0x90, scan_code=69, extended=True),
+            native_context=WindowsNativeKeyContext(vk_code=VK_NUMLOCK, scan_code=69, extended=True),
             num_lock_on=False,
         ),
         CapturedKeyEvent(

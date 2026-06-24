@@ -18,6 +18,7 @@ WM_KEYUP = 0x0101
 WM_SYSKEYDOWN = 0x0104
 WM_SYSKEYUP = 0x0105
 LLKHF_EXTENDED = 0x01
+VK_NUMLOCK = 0x90
 
 _logger = logging.getLogger(__name__)
 
@@ -133,7 +134,7 @@ class WindowsKeyboardCapture:
             num_lock_on = None
             if self._user32 is not None:
                 try:
-                    num_lock_on = bool(int(self._user32.GetKeyState(0x90)) & 1)
+                    num_lock_on = bool(int(self._user32.GetKeyState(VK_NUMLOCK)) & 1)
                 except AttributeError:
                     num_lock_on = None
             event = key_event_from_windows(
