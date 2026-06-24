@@ -152,17 +152,17 @@ _VK_TO_USAGE_KEYPAD_NAV: dict[int, int] = {
 
 def key_event_from_windows(*, vk_code: int, scan_code: int, extended: bool, pressed: bool) -> KeyEvent | None:
     resolution = "unresolved"
-    usage = _VK_TO_USAGE_KEYPAD_NAV.get(vk_code)
+    usage = _SCAN_TO_USAGE.get((scan_code, extended))
     if usage is not None:
-        resolution = "vk_keypad_nav"
-    else:
-        usage = _SCAN_TO_USAGE.get((scan_code, extended))
-        if usage is not None:
-            resolution = "scan"
+        resolution = "scan"
     if usage is None and extended and scan_code > 0xFF:
         usage = _SCAN_TO_USAGE.get((scan_code & 0xFF, extended))
         if usage is not None:
             resolution = "masked_scan"
+    if usage is None:
+        usage = _VK_TO_USAGE_KEYPAD_NAV.get(vk_code)
+        if usage is not None:
+            resolution = "vk_keypad_nav"
     if usage is None and vk_code == 0xF2:
         usage = HID.INTERNATIONAL3
         resolution = "vk_international3"

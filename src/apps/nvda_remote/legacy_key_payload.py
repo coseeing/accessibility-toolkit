@@ -100,7 +100,7 @@ _USAGE_TO_LEGACY: dict[int, tuple[int, int, bool]] = {
     HID.KEYPAD_9: (105, 73, False),
     HID.KEYPAD_0: (96, 82, False),
     HID.KEYPAD_DECIMAL: (110, 83, False),
-    HID.KEYPAD_EQUALS: (187, 13, False),
+    HID.KEYPAD_EQUALS: (187, 89, False),
     HID.PRINT_SCREEN: (44, 55, True),
     HID.SCROLL_LOCK: (145, 70, False),
     HID.NUM_LOCK: (144, 69, True),

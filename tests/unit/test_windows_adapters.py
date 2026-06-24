@@ -982,11 +982,19 @@ def test_key_event_from_windows_prefers_standard_scan_code_over_vk_fallback():
 @pytest.mark.parametrize(
     ("vk_code", "scan_code", "extended", "expected_usage"),
     [
-        (0x28, 80, False, HID.DOWN),
+        (0x23, 79, False, HID.KEYPAD_1),
+        (0x28, 80, False, HID.KEYPAD_2),
+        (0x22, 81, False, HID.KEYPAD_3),
+        (0x25, 75, False, HID.KEYPAD_4),
+        (0x27, 77, False, HID.KEYPAD_6),
+        (0x24, 71, False, HID.KEYPAD_7),
+        (0x26, 72, False, HID.KEYPAD_8),
+        (0x21, 73, False, HID.KEYPAD_9),
+        (0x2E, 83, False, HID.KEYPAD_DECIMAL),
         (0x62, 80, False, HID.KEYPAD_2),
     ],
 )
-def test_key_event_from_windows_prefers_vk_for_numlock_sensitive_keypad_navigation_events(
+def test_key_event_from_windows_preserves_keypad_origin_for_numlock_off_navigation_vks(
     vk_code,
     scan_code,
     extended,

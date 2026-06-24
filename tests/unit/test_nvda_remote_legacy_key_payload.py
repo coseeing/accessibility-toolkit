@@ -1,6 +1,7 @@
 import pytest
 
 from interop.key import HID, KeyEvent
+from adapters.windows.hid_map import key_event_from_windows
 from apps.nvda_remote.legacy_key_payload import key_event_to_legacy_remote_payload
 
 
@@ -213,7 +214,7 @@ def test_keypad_numeric_keys_map_by_num_lock_state(usage, expected_on, expected_
         (HID.KEYPAD_SUBTRACT, (0x6D, 74, False)),
         (HID.KEYPAD_ADD, (0x6B, 78, False)),
         (HID.KEYPAD_ENTER, (0x0D, 28, True)),
-        (HID.KEYPAD_EQUALS, (0xBB, 13, False)),
+        (HID.KEYPAD_EQUALS, (0xBB, 89, False)),
     ],
 )
 def test_keypad_operator_keys_ignore_num_lock_state(usage, expected):
@@ -231,6 +232,57 @@ def test_keypad_operator_keys_ignore_num_lock_state(usage, expected):
         "extended": expected[2],
         "pressed": False,
     }
+
+
+@pytest.mark.parametrize(
+    ("vk_code", "scan_code", "extended", "num_lock_on"),
+    [
+        (0x6F, 53, True, None),
+        (0x6A, 55, False, None),
+        (0x6D, 74, False, None),
+        (0x6B, 78, False, None),
+        (0x0D, 28, True, None),
+        (0xBB, 89, False, None),
+        (0x60, 82, False, True),
+        (0x61, 79, False, True),
+        (0x62, 80, False, True),
+        (0x63, 81, False, True),
+        (0x64, 75, False, True),
+        (0x65, 76, False, True),
+        (0x66, 77, False, True),
+        (0x67, 71, False, True),
+        (0x68, 72, False, True),
+        (0x69, 73, False, True),
+        (0x6E, 83, False, True),
+        (0x2D, 82, False, False),
+        (0x23, 79, False, False),
+        (0x28, 80, False, False),
+        (0x22, 81, False, False),
+        (0x25, 75, False, False),
+        (0x0C, 76, False, False),
+        (0x27, 77, False, False),
+        (0x24, 71, False, False),
+        (0x26, 72, False, False),
+        (0x21, 73, False, False),
+        (0x2E, 83, False, False),
+    ],
+)
+def test_windows_keypad_hid_payload_preserves_scan_and_extended(
+    vk_code,
+    scan_code,
+    extended,
+    num_lock_on,
+):
+    event = key_event_from_windows(
+        vk_code=vk_code,
+        scan_code=scan_code,
+        extended=extended,
+        pressed=True,
+    )
+
+    assert event is not None
+    payload = key_event_to_legacy_remote_payload(event, num_lock_on=num_lock_on)
+    assert (payload["scan_code"], payload["extended"]) == (scan_code, extended)
 
 
 def test_keypad_operator_key_preserves_mapping_when_num_lock_state_unknown():
