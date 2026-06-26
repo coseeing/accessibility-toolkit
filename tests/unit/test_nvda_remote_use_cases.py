@@ -1,5 +1,5 @@
 from application.state import ConnectionState, ControlState, RuntimeState
-from apps.nvda_remote.events import RemoteControlChanged
+from apps.nvda_remote.events import RemoteConnectionChanged, RemoteControlChanged, RemoteMessageReceived
 from interop.key import HID, KeyEvent
 
 from adapters.inputs.base import KeyEventDecision
@@ -228,3 +228,53 @@ def test_forwarding_suppresses_unsupported_jis_key_in_control_mode(caplog):
     assert sent == []
     assert "0x89" in caplog.text
     assert "unsupported usage" in caplog.text
+
+
+def test_remote_connection_use_case_sets_connected_state_and_requests_hotkey_start():
+    state = RuntimeState()
+    effects = []
+    from apps.nvda_remote.use_cases.connection import RemoteConnectionUseCase
+
+    use_case = RemoteConnectionUseCase(
+        state=state,
+        exit_active=lambda: effects.append("exit_active"),
+        ensure_hotkey_started=lambda: effects.append("ensure_hotkey_started"),
+        stop_capture=lambda: effects.append("stop_capture"),
+        stop_hotkey=lambda: effects.append("stop_hotkey"),
+        notify=lambda event: effects.append(event),
+    )
+
+    use_case.handle_connected()
+
+    assert state.connection_state == ConnectionState.CONNECTED
+    assert state.control_state == ControlState.CONNECTED
+    assert effects == [
+        "exit_active",
+        "ensure_hotkey_started",
+        RemoteConnectionChanged("connected"),
+    ]
+
+
+def test_remote_protocol_event_handler_maps_remote_peer_messages():
+    from apps.nvda_remote.use_cases.protocol_events import RemoteProtocolEventHandler
+    from interop.protocol.events import RemotePeerMessageReceived, RemoteSessionConnected
+
+    delivered = []
+    handler = RemoteProtocolEventHandler(
+        on_connected=lambda: delivered.append("connected"),
+        on_disconnected=lambda: delivered.append("disconnected"),
+        notify_remote_message=lambda event: delivered.append(event),
+    )
+
+    handler.handle(RemoteSessionConnected())
+    handler.handle(
+        RemotePeerMessageReceived(
+            message_type="motd",
+            payload={"type": "motd", "message": "hello"},
+        )
+    )
+
+    assert delivered == [
+        "connected",
+        RemoteMessageReceived("motd", {"type": "motd", "message": "hello"}),
+    ]

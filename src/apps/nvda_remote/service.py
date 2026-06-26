@@ -1,5 +1,4 @@
 from collections.abc import Callable
-import logging
 from typing import Any
 
 from adapters.inputs.base import HotkeyCapture, InputCapture, KeyEventDecision
@@ -22,32 +21,23 @@ from application.state import ConnectionState, ControlState, RuntimeState
 from interop.key import HID
 from interop.protocol.connection_info import ConnectionInfo
 from interop.protocol.messages import RemoteMessageType
-from interop.protocol.events import (
-    RemotePeerMessageReceived,
-    RemoteProtocolMessageInvalid,
-    RemoteSessionConnected,
-    RemoteSessionDisconnected,
-    RemoteSessionVersionMismatch,
-)
 from interop.protocol.routing.message_router import MessageRouter
 from interop.protocol.session.remote_session import RemoteSession
 from interop.protocol.transport.base import Transport
 
+from apps.nvda_remote.use_cases.connection import RemoteConnectionUseCase
+from apps.nvda_remote.use_cases.protocol_events import RemoteProtocolEventHandler
+from apps.nvda_remote.use_cases.status_presentation import RemoteStatusPresenter
 from apps.nvda_remote.use_cases import (
     NvdaRemoteControlModeUseCase,
     NvdaRemoteInputForwardingUseCase,
 )
 from apps.nvda_remote.events import (
     NvdaRemoteEvent,
-    RemoteConnectionChanged,
-    RemoteControlChanged,
-    RemoteMessageReceived,
     RemoteTransportDisconnected,
 )
 from apps.shared.mode_manager import ModeManager
 from apps.shared.speech_settings_controller import SpeechSettingsController
-
-_logger = logging.getLogger(__name__)
 
 
 class RemoteControlMode:
@@ -155,6 +145,26 @@ class NvdaRemoteAppService(KeyEventHandler):
         )
         self._mode_manager.register(
             RemoteControlMode(self._control_mode, self._input_forwarding)
+        )
+
+        self._status_presenter = RemoteStatusPresenter(
+            dispatch=self._main_thread_dispatch,
+            get_listener=lambda: self._status_listener,
+        )
+
+        self._connection = RemoteConnectionUseCase(
+            state=self.state,
+            exit_active=self._activation.exit_active,
+            ensure_hotkey_started=self._ensure_hotkey_started,
+            stop_capture=self._stop_capture,
+            stop_hotkey=self._stop_hotkey,
+            notify=self._status_presenter.notify,
+        )
+
+        self._protocol_events = RemoteProtocolEventHandler(
+            on_connected=self._connection.handle_connected,
+            on_disconnected=self._connection.handle_disconnected,
+            notify_remote_message=self._status_presenter.notify,
         )
 
     def _set_control_active(self, active: bool) -> None:
@@ -307,44 +317,20 @@ class NvdaRemoteAppService(KeyEventHandler):
                     None if reason is None else str(reason)
                 )
             )
-            self._stop_capture()
-            self._stop_hotkey()
-            self.state.connection_state = ConnectionState.IDLE
-            self.state.control_state = ControlState.IDLE
-            self._notify_status_listener(RemoteConnectionChanged("idle"))
+            self._connection.handle_disconnected()
             return
         if self.session.handle_message(payload):
             return
         self.router.handle_message(payload)
 
     def _on_protocol_event(self, event: object) -> None:
-        match event:
-            case RemoteSessionConnected():
-                self.state.connection_state = ConnectionState.CONNECTED
-                if self.state.control_state != ControlState.CONTROLLING:
-                    self.state.control_state = ControlState.CONNECTED
-                    self._activation.exit_active()
-                    self._ensure_hotkey_started()
-                self._notify_status_listener(RemoteConnectionChanged("connected"))
-            case RemoteSessionDisconnected():
-                self._stop_capture()
-                self._stop_hotkey()
-                self.state.connection_state = ConnectionState.IDLE
-                self.state.control_state = ControlState.IDLE
-                self._notify_status_listener(RemoteConnectionChanged("idle"))
-            case RemoteSessionVersionMismatch():
-                _logger.debug("Ignoring version mismatch for UI listener")
-            case RemotePeerMessageReceived(message_type=message_type, payload=payload):
-                self._notify_status_listener(RemoteMessageReceived(message_type, payload))
-            case RemoteProtocolMessageInvalid():
-                _logger.debug("Ignoring invalid protocol event for UI listener: %s", event)
+        self._protocol_events.handle(event)
 
     def _notify_status_listener(
         self,
         status: NvdaRemoteEvent,
     ) -> None:
-        if self._status_listener is not None:
-            self._main_thread_dispatch(lambda: self._status_listener(status))
+        self._status_presenter.notify(status)
 
     def _notify_error(self, message: str) -> None:
         self._notify_status_listener(ErrorRaised(message))
