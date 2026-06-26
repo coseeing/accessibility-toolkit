@@ -9,6 +9,7 @@ from application.output import QueuedService
 from application.output import ClipboardService
 from application.output.speech import SpeechService
 from apps.nvda_remote.service import NvdaRemoteAppService
+from apps.shared.speech_runtime_settings import SpeechRuntimeSettingsCoordinator
 from bootstrap.app_runtime import build_app_runtime_parts
 from bootstrap.platform import PlatformProvider
 from bootstrap.runtime import configure_logging, default_config_path
@@ -44,11 +45,10 @@ def _use_windows_native_key_payload() -> bool:
 
 def build_runtime() -> NvdaRemoteRuntime:
     config_store = SpeechEngineConfigStore(default_config_path())
+    coordinator = SpeechRuntimeSettingsCoordinator(config_store=config_store)
     provider = PlatformProvider()
     default_engine_id = provider.default_speech_engine_id()
-    selected_engine_id = config_store.load_engine_id(
-        default_engine_id=default_engine_id
-    )
+    selected_engine_id = coordinator.selected_engine_id(default_engine_id=default_engine_id)
     parts = build_app_runtime_parts(
         provider=provider,
         hotkey_usage=NvdaRemoteAppService.enter_usage,
@@ -57,30 +57,13 @@ def build_runtime() -> NvdaRemoteRuntime:
         on_engine_fallback=config_store.save_engine_id,
         include_clipboard=True,
     )
-
-    def _apply_saved_speech_settings(speech: SpeechService, engine_id: str) -> None:
-        voice_id = config_store.load_voice(engine_id)
-        available_voice_ids = {voice for voice, _label in speech.list_voices()}
-        if voice_id is not None and voice_id in available_voice_ids:
-            speech.set_voice(voice_id)
-        supported_settings = {
-            setting.id for setting in speech.get_supported_numeric_settings()
-        }
-        for setting_id, setter in (
-            ("rate", speech.set_rate),
-            ("pitch", speech.set_pitch),
-            ("volume", speech.set_volume),
-        ):
-            value = config_store.load_numeric_setting(engine_id, setting_id)
-            if value is not None and setting_id in supported_settings:
-                setter(value)
-
-    selected_runtime_engine_id = parts.output.speech.get_selected_engine()
-    _apply_saved_speech_settings(parts.output.speech, selected_runtime_engine_id)
-
-    def _on_speech_engine_changed(engine_id: str) -> None:
-        config_store.save_engine_id(engine_id)
-        _apply_saved_speech_settings(parts.output.speech, engine_id)
+    coordinator.apply_saved_settings(
+        speech=parts.output.speech,
+        engine_id=parts.output.speech.get_selected_engine(),
+    )
+    on_speech_engine_changed = coordinator.build_engine_change_callback(
+        speech=parts.output.speech,
+    )
 
     transport = RelayTransport(JSONSerializer())
     app_service = NvdaRemoteAppService(
@@ -89,7 +72,7 @@ def build_runtime() -> NvdaRemoteRuntime:
         hotkey_capture=parts.hotkey_capture,
         clipboard=parts.clipboard,
         capabilities=parts.output.capabilities,
-        on_speech_engine_changed=_on_speech_engine_changed,
+        on_speech_engine_changed=on_speech_engine_changed,
         on_voice_changed=config_store.save_voice,
         on_numeric_setting_changed=config_store.save_numeric_setting,
         main_thread_dispatch=getattr(NvdaRemoteApp, "dispatch", None),

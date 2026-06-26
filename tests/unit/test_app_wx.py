@@ -910,6 +910,9 @@ def test_nvda_remote_main_build_runtime_composes_app_service_and_gui(monkeypatch
         def __init__(self, *, speech):
             self.speech = speech
 
+        def get_selected_engine(self):
+            return self.speech.get_selected_engine()
+
     class FakeTransport:
         def __init__(self, serializer):
             self.serializer = serializer
@@ -967,6 +970,9 @@ def test_nvda_remote_main_build_runtime_composes_app_service_and_gui(monkeypatch
             self.main_thread_dispatch = main_thread_dispatch
             self.use_windows_native_key_payload = use_windows_native_key_payload
             self.bind_calls = 0
+
+        def get_selected_speech_engine(self):
+            return self.capabilities.speech.get_selected_engine()
 
         def bind(self):
             self.bind_calls += 1
@@ -1052,6 +1058,7 @@ def test_nvda_remote_main_build_runtime_composes_app_service_and_gui(monkeypatch
     assert runtime.input_service.handler is runtime.app_service
     assert runtime.input_service.bind_calls == 1
     assert runtime.app.controller is runtime.app_service
+    assert runtime.app_service.get_selected_speech_engine() == runtime.speech.get_selected_engine()
 
 
 def test_nvda_remote_main_build_runtime_reloads_saved_settings_when_engine_changes(

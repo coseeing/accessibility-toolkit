@@ -9,6 +9,7 @@ from application.output import Scheduler
 from application.output import QueuedService
 from application.output.speech import SpeechService
 from apps.key_echo.service import KeyEchoAppService
+from apps.shared.speech_runtime_settings import SpeechRuntimeSettingsCoordinator
 from bootstrap.app_runtime import build_app_runtime_parts
 from bootstrap.runtime import configure_logging, default_config_path
 
@@ -30,41 +31,22 @@ def build_runtime() -> KeyEchoRuntime:
     from ui.echo.app import EchoApp
 
     config_store = SpeechEngineConfigStore(default_config_path())
+    coordinator = SpeechRuntimeSettingsCoordinator(config_store=config_store)
     parts = build_app_runtime_parts(
         hotkey_usage=KeyEchoAppService.enter_usage,
         selected_engine_id="Pyttsx3",
         fallback_engine_id="Pyttsx3",
         include_tone=False,
     )
-
-    def _apply_saved_speech_settings(speech: SpeechService, engine_id: str) -> None:
-        voice_id = config_store.load_voice(engine_id)
-        available_voice_ids = {voice for voice, _label in speech.list_voices()}
-        if voice_id is not None and voice_id in available_voice_ids:
-            speech.set_voice(voice_id)
-        supported_settings = {
-            setting.id for setting in speech.get_supported_numeric_settings()
-        }
-        for setting_id, setter in (
-            ("rate", speech.set_rate),
-            ("pitch", speech.set_pitch),
-            ("volume", speech.set_volume),
-        ):
-            value = config_store.load_numeric_setting(engine_id, setting_id)
-            if value is not None and setting_id in supported_settings:
-                setter(value)
-
-    _apply_saved_speech_settings(parts.output.speech, "Pyttsx3")
-
-    def _on_speech_engine_changed(engine_id: str) -> None:
-        config_store.save_engine_id(engine_id)
-        _apply_saved_speech_settings(parts.output.speech, engine_id)
-
+    coordinator.apply_saved_settings(speech=parts.output.speech, engine_id="Pyttsx3")
+    on_speech_engine_changed = coordinator.build_engine_change_callback(
+        speech=parts.output.speech,
+    )
     app_service = KeyEchoAppService(
         hotkey_capture=parts.hotkey_capture,
         input_capture=parts.input_capture,
         capabilities=parts.output.capabilities,
-        on_speech_engine_changed=_on_speech_engine_changed,
+        on_speech_engine_changed=on_speech_engine_changed,
         on_voice_changed=config_store.save_voice,
         on_numeric_setting_changed=config_store.save_numeric_setting,
         main_thread_dispatch=getattr(EchoApp, "dispatch", None),

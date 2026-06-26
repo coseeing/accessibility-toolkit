@@ -1,5 +1,7 @@
+from application.config import SpeechEngineConfigStore
 from application.output import Scheduler
 from application.output.speech import SpeechEngineOption
+from apps.shared.speech_runtime_settings import SpeechRuntimeSettingsCoordinator
 from bootstrap.app_runtime import build_app_runtime_parts
 from interop.key import HID
 
@@ -174,3 +176,18 @@ def test_build_app_runtime_parts_can_request_clipboard_without_tone():
         assert parts.output.capabilities.tone is None
     finally:
         parts.output.speaker.shutdown()
+
+
+def test_coordinator_selected_engine_id_uses_store_default(tmp_path):
+    store = SpeechEngineConfigStore(tmp_path / "speech.json")
+    coordinator = SpeechRuntimeSettingsCoordinator(config_store=store)
+
+    assert coordinator.selected_engine_id(default_engine_id="Pyttsx3") == "Pyttsx3"
+
+
+def test_coordinator_selected_engine_id_reads_saved_engine(tmp_path):
+    store = SpeechEngineConfigStore(tmp_path / "speech.json")
+    store.save_engine_id("NvdaController")
+    coordinator = SpeechRuntimeSettingsCoordinator(config_store=store)
+
+    assert coordinator.selected_engine_id(default_engine_id="Pyttsx3") == "NvdaController"
