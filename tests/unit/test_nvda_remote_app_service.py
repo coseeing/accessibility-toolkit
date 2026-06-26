@@ -4,6 +4,11 @@ from application.events import ErrorRaised, ModeChanged, SpeechEngineChanged
 from application.input.results import AppKeyEventResult, KeyboardPipelineResult
 from application.output import Capabilities
 from interop.key import HID, KeyEvent
+from interop.protocol.events import (
+    RemotePeerMessageReceived,
+    RemoteProtocolMessageInvalid,
+    RemoteSessionConnected,
+)
 from interop.protocol.messages import RemoteMessageType
 from interop.protocol.routing.message_router import MessageRouter
 
@@ -480,7 +485,7 @@ def test_nvda_remote_service_ignores_unknown_status_kinds_for_listener():
     delivered = []
     service.set_status_listener(delivered.append)
 
-    service._on_status({"kind": "invalid_message", "reason": "bad payload"})
+    service._on_protocol_event(RemoteProtocolMessageInvalid(reason="bad payload", payload={}))
 
     assert delivered == []
 
@@ -502,7 +507,7 @@ def test_nvda_remote_service_safely_converts_malformed_remote_status() -> None:
     delivered = []
     service.set_status_listener(delivered.append)
 
-    service._on_status({"kind": "remote", "type": 123, "payload": "bad"})
+    service._on_protocol_event(RemotePeerMessageReceived(message_type="123", payload={}))
 
     assert delivered == [RemoteMessageReceived("123", {})]
 
@@ -681,7 +686,7 @@ def test_nvda_remote_service_ignores_remote_tone_when_tone_output_is_missing():
         on_pause=service._capabilities.speech.pause,
         on_clipboard=service.clipboard.set_text,
         on_tone=service._handle_tone,
-        on_status=service._on_status,
+        on_status=service._on_protocol_event,
     )
     service.bind()
 
@@ -694,3 +699,43 @@ def test_nvda_remote_service_ignores_remote_tone_when_tone_output_is_missing():
             "right": 75,
         }
     )
+
+
+def test_nvda_remote_service_handles_typed_session_connected_event():
+    service, _transport, _capture, hotkey, _dispatch_calls = build_service()
+    delivered = []
+    service.set_status_listener(delivered.append)
+
+    service._on_protocol_event(RemoteSessionConnected())
+
+    assert service.state.connection_state == service.state.connection_state.CONNECTED
+    assert hotkey.started == 1
+    assert delivered == [RemoteConnectionChanged("connected")]
+
+
+def test_nvda_remote_service_converts_typed_remote_peer_message_for_listener():
+    service, _transport, _capture, _hotkey, _dispatch_calls = build_service()
+    delivered = []
+    payload = {"type": "motd", "message": "hello"}
+    service.set_status_listener(delivered.append)
+
+    service._on_protocol_event(
+        RemotePeerMessageReceived(message_type="motd", payload=payload)
+    )
+
+    assert delivered == [RemoteMessageReceived("motd", payload)]
+
+
+def test_nvda_remote_service_ignores_invalid_protocol_messages_for_listener():
+    service, _transport, _capture, _hotkey, _dispatch_calls = build_service()
+    delivered = []
+    service.set_status_listener(delivered.append)
+
+    service._on_protocol_event(
+        RemoteProtocolMessageInvalid(
+            reason="clipboard_text_must_be_string",
+            payload={"type": "set_clipboard_text"},
+        )
+    )
+
+    assert delivered == []

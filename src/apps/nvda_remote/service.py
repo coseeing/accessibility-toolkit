@@ -7,7 +7,6 @@ from adapters.inputs.captured_event import CapturedKeyEvent
 from application.events import (
     ErrorRaised,
     SpeechEngineChanged,
-    StatusEvent,
 )
 from application.input import (
     AppKeyEventResult,
@@ -23,6 +22,13 @@ from application.state import ConnectionState, ControlState, RuntimeState
 from interop.key import HID
 from interop.protocol.connection_info import ConnectionInfo
 from interop.protocol.messages import RemoteMessageType
+from interop.protocol.events import (
+    RemotePeerMessageReceived,
+    RemoteProtocolMessageInvalid,
+    RemoteSessionConnected,
+    RemoteSessionDisconnected,
+    RemoteSessionVersionMismatch,
+)
 from interop.protocol.routing.message_router import MessageRouter
 from interop.protocol.session.remote_session import RemoteSession
 from interop.protocol.transport.base import Transport
@@ -100,7 +106,7 @@ class NvdaRemoteAppService(KeyEventHandler):
 
         self.session = RemoteSession(
             transport=transport,
-            on_status=self._on_status,
+            on_event=self._on_protocol_event,
         )
         self.router = MessageRouter(
             on_speech=self._capabilities.speech.speak,
@@ -108,7 +114,7 @@ class NvdaRemoteAppService(KeyEventHandler):
             on_pause=self._capabilities.speech.pause,
             on_clipboard=self.clipboard.set_text,
             on_tone=self._handle_tone,
-            on_status=self._on_status,
+            on_status=self._on_protocol_event,
         )
 
         self._control_mode = NvdaRemoteControlModeUseCase(
@@ -301,47 +307,37 @@ class NvdaRemoteAppService(KeyEventHandler):
                     None if reason is None else str(reason)
                 )
             )
-            self._handle_connection_status(ConnectionState.IDLE.value)
+            self._stop_capture()
+            self._stop_hotkey()
+            self.state.connection_state = ConnectionState.IDLE
+            self.state.control_state = ControlState.IDLE
+            self._notify_status_listener(RemoteConnectionChanged("idle"))
             return
         if self.session.handle_message(payload):
             return
         self.router.handle_message(payload)
 
-    def _on_status(self, status: dict[str, Any]) -> None:
-        event = StatusEvent.from_payload(status)
-        if event.kind != "connection":
-            converted = self._event_from_status(event)
-            if converted is not None:
-                self._notify_status_listener(converted)
-            return
-
-        self._handle_connection_status(event.state or "")
-
-    def _handle_connection_status(self, state: str) -> None:
-        match state:
-            case ConnectionState.CONNECTED.value:
+    def _on_protocol_event(self, event: object) -> None:
+        match event:
+            case RemoteSessionConnected():
                 self.state.connection_state = ConnectionState.CONNECTED
                 if self.state.control_state != ControlState.CONTROLLING:
                     self.state.control_state = ControlState.CONNECTED
                     self._activation.exit_active()
                     self._ensure_hotkey_started()
-            case ConnectionState.IDLE.value:
+                self._notify_status_listener(RemoteConnectionChanged("connected"))
+            case RemoteSessionDisconnected():
                 self._stop_capture()
                 self._stop_hotkey()
                 self.state.connection_state = ConnectionState.IDLE
                 self.state.control_state = ControlState.IDLE
-        self._notify_status_listener(RemoteConnectionChanged(state))
-
-    def _event_from_status(
-        self, status: StatusEvent
-    ) -> RemoteMessageReceived | None:
-        if status.kind == "remote":
-            return RemoteMessageReceived(
-                status.type or "",
-                status.payload or {},
-            )
-        _logger.debug("Ignoring non-UI status kind: %s", status.kind)
-        return None
+                self._notify_status_listener(RemoteConnectionChanged("idle"))
+            case RemoteSessionVersionMismatch():
+                _logger.debug("Ignoring version mismatch for UI listener")
+            case RemotePeerMessageReceived(message_type=message_type, payload=payload):
+                self._notify_status_listener(RemoteMessageReceived(message_type, payload))
+            case RemoteProtocolMessageInvalid():
+                _logger.debug("Ignoring invalid protocol event for UI listener: %s", event)
 
     def _notify_status_listener(
         self,
