@@ -8,6 +8,7 @@ from interop.protocol.events import (
     RemotePeerMessageReceived,
     RemoteProtocolMessageInvalid,
     RemoteSessionConnected,
+    RemoteSessionVersionMismatch,
 )
 from interop.protocol.messages import RemoteMessageType
 from interop.protocol.routing.message_router import MessageRouter
@@ -739,3 +740,13 @@ def test_nvda_remote_service_ignores_invalid_protocol_messages_for_listener():
     )
 
     assert delivered == []
+
+
+def test_nvda_remote_service_surfaces_version_mismatch_for_listener():
+    service, _transport, _capture, _hotkey, _dispatch_calls = build_service()
+    delivered = []
+    service.set_status_listener(delivered.append)
+
+    service._on_protocol_event(RemoteSessionVersionMismatch())
+
+    assert delivered == [RemoteConnectionChanged("version_mismatch")]

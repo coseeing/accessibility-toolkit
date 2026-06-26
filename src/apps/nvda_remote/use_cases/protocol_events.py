@@ -1,8 +1,9 @@
-from apps.nvda_remote.events import RemoteMessageReceived
+from apps.nvda_remote.events import RemoteConnectionChanged, RemoteMessageReceived
 from interop.protocol.events import (
     RemotePeerMessageReceived,
     RemoteSessionConnected,
     RemoteSessionDisconnected,
+    RemoteSessionVersionMismatch,
 )
 
 
@@ -18,5 +19,7 @@ class RemoteProtocolEventHandler:
                 self._on_connected()
             case RemoteSessionDisconnected():
                 self._on_disconnected()
+            case RemoteSessionVersionMismatch():
+                self._notify_remote_message(RemoteConnectionChanged("version_mismatch"))
             case RemotePeerMessageReceived(message_type=message_type, payload=payload):
                 self._notify_remote_message(RemoteMessageReceived(message_type, payload))
