@@ -37,7 +37,7 @@ def test_relay_session_connect_serializes_join_sequence():
         use_tls=False,
     )
     status_events = []
-    session = RemoteSession(transport=transport, on_status=status_events.append)
+    session = RemoteSession(transport=transport, on_event=status_events.append)
 
     session.connect(ConnectionInfo(hostname="example.com", port=6837, key="secret"))
 
