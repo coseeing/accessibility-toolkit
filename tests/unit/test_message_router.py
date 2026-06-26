@@ -2,6 +2,10 @@ from interop.speech.speech_commands import BreakCommand
 from interop.speech.speech_sequence import SpeechSequence
 from interop.protocol.messages import RemoteMessageType
 from interop.protocol.routing.message_router import MessageRouter
+from interop.protocol.events import (
+    RemotePeerMessageReceived,
+    RemoteProtocolMessageInvalid,
+)
 from application.output import Manager
 
 
@@ -156,7 +160,7 @@ def test_router_dispatches_unknown_messages_to_status():
     assert seen == [
         (
             "status",
-            {"kind": "remote", "type": "motd", "payload": payload},
+            RemotePeerMessageReceived(message_type="motd", payload=payload),
         )
     ]
 
@@ -171,11 +175,10 @@ def test_router_reports_missing_clipboard_text_as_invalid_message():
     assert seen == [
         (
             "status",
-            {
-                "kind": "invalid_message",
-                "reason": "clipboard_text_must_be_string",
-                "payload": payload,
-            },
+            RemoteProtocolMessageInvalid(
+                reason="clipboard_text_must_be_string",
+                payload=payload,
+            ),
         )
     ]
 
@@ -190,11 +193,10 @@ def test_router_reports_none_clipboard_text_as_invalid_message():
     assert seen == [
         (
             "status",
-            {
-                "kind": "invalid_message",
-                "reason": "clipboard_text_must_be_string",
-                "payload": payload,
-            },
+            RemoteProtocolMessageInvalid(
+                reason="clipboard_text_must_be_string",
+                payload=payload,
+            ),
         )
     ]
 
@@ -209,11 +211,10 @@ def test_router_reports_non_string_clipboard_text_as_invalid_message():
     assert seen == [
         (
             "status",
-            {
-                "kind": "invalid_message",
-                "reason": "clipboard_text_must_be_string",
-                "payload": payload,
-            },
+            RemoteProtocolMessageInvalid(
+                reason="clipboard_text_must_be_string",
+                payload=payload,
+            ),
         )
     ]
 
@@ -241,11 +242,10 @@ def test_router_reports_invalid_pause_payload():
     assert seen == [
         (
             "status",
-            {
-                "kind": "invalid_message",
-                "reason": "pause_switch_must_be_bool",
-                "payload": payload,
-            },
+            RemoteProtocolMessageInvalid(
+                reason="pause_switch_must_be_bool",
+                payload=payload,
+            ),
         )
     ]
 
@@ -266,11 +266,10 @@ def test_router_reports_infinity_tone_length_as_invalid_message() -> None:
     assert seen == [
         (
             "status",
-            {
-                "kind": "invalid_message",
-                "reason": "tone_fields_must_be_numeric",
-                "payload": payload,
-            },
+            RemoteProtocolMessageInvalid(
+                reason="tone_fields_must_be_numeric",
+                payload=payload,
+            ),
         )
     ]
 
@@ -291,11 +290,10 @@ def test_router_reports_infinity_tone_left_as_invalid_message() -> None:
     assert seen == [
         (
             "status",
-            {
-                "kind": "invalid_message",
-                "reason": "tone_fields_must_be_numeric",
-                "payload": payload,
-            },
+            RemoteProtocolMessageInvalid(
+                reason="tone_fields_must_be_numeric",
+                payload=payload,
+            ),
         )
     ]
 
@@ -316,11 +314,10 @@ def test_router_reports_infinity_tone_right_as_invalid_message() -> None:
     assert seen == [
         (
             "status",
-            {
-                "kind": "invalid_message",
-                "reason": "tone_fields_must_be_numeric",
-                "payload": payload,
-            },
+            RemoteProtocolMessageInvalid(
+                reason="tone_fields_must_be_numeric",
+                payload=payload,
+            ),
         )
     ]
 
@@ -373,11 +370,10 @@ def test_router_reports_missing_tone_field_as_invalid_message() -> None:
     assert seen == [
         (
             "status",
-            {
-                "kind": "invalid_message",
-                "reason": "tone_fields_must_be_numeric",
-                "payload": payload,
-            },
+            RemoteProtocolMessageInvalid(
+                reason="tone_fields_must_be_numeric",
+                payload=payload,
+            ),
         )
     ]
 
@@ -398,11 +394,10 @@ def test_router_reports_non_numeric_tone_field_as_invalid_message() -> None:
     assert seen == [
         (
             "status",
-            {
-                "kind": "invalid_message",
-                "reason": "tone_fields_must_be_numeric",
-                "payload": payload,
-            },
+            RemoteProtocolMessageInvalid(
+                reason="tone_fields_must_be_numeric",
+                payload=payload,
+            ),
         )
     ]
 
@@ -440,11 +435,10 @@ def test_router_reports_infinity_tone_hz_as_invalid_message() -> None:
     assert seen == [
         (
             "status",
-            {
-                "kind": "invalid_message",
-                "reason": "tone_fields_must_be_numeric",
-                "payload": payload,
-            },
+            RemoteProtocolMessageInvalid(
+                reason="tone_fields_must_be_numeric",
+                payload=payload,
+            ),
         )
     ]
 
@@ -465,10 +459,9 @@ def test_router_reports_nan_tone_hz_as_invalid_message() -> None:
     assert seen == [
         (
             "status",
-            {
-                "kind": "invalid_message",
-                "reason": "tone_fields_must_be_numeric",
-                "payload": payload,
-            },
+            RemoteProtocolMessageInvalid(
+                reason="tone_fields_must_be_numeric",
+                payload=payload,
+            ),
         )
     ]

@@ -21,3 +21,15 @@ class RemoteSessionVersionMismatch:
 class RemotePeerMessageReceived:
     message_type: str
     payload: dict[str, Any]
+
+
+@dataclass(frozen=True, slots=True)
+class RemoteProtocolMessageIgnored:
+    message_type: str
+    payload: dict[str, Any]
+
+
+@dataclass(frozen=True, slots=True)
+class RemoteProtocolMessageInvalid:
+    reason: str
+    payload: dict[str, Any]

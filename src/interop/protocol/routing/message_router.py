@@ -4,6 +4,10 @@ from typing import Any
 
 from interop.speech.speech_sequence import SpeechSequence
 from interop.protocol.messages import RemoteMessageType
+from interop.protocol.events import (
+    RemotePeerMessageReceived,
+    RemoteProtocolMessageInvalid,
+)
 
 _MAX_TONE_HZ = 20000
 _MAX_TONE_LENGTH_MS = 5000
@@ -40,7 +44,7 @@ class MessageRouter:
         on_pause: Callable[[bool], None],
         on_clipboard: Callable[[str], None],
         on_tone: Callable[[float, int, int, int], None],
-        on_status: Callable[[dict[str, Any]], None],
+        on_status: Callable[[object], None],
     ) -> None:
         self._on_speech = on_speech
         self._on_cancel = on_cancel
@@ -63,22 +67,20 @@ class MessageRouter:
                 self._handle_clipboard_message(payload)
             case _:
                 self._on_status(
-                    {
-                        "kind": "remote",
-                        "type": payload.get("type"),
-                        "payload": payload,
-                    }
+                    RemotePeerMessageReceived(
+                        message_type=str(payload.get("type", "")),
+                        payload=payload,
+                    )
                 )
 
     def _handle_clipboard_message(self, payload: dict[str, Any]) -> None:
         text = payload.get("text")
         if not isinstance(text, str):
             self._on_status(
-                {
-                    "kind": "invalid_message",
-                    "reason": "clipboard_text_must_be_string",
-                    "payload": payload,
-                }
+                RemoteProtocolMessageInvalid(
+                    reason="clipboard_text_must_be_string",
+                    payload=payload,
+                )
             )
             return
         self._on_clipboard(text)
@@ -87,11 +89,10 @@ class MessageRouter:
         switch = payload.get("switch")
         if not isinstance(switch, bool):
             self._on_status(
-                {
-                    "kind": "invalid_message",
-                    "reason": "pause_switch_must_be_bool",
-                    "payload": payload,
-                }
+                RemoteProtocolMessageInvalid(
+                    reason="pause_switch_must_be_bool",
+                    payload=payload,
+                )
             )
             return
         self._on_pause(switch)
@@ -104,11 +105,10 @@ class MessageRouter:
             right = _clamp_int(_coerce_int(payload, "right"), 0, 100)
         except (TypeError, ValueError, OverflowError):
             self._on_status(
-                {
-                    "kind": "invalid_message",
-                    "reason": "tone_fields_must_be_numeric",
-                    "payload": payload,
-                }
+                RemoteProtocolMessageInvalid(
+                    reason="tone_fields_must_be_numeric",
+                    payload=payload,
+                )
             )
             return
         self._on_tone(hz, length, left, right)
