@@ -3,6 +3,12 @@ from enum import Enum
 from typing import Any
 
 from interop.protocol.connection_info import ConnectionInfo
+from interop.protocol.events import (
+    RemotePeerMessageReceived,
+    RemoteSessionConnected,
+    RemoteSessionDisconnected,
+    RemoteSessionVersionMismatch,
+)
 from interop.protocol.messages import RemoteMessageType
 from interop.protocol.transport.base import Transport
 
@@ -13,10 +19,10 @@ class RemoteSession:
     def __init__(
         self,
         transport: Transport,
-        on_status: Callable[[dict[str, Any]], None],
+        on_event: Callable[[object], None],
     ) -> None:
         self.transport = transport
-        self.on_status = on_status
+        self.on_event = on_event
 
     def connect(self, connection_info: ConnectionInfo) -> None:
         self.transport.connect(
@@ -36,17 +42,15 @@ class RemoteSession:
 
     def disconnect(self) -> None:
         self.transport.close()
-        self.on_status({"kind": "connection", "state": "idle"})
+        self.on_event(RemoteSessionDisconnected())
 
     def handle_message(self, payload: dict[str, Any]) -> bool:
         match payload.get("type"):
             case RemoteMessageType.CHANNEL_JOINED.value:
-                self.on_status({"kind": "connection", "state": "connected"})
+                self.on_event(RemoteSessionConnected())
                 return True
             case RemoteMessageType.VERSION_MISMATCH.value:
-                self.on_status(
-                    {"kind": "connection", "state": "version_mismatch"}
-                )
+                self.on_event(RemoteSessionVersionMismatch())
                 return True
             case (
                 RemoteMessageType.MOTD.value
@@ -54,12 +58,11 @@ class RemoteSession:
                 | RemoteMessageType.CLIENT_LEFT.value
                 | RemoteMessageType.ERROR.value
             ):
-                self.on_status(
-                    {
-                        "kind": "remote",
-                        "type": payload.get("type"),
-                        "payload": payload,
-                    }
+                self.on_event(
+                    RemotePeerMessageReceived(
+                        message_type=str(payload.get("type", "")),
+                        payload=payload,
+                    )
                 )
                 return True
             case RemoteMessageType.PING.value:
