@@ -6,7 +6,6 @@ import pytest
 
 from adapters.outputs.drivers.pyttsx3 import Pyttsx3SpeechOutput
 from application.config import SpeechEngineConfigStore
-from application.output import Manager
 from application.output.speech import (
     SpeechEngineManager,
     SpeechEngineOption,
@@ -665,12 +664,12 @@ def test_raw_json_speak_payload_reaches_real_pyttsx3_sequence_path():
     engine = FakeEngine()
     task_manager = FakeTaskManager()
     output = Pyttsx3SpeechOutput(engine=engine, task_manager=task_manager)
-    manager = Manager(speech_output=output, clipboard=FakeClipboard())
+    clipboard = FakeClipboard()
     router = MessageRouter(
-        on_speech=manager.handle_speech,
-        on_cancel=manager.handle_cancel,
-        on_pause=manager.handle_pause,
-        on_clipboard=manager.handle_clipboard,
+        on_speech=output.speak,
+        on_cancel=output.cancel,
+        on_pause=output.pause,
+        on_clipboard=clipboard.set_text,
         on_tone=lambda hz, length, left, right: None,
         on_status=lambda event: None,
     )
@@ -693,12 +692,12 @@ def test_raw_json_speak_payload_reaches_real_nvda_controller_sequence_path():
     serializer = JSONSerializer()
     controller = FakeNvdaController()
     output = NvdaControllerSpeechOutput(controller=controller)
-    manager = Manager(speech_output=output, clipboard=FakeClipboard())
+    clipboard = FakeClipboard()
     router = MessageRouter(
-        on_speech=manager.handle_speech,
-        on_cancel=manager.handle_cancel,
-        on_pause=manager.handle_pause,
-        on_clipboard=manager.handle_clipboard,
+        on_speech=output.speak,
+        on_cancel=output.cancel,
+        on_pause=output.pause,
+        on_clipboard=clipboard.set_text,
         on_tone=lambda hz, length, left, right: None,
         on_status=lambda event: None,
     )

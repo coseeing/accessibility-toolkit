@@ -6,7 +6,38 @@ from interop.protocol.events import (
     RemotePeerMessageReceived,
     RemoteProtocolMessageInvalid,
 )
-from application.output import Manager
+
+
+class RecordingSpeech:
+    def __init__(self) -> None:
+        self.spoken = []
+        self.cancel_count = 0
+        self.pauses = []
+
+    def speak(self, sequence) -> None:
+        self.spoken.append(sequence)
+
+    def cancel(self) -> None:
+        self.cancel_count += 1
+
+    def pause(self, is_paused: bool) -> None:
+        self.pauses.append(is_paused)
+
+
+class RecordingClipboard:
+    def __init__(self) -> None:
+        self.text = None
+
+    def set_text(self, text: str) -> None:
+        self.text = text
+
+
+class RecordingTone:
+    def __init__(self) -> None:
+        self.calls = []
+
+    def beep(self, hz: float, length: int, left: int = 50, right: int = 50) -> None:
+        self.calls.append((hz, length, left, right))
 
 
 class DummyTransport:
@@ -68,55 +99,18 @@ def test_router_dispatches_speech_and_clipboard():
     assert seen[1] == ("clipboard", "abc")
 
 
-def test_sequence_routes_from_router_to_backend_through_output_manager():
-    seen = []
-
-    class FakeBackend:
-        def speak(self, sequence):
-            seen.append(sequence)
-
-        def cancel(self):
-            return None
-
-        def pause(self, is_paused):
-            return None
-
-        def list_voices(self):
-            return ()
-
-        def get_voice(self):
-            return None
-
-        def set_voice(self, voice_id):
-            return None
-
-        def get_rate(self):
-            return None
-
-        def set_rate(self, value):
-            return None
-
-        def get_pitch(self):
-            return None
-
-        def set_pitch(self, value):
-            return None
-
-        def get_volume(self):
-            return None
-
-        def set_volume(self, value):
-            return None
-
+def test_sequence_routes_from_router_to_backend_through_explicit_callbacks():
+    speech = RecordingSpeech()
+    clipboard = RecordingClipboard()
+    tone = RecordingTone()
+    statuses = []
     router = MessageRouter(
-        on_speech=lambda sequence: Manager(
-            FakeBackend(), FakeClipboard()
-        ).handle_speech(sequence),
-        on_cancel=lambda: None,
-        on_pause=lambda paused: None,
-        on_clipboard=lambda text: None,
-        on_tone=lambda hz, length, left, right: None,
-        on_status=lambda event: None,
+        on_speech=speech.speak,
+        on_cancel=speech.cancel,
+        on_pause=speech.pause,
+        on_clipboard=clipboard.set_text,
+        on_tone=tone.beep,
+        on_status=statuses.append,
     )
 
     router.handle_message(
@@ -126,7 +120,7 @@ def test_sequence_routes_from_router_to_backend_through_output_manager():
         }
     )
 
-    assert seen == [
+    assert speech.spoken == [
         SpeechSequence(items=("hello", BreakCommand(time=10), "world"))
     ]
 

@@ -1,6 +1,5 @@
 from application.output.capabilities import Capabilities
 from application.output.clipboard import ClipboardService
-from application.output.manager import Manager
 from application.output.scheduler import (
     CancellationToken,
     EventCallbacks,
@@ -15,7 +14,6 @@ __all__ = [
     "Capabilities",
     "EventCallbacks",
     "ScheduledFuture",
-    "Manager",
     "Mode",
     "Scheduler",
     "QueuedService",

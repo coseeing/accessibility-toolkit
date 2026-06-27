@@ -152,7 +152,6 @@ def test_application_output_speech_exports_engine_types() -> None:
     from application.output import (
         Capabilities,
         EventCallbacks,
-        Manager,
         Mode,
         QueuedService,
         ScheduledFuture,
@@ -168,7 +167,6 @@ def test_application_output_speech_exports_engine_types() -> None:
 
     assert Capabilities is not None
     assert EventCallbacks is not None
-    assert Manager is not None
     assert ClipboardService is not None
     assert Mode is not None
     assert QueuedService is not None
