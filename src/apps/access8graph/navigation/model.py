@@ -153,3 +153,4 @@ class NavigationContext:
     view_model: Any = None
     selected_mode: str | None = None
     pending_effects: PresentationEffects = field(default_factory=PresentationEffects)
+    hint_pending: bool = True

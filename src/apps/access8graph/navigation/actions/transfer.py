@@ -4,6 +4,7 @@ from apps.access8graph.navigation.model import (
     ActionId,
     ActionResult,
     NavigationContext,
+    NavigationStateId,
 )
 
 from apps.access8graph.navigation.actions.common import (
@@ -15,20 +16,23 @@ from apps.access8graph.navigation.actions.common import (
 def _build_help_actions(direction_nav, undirection_nav):
     def help_confirm(snapshot, context: NavigationContext) -> ActionResult:
         selected = snapshot.selected_id
+        return_state = snapshot.return_state
         if selected == "m":
             context.selected_mode = None
             return ActionResult.accepted_with()
         if selected == "v":
             return ActionResult.accepted_with()
         if selected == "s":
-            direction_nav.station = None
+            if return_state == NavigationStateId.UNDIRECTION_LINES:
+                undirection_nav.station = None
+            else:
+                direction_nav.station = None
             return ActionResult.accepted_with()
         if selected == "l":
-            direction_nav.line = None
-            return ActionResult.accepted_with()
-        if selected == "e":
-            direction_nav.source = direction_nav.current
-            direction_nav.destination = None
+            if return_state == NavigationStateId.UNDIRECTION_STATIONS:
+                undirection_nav.line = None
+            else:
+                direction_nav.line = None
             return ActionResult.accepted_with()
         return ActionResult.accepted_with()
 

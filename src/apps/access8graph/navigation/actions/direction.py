@@ -250,7 +250,7 @@ def _build_destination_stations_lines_confirm(direction_nav):
     return destination_stations_confirm, destination_lines_confirm
 
 
-def _build_auto_actions(direction_nav):
+def _build_auto_actions(direction_nav, undirection_nav):
     def direction_lines_auto(snapshot, context: NavigationContext) -> ActionResult:
         vm = _get_list_vm(context)
         if vm is not None and vm.option_count > 0:
@@ -264,7 +264,7 @@ def _build_auto_actions(direction_nav):
         if vm is not None and vm.option_count > 0:
             raw_id = vm.items[0].get("id")
             if raw_id is not None:
-                line_val = raw_id
+                undirection_nav.line = raw_id
         return ActionResult.accepted_with()
 
     def source_stations_auto(snapshot, context: NavigationContext) -> ActionResult:
@@ -361,7 +361,7 @@ def build_actions(direction_nav=None, undirection_nav=None) -> dict[ActionId, ca
             sla,
             dsa,
             dla2,
-        ) = _build_auto_actions(direction_nav)
+        ) = _build_auto_actions(direction_nav, undirection_nav)
         actions[A_DIRECTION_LINES_AUTO] = dla
         actions[A_UNDIRECTION_LINES_AUTO] = ula
         actions[A_SOURCE_STATIONS_AUTO] = ssa

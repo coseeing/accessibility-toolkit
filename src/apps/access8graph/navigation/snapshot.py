@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from apps.access8graph.navigation.model import NavigationStateId
 
@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 class NavigationSnapshot:
     state: NavigationStateId
     return_state: NavigationStateId | None
-    selected_id: str | None = None
+    selected_id: Any | None = None
     current_index: int = 0
     option_count: int = 0
     selected_mode: str | None = None
@@ -32,7 +32,7 @@ class NavigationSnapshotFactory:
     def create(
         context: "NavigationContext",
         *,
-        selected_id: str | None = None,
+        selected_id: Any | None = None,
         current_index: int = 0,
         option_count: int = 0,
         has_line: bool = False,

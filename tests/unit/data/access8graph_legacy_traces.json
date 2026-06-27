@@ -1,0 +1,3950 @@
+{
+  "destination_lines_auto_select_single_item": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": "green",
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [],
+    "state_id": "destination_stations",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "destination_lines_confirm_with_station": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": "node_central_blue",
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "路線規劃模式：請使用左右鍵在車站間移動",
+          "Central"
+        ]
+      }
+    ],
+    "state_id": "plan_run",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "destination_lines_confirm_without_station": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": "blue",
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "切換至車站列表，請使用上下鍵選擇目的車站",
+          "Central",
+          "2 之 1"
+        ]
+      }
+    ],
+    "state_id": "destination_stations",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "destination_lines_down_success": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "切換至路線列表，請使用上下鍵選擇路線",
+          "Red Line",
+          "2 之 2"
+        ]
+      }
+    ],
+    "state_id": "destination_lines",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "destination_lines_station_command": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "切換至車站列表，請使用上下鍵選擇目的車站",
+          "Central",
+          "2 之 1"
+        ]
+      }
+    ],
+    "state_id": "destination_stations",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "destination_lines_up_boundary": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "beep_failure",
+        "payload": []
+      },
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "切換至路線列表，請使用上下鍵選擇路線",
+          "Blue Line",
+          "2 之 1"
+        ]
+      }
+    ],
+    "state_id": "destination_lines",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "destination_stations_auto_select_single_item": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": "central"
+    },
+    "output_calls": [],
+    "state_id": "destination_lines",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "destination_stations_confirm_with_line": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": "node_central_blue",
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "路線規劃模式：請使用左右鍵在車站間移動",
+          "Central"
+        ]
+      }
+    ],
+    "state_id": "plan_run",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "destination_stations_confirm_without_line": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": "central"
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "切換至路線列表，請使用上下鍵選擇路線",
+          "Blue Line",
+          "2 之 1"
+        ]
+      }
+    ],
+    "state_id": "destination_lines",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "destination_stations_down_success": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "切換至車站列表，請使用上下鍵選擇目的車站",
+          "East",
+          "2 之 2"
+        ]
+      }
+    ],
+    "state_id": "destination_stations",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "destination_stations_line_command": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "切換至路線列表，請使用上下鍵選擇路線",
+          "Blue Line",
+          "2 之 1"
+        ]
+      }
+    ],
+    "state_id": "destination_lines",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "destination_stations_up_boundary": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "beep_failure",
+        "payload": []
+      },
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "切換至車站列表，請使用上下鍵選擇目的車站",
+          "Central",
+          "2 之 1"
+        ]
+      }
+    ],
+    "state_id": "destination_stations",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "direction_end_point_confirm": {
+    "background_state_id": null,
+    "direction": {
+      "current": "node_central_blue",
+      "destination": "north",
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "請使用左右鍵在車站間移動",
+          "Central"
+        ]
+      }
+    ],
+    "state_id": "direction_run",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "direction_end_point_down_success": {
+    "background_state_id": null,
+    "direction": {
+      "current": "node_central_blue",
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "請用上下鍵瀏覽並選擇終點方向",
+          "South Terminal",
+          "2 之 2"
+        ]
+      }
+    ],
+    "state_id": "direction_end_point",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "direction_end_point_up_boundary": {
+    "background_state_id": null,
+    "direction": {
+      "current": "node_central_blue",
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "beep_failure",
+        "payload": []
+      },
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "請用上下鍵瀏覽並選擇終點方向",
+          "North Terminal",
+          "2 之 1"
+        ]
+      }
+    ],
+    "state_id": "direction_end_point",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "direction_lines_auto_select_single_item": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": "green",
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [],
+    "state_id": "direction_stations",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "direction_lines_confirm_with_station": {
+    "background_state_id": null,
+    "direction": {
+      "current": "node_central_blue",
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": "node_central_blue",
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "請用上下鍵瀏覽並選擇終點方向",
+          "North Terminal",
+          "1 之 1"
+        ]
+      }
+    ],
+    "state_id": "direction_end_point",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "direction_lines_confirm_without_station": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": "blue",
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "切換至車站列表，請使用上下鍵選擇起點車站",
+          "Central",
+          "2 之 1"
+        ]
+      }
+    ],
+    "state_id": "direction_stations",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "direction_lines_down_success": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "切換至路線列表，請使用上下鍵選擇路線",
+          "Red Line",
+          "2 之 2"
+        ]
+      }
+    ],
+    "state_id": "direction_lines",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "direction_lines_station_command": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "切換至車站列表，請使用上下鍵選擇起點車站",
+          "Central",
+          "2 之 1"
+        ]
+      }
+    ],
+    "state_id": "direction_stations",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "direction_lines_up_boundary": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "beep_failure",
+        "payload": []
+      },
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "切換至路線列表，請使用上下鍵選擇路線",
+          "Blue Line",
+          "2 之 1"
+        ]
+      }
+    ],
+    "state_id": "direction_lines",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "direction_run_browser": {
+    "background_state_id": null,
+    "direction": {
+      "current": "node_central_blue",
+      "destination": "node_north",
+      "line": null,
+      "run": true,
+      "source": "node_central_blue",
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "車站瀏覽選單開啟",
+          "切換至路線列表，請使用上下鍵選擇瀏覽路線包含的車站",
+          "Blue Line",
+          "2 之 1"
+        ]
+      }
+    ],
+    "state_id": "lines",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "direction_run_endpoint": {
+    "background_state_id": null,
+    "direction": {
+      "current": "node_central_blue",
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": "node_central_blue",
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "請用上下鍵瀏覽並選擇終點方向",
+          "North Terminal",
+          "1 之 1"
+        ]
+      }
+    ],
+    "state_id": "direction_end_point",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "direction_run_help_h": {
+    "background_state_id": "direction_run",
+    "direction": {
+      "current": "node_central_blue",
+      "destination": "node_north",
+      "line": null,
+      "run": true,
+      "source": "node_central_blue",
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "說明選單開啟",
+          "請使用上下鍵瀏覽說明選單",
+          "重新選擇導航模式",
+          "按鍵m",
+          "2 之 1"
+        ]
+      }
+    ],
+    "state_id": "help",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "direction_run_left_many_reverse_neighbors": {
+    "background_state_id": null,
+    "direction": {
+      "current": "node_central_blue",
+      "destination": "node_north",
+      "line": null,
+      "run": true,
+      "source": "node_central_blue",
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "探索選單開啟",
+          "請使用上下鍵選擇探索的下一站",
+          "Station A",
+          "2 之 1"
+        ]
+      }
+    ],
+    "state_id": "explore_neighbor",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "direction_run_left_one_reverse_neighbor": {
+    "background_state_id": null,
+    "direction": {
+      "current": "node_prev",
+      "destination": "node_north",
+      "line": null,
+      "run": true,
+      "source": "node_prev",
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "請使用左右鍵在車站間移動",
+          "Central"
+        ]
+      }
+    ],
+    "state_id": "direction_run",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "direction_run_left_zero_reverse_neighbors": {
+    "background_state_id": null,
+    "direction": {
+      "current": "node_central_blue",
+      "destination": "node_north",
+      "line": null,
+      "run": true,
+      "source": "node_central_blue",
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "beep_failure",
+        "payload": []
+      },
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "請使用左右鍵在車站間移動",
+          "Central"
+        ]
+      }
+    ],
+    "state_id": "direction_run",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "direction_run_mode": {
+    "background_state_id": null,
+    "direction": {
+      "current": "node_central_blue",
+      "destination": "node_north",
+      "line": null,
+      "run": true,
+      "source": "node_central_blue",
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "功能選單開啟",
+          "請使用上下鍵選擇導航模式",
+          "方向探索",
+          "3 之 1"
+        ]
+      }
+    ],
+    "state_id": "mode",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "direction_run_right_has_forward": {
+    "background_state_id": null,
+    "direction": {
+      "current": "node_next",
+      "destination": "node_north",
+      "line": null,
+      "run": true,
+      "source": "node_central_blue",
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "請使用左右鍵在車站間移動",
+          "Central"
+        ]
+      }
+    ],
+    "state_id": "direction_run",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "direction_run_right_zero_forward": {
+    "background_state_id": null,
+    "direction": {
+      "current": "node_central_blue",
+      "destination": "node_north",
+      "line": null,
+      "run": true,
+      "source": "node_central_blue",
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "beep_failure",
+        "payload": []
+      },
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "請使用左右鍵在車站間移動",
+          "Central"
+        ]
+      }
+    ],
+    "state_id": "direction_run",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "direction_run_transfer_with_options": {
+    "background_state_id": null,
+    "direction": {
+      "current": "node_central_blue",
+      "destination": "node_north",
+      "line": null,
+      "run": true,
+      "source": "node_central_blue",
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "轉乘選單開啟",
+          "transfer",
+          "Transfer A",
+          "1 之 1"
+        ]
+      }
+    ],
+    "state_id": "direction_transfer",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "direction_run_transfer_with_zero_options": {
+    "background_state_id": null,
+    "direction": {
+      "current": "node_central_blue",
+      "destination": "node_north",
+      "line": null,
+      "run": true,
+      "source": "node_central_blue",
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "beep_failure",
+        "payload": []
+      },
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "請使用左右鍵在車站間移動",
+          "Central"
+        ]
+      }
+    ],
+    "state_id": "direction_run",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "direction_stations_confirm_with_line": {
+    "background_state_id": null,
+    "direction": {
+      "current": "node_central_blue",
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": "node_central_blue",
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "請用上下鍵瀏覽並選擇終點方向",
+          "North Terminal",
+          "1 之 1"
+        ]
+      }
+    ],
+    "state_id": "direction_end_point",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "direction_stations_confirm_without_line": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": "central"
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "切換至路線列表，請使用上下鍵選擇路線",
+          "Blue Line",
+          "2 之 1"
+        ]
+      }
+    ],
+    "state_id": "direction_lines",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "direction_stations_down_success": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "切換至車站列表，請使用上下鍵選擇起點車站",
+          "East",
+          "2 之 2"
+        ]
+      }
+    ],
+    "state_id": "direction_stations",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "direction_stations_line_command": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "切換至路線列表，請使用上下鍵選擇路線",
+          "Blue Line",
+          "2 之 1"
+        ]
+      }
+    ],
+    "state_id": "direction_lines",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "direction_stations_up_boundary": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "beep_failure",
+        "payload": []
+      },
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "切換至車站列表，請使用上下鍵選擇起點車站",
+          "Central",
+          "2 之 1"
+        ]
+      }
+    ],
+    "state_id": "direction_stations",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "direction_transfer_confirm": {
+    "background_state_id": null,
+    "direction": {
+      "current": "node_a",
+      "destination": "node_b",
+      "line": null,
+      "run": true,
+      "source": "node_a",
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "轉乘選單關閉",
+          "轉乘Red Line往South",
+          "請使用左右鍵在車站間移動",
+          "Central",
+          "可轉乘，如要轉乘請用上下鍵瀏覽並選擇項目"
+        ]
+      }
+    ],
+    "state_id": "direction_run",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "direction_transfer_down_success": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "transfer",
+          "Transfer A",
+          "2 之 2"
+        ]
+      }
+    ],
+    "state_id": "direction_transfer",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "direction_transfer_quit": {
+    "background_state_id": null,
+    "direction": {
+      "current": "node_central_blue",
+      "destination": "node_north",
+      "line": null,
+      "run": true,
+      "source": "node_central_blue",
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "轉乘選單關閉",
+          "請使用左右鍵在車站間移動",
+          "Central",
+          "可轉乘，如要轉乘請用上下鍵瀏覽並選擇項目"
+        ]
+      }
+    ],
+    "state_id": "direction_run",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "direction_transfer_up_boundary": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "beep_failure",
+        "payload": []
+      },
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "transfer",
+          "Transfer A",
+          "1 之 1"
+        ]
+      }
+    ],
+    "state_id": "direction_transfer",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "explore_neighbor_confirm": {
+    "background_state_id": null,
+    "direction": {
+      "current": "node_a",
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": "node_a",
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "探索選單關閉",
+          "請使用左右鍵在車站間移動",
+          "Central"
+        ]
+      }
+    ],
+    "state_id": "direction_run",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "explore_neighbor_down_success": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "請使用上下鍵選擇探索的下一站",
+          "Station B",
+          "2 之 2"
+        ]
+      }
+    ],
+    "state_id": "explore_neighbor",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "explore_neighbor_quit": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "探索選單關閉",
+          "請使用左右鍵在車站間移動",
+          "Central"
+        ]
+      }
+    ],
+    "state_id": "direction_run",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "explore_neighbor_up_boundary": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "beep_failure",
+        "payload": []
+      },
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "請使用上下鍵選擇探索的下一站",
+          "Station A",
+          "1 之 1"
+        ]
+      }
+    ],
+    "state_id": "explore_neighbor",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "explore_sub_line_confirm": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "路線選單關閉",
+          "請使用左右鍵在車站間移動",
+          "Central",
+          "可轉乘，如要轉乘請用上下鍵瀏覽並選擇項目"
+        ]
+      }
+    ],
+    "state_id": "undirection_run",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": [
+        "node_a",
+        "node_b"
+      ]
+    }
+  },
+  "explore_sub_line_down_success": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "請使用上下鍵選擇路線",
+          "East to North",
+          "2 之 2"
+        ]
+      }
+    ],
+    "state_id": "explore_sub_line",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "explore_sub_line_quit": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "路線選單關閉",
+          "請使用左右鍵在車站間移動",
+          "Central",
+          "可轉乘，如要轉乘請用上下鍵瀏覽並選擇項目"
+        ]
+      }
+    ],
+    "state_id": "undirection_run",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "explore_sub_line_up_boundary": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "beep_failure",
+        "payload": []
+      },
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "請使用上下鍵選擇路線",
+          "Central to East",
+          "1 之 1"
+        ]
+      }
+    ],
+    "state_id": "explore_sub_line",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "help_confirm_invokes_help_item": {
+    "background_state_id": "direction_run",
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "說明選單關閉",
+          "功能選單開啟",
+          "請使用上下鍵選擇導航模式",
+          "方向探索",
+          "3 之 1"
+        ]
+      }
+    ],
+    "state_id": "mode",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "help_down_success": {
+    "background_state_id": "direction_run",
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "瀏覽車站與路線列表",
+          "按鍵v",
+          "2 之 2"
+        ]
+      }
+    ],
+    "state_id": "help",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "help_enter_from_stations": {
+    "background_state_id": "stations",
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "說明選單開啟",
+          "請使用上下鍵瀏覽說明選單",
+          "切換至路線列表",
+          "按鍵l",
+          "1 之 1"
+        ]
+      }
+    ],
+    "state_id": "help",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "help_quit_returns_to_calling_state": {
+    "background_state_id": "direction_run",
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "說明選單關閉",
+          "請使用左右鍵在車站間移動",
+          "Central"
+        ]
+      }
+    ],
+    "state_id": "direction_run",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "help_up_boundary": {
+    "background_state_id": "direction_run",
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "beep_failure",
+        "payload": []
+      },
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "重新選擇導航模式",
+          "按鍵m",
+          "2 之 1"
+        ]
+      }
+    ],
+    "state_id": "help",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "lines_confirm": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": "blue",
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "切換至車站列表，請使用上下鍵選擇瀏覽車站所在的路線",
+          "Central",
+          "2 之 1"
+        ]
+      }
+    ],
+    "state_id": "stations",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "lines_down_success": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "切換至路線列表，請使用上下鍵選擇瀏覽路線包含的車站",
+          "Red Line",
+          "2 之 2"
+        ]
+      }
+    ],
+    "state_id": "lines",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "lines_station_command": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "切換至車站列表，請使用上下鍵選擇瀏覽車站所在的路線",
+          "Central",
+          "2 之 1"
+        ]
+      }
+    ],
+    "state_id": "stations",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "lines_up_boundary": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "beep_failure",
+        "payload": []
+      },
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "切換至路線列表，請使用上下鍵選擇瀏覽路線包含的車站",
+          "Blue Line",
+          "2 之 1"
+        ]
+      }
+    ],
+    "state_id": "lines",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "mode_end_success": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "路線規劃",
+          "3 之 3"
+        ]
+      }
+    ],
+    "state_id": "mode",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "mode_home_success": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "方向探索",
+          "3 之 1"
+        ]
+      }
+    ],
+    "state_id": "mode",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "mode_quit_with_active_background": {
+    "background_state_id": "direction_run",
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": true,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "功能選單關閉",
+          "請使用左右鍵在車站間移動",
+          "Central"
+        ]
+      }
+    ],
+    "state_id": "direction_run",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "mode_quit_without_background_rejected": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "beep_failure",
+        "payload": []
+      },
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "方向探索",
+          "3 之 1"
+        ]
+      }
+    ],
+    "state_id": "mode",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "mode_rejected_help_from_mode": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "beep_failure",
+        "payload": []
+      },
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "方向探索",
+          "3 之 1"
+        ]
+      }
+    ],
+    "state_id": "mode",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "mode_rejected_unknown_key": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "beep_failure",
+        "payload": []
+      },
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "方向探索",
+          "3 之 1"
+        ]
+      }
+    ],
+    "state_id": "mode",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "mode_select_direction": {
+    "background_state_id": "direction_run",
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "切換至路線列表，請使用上下鍵選擇路線",
+          "Blue Line",
+          "2 之 1"
+        ]
+      }
+    ],
+    "state_id": "direction_lines",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "mode_select_plan": {
+    "background_state_id": "plan_run",
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "切換至路線列表，請使用上下鍵選擇路線",
+          "Blue Line",
+          "2 之 1"
+        ]
+      }
+    ],
+    "state_id": "source_lines",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "mode_select_undirection": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "切換至路線列表，請使用上下鍵選擇路線",
+          "Blue Line",
+          "2 之 1"
+        ]
+      }
+    ],
+    "state_id": "undirection_lines",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "mode_up_boundary": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "beep_failure",
+        "payload": []
+      },
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "方向探索",
+          "3 之 1"
+        ]
+      }
+    ],
+    "state_id": "mode",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "mode_up_success": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "線性探索",
+          "3 之 2"
+        ]
+      }
+    ],
+    "state_id": "mode",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "plan_run_browser": {
+    "background_state_id": null,
+    "direction": {
+      "current": "node_central_blue",
+      "destination": "node_north",
+      "line": null,
+      "run": true,
+      "source": "node_central_blue",
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "車站瀏覽選單開啟",
+          "切換至路線列表，請使用上下鍵選擇瀏覽路線包含的車站",
+          "Blue Line",
+          "2 之 1"
+        ]
+      }
+    ],
+    "state_id": "lines",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "plan_run_left_has_neighbor": {
+    "background_state_id": null,
+    "direction": {
+      "current": "node_central_blue",
+      "destination": "node_north",
+      "line": null,
+      "run": true,
+      "source": "node_central_blue",
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "路線規劃模式：請使用左右鍵在車站間移動",
+          "Central"
+        ]
+      }
+    ],
+    "state_id": "plan_run",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "plan_run_left_no_neighbor": {
+    "background_state_id": null,
+    "direction": {
+      "current": "node_central_blue",
+      "destination": "node_north",
+      "line": null,
+      "run": true,
+      "source": "node_central_blue",
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "beep_failure",
+        "payload": []
+      },
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "路線規劃模式：請使用左右鍵在車站間移動",
+          "Central"
+        ]
+      }
+    ],
+    "state_id": "plan_run",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "plan_run_mode": {
+    "background_state_id": null,
+    "direction": {
+      "current": "node_central_blue",
+      "destination": "node_north",
+      "line": null,
+      "run": true,
+      "source": "node_central_blue",
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "功能選單開啟",
+          "請使用上下鍵選擇導航模式",
+          "方向探索",
+          "3 之 1"
+        ]
+      }
+    ],
+    "state_id": "mode",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "plan_run_right_has_neighbor": {
+    "background_state_id": null,
+    "direction": {
+      "current": "node_east",
+      "destination": "node_north",
+      "line": null,
+      "run": true,
+      "source": "node_central_blue",
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "路線規劃模式：請使用左右鍵在車站間移動",
+          "Central"
+        ]
+      }
+    ],
+    "state_id": "plan_run",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "plan_run_right_no_neighbor": {
+    "background_state_id": null,
+    "direction": {
+      "current": "node_north",
+      "destination": "node_north",
+      "line": null,
+      "run": true,
+      "source": "node_central_blue",
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "beep_failure",
+        "payload": []
+      },
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "路線規劃模式：請使用左右鍵在車站間移動",
+          "Central"
+        ]
+      }
+    ],
+    "state_id": "plan_run",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "source_lines_auto_select_single_item": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": "green",
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [],
+    "state_id": "source_stations",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "source_lines_confirm_with_station": {
+    "background_state_id": null,
+    "direction": {
+      "current": "node_central_blue",
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": "node_central_blue",
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "切換至路線列表，請使用上下鍵選擇路線",
+          "Blue Line",
+          "2 之 1"
+        ]
+      }
+    ],
+    "state_id": "destination_lines",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "source_lines_confirm_without_station": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": "blue",
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "切換至車站列表，請使用上下鍵選擇起點車站",
+          "Central",
+          "2 之 1"
+        ]
+      }
+    ],
+    "state_id": "source_stations",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "source_lines_down_success": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "切換至路線列表，請使用上下鍵選擇路線",
+          "Red Line",
+          "2 之 2"
+        ]
+      }
+    ],
+    "state_id": "source_lines",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "source_lines_station_command": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "切換至車站列表，請使用上下鍵選擇起點車站",
+          "Central",
+          "2 之 1"
+        ]
+      }
+    ],
+    "state_id": "source_stations",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "source_lines_up_boundary": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "beep_failure",
+        "payload": []
+      },
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "切換至路線列表，請使用上下鍵選擇路線",
+          "Blue Line",
+          "2 之 1"
+        ]
+      }
+    ],
+    "state_id": "source_lines",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "source_stations_auto_select_single_item": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": "central"
+    },
+    "output_calls": [],
+    "state_id": "source_lines",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "source_stations_confirm_with_line": {
+    "background_state_id": null,
+    "direction": {
+      "current": "node_central_blue",
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": "node_central_blue",
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "切換至路線列表，請使用上下鍵選擇路線",
+          "Blue Line",
+          "2 之 1"
+        ]
+      }
+    ],
+    "state_id": "destination_lines",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "source_stations_confirm_without_line": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": "central"
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "切換至路線列表，請使用上下鍵選擇路線",
+          "Blue Line",
+          "2 之 1"
+        ]
+      }
+    ],
+    "state_id": "source_lines",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "source_stations_down_success": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "切換至車站列表，請使用上下鍵選擇起點車站",
+          "East",
+          "2 之 2"
+        ]
+      }
+    ],
+    "state_id": "source_stations",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "source_stations_line_command": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "切換至路線列表，請使用上下鍵選擇路線",
+          "Blue Line",
+          "2 之 1"
+        ]
+      }
+    ],
+    "state_id": "source_lines",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "source_stations_up_boundary": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "beep_failure",
+        "payload": []
+      },
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "切換至車站列表，請使用上下鍵選擇起點車站",
+          "Central",
+          "2 之 1"
+        ]
+      }
+    ],
+    "state_id": "source_stations",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "stations_confirm": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": "central"
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "切換至路線列表，請使用上下鍵選擇瀏覽路線包含的車站",
+          "Blue Line",
+          "2 之 1"
+        ]
+      }
+    ],
+    "state_id": "lines",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "stations_down_success": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "切換至車站列表，請使用上下鍵選擇瀏覽車站所在的路線",
+          "East",
+          "2 之 2"
+        ]
+      }
+    ],
+    "state_id": "stations",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "stations_end_success": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "切換至車站列表，請使用上下鍵選擇瀏覽車站所在的路線",
+          "East",
+          "2 之 2"
+        ]
+      }
+    ],
+    "state_id": "stations",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "stations_home_success": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "切換至車站列表，請使用上下鍵選擇瀏覽車站所在的路線",
+          "Central",
+          "2 之 1"
+        ]
+      }
+    ],
+    "state_id": "stations",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "stations_line_command": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "切換至路線列表，請使用上下鍵選擇瀏覽路線包含的車站",
+          "Blue Line",
+          "2 之 1"
+        ]
+      }
+    ],
+    "state_id": "lines",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "stations_quit_with_active_background": {
+    "background_state_id": "direction_run",
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": true,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "車站瀏覽選單關閉",
+          "請使用左右鍵在車站間移動",
+          "Central"
+        ]
+      }
+    ],
+    "state_id": "direction_run",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "stations_quit_without_run_rejected": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "beep_failure",
+        "payload": []
+      },
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "切換至車站列表，請使用上下鍵選擇瀏覽車站所在的路線",
+          "Central",
+          "2 之 1"
+        ]
+      }
+    ],
+    "state_id": "stations",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "stations_up_boundary": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "beep_failure",
+        "payload": []
+      },
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "切換至車站列表，請使用上下鍵選擇瀏覽車站所在的路線",
+          "Central",
+          "2 之 1"
+        ]
+      }
+    ],
+    "state_id": "stations",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "undirection_lines_auto_select_single_item": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [],
+    "state_id": "undirection_stations",
+    "undirection": {
+      "current": null,
+      "line": "green",
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "undirection_lines_confirm_with_station": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "切換至子路線列表，請使用上下鍵選擇子路線",
+          "Central to East",
+          "2 之 1"
+        ]
+      }
+    ],
+    "state_id": "undirection_sub_lines",
+    "undirection": {
+      "current": null,
+      "line": "blue",
+      "station": "central",
+      "sub_line": []
+    }
+  },
+  "undirection_lines_confirm_without_station": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "切換至車站列表，請使用上下鍵選擇起點車站",
+          "Central",
+          "2 之 1"
+        ]
+      }
+    ],
+    "state_id": "undirection_stations",
+    "undirection": {
+      "current": null,
+      "line": "blue",
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "undirection_lines_down_success": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "切換至路線列表，請使用上下鍵選擇路線",
+          "Red Line",
+          "2 之 2"
+        ]
+      }
+    ],
+    "state_id": "undirection_lines",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "undirection_lines_station_command": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "切換至車站列表，請使用上下鍵選擇起點車站",
+          "Central",
+          "2 之 1"
+        ]
+      }
+    ],
+    "state_id": "undirection_stations",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "undirection_lines_up_boundary": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "beep_failure",
+        "payload": []
+      },
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "切換至路線列表，請使用上下鍵選擇路線",
+          "Blue Line",
+          "2 之 1"
+        ]
+      }
+    ],
+    "state_id": "undirection_lines",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "undirection_run_browser": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "車站瀏覽選單開啟",
+          "切換至路線列表，請使用上下鍵選擇瀏覽路線包含的車站",
+          "Blue Line",
+          "2 之 1"
+        ]
+      }
+    ],
+    "state_id": "lines",
+    "undirection": {
+      "current": "node_a",
+      "line": null,
+      "station": null,
+      "sub_line": [
+        "node_a",
+        "node_b"
+      ]
+    }
+  },
+  "undirection_run_left_has_neighbor": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "請使用左右鍵在車站間移動",
+          "Central"
+        ]
+      }
+    ],
+    "state_id": "undirection_run",
+    "undirection": {
+      "current": "node_a",
+      "line": null,
+      "station": null,
+      "sub_line": [
+        "node_a",
+        "node_b"
+      ]
+    }
+  },
+  "undirection_run_left_no_neighbor": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "beep_failure",
+        "payload": []
+      },
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "請使用左右鍵在車站間移動",
+          "Central"
+        ]
+      }
+    ],
+    "state_id": "undirection_run",
+    "undirection": {
+      "current": "node_b",
+      "line": null,
+      "station": null,
+      "sub_line": [
+        "node_a",
+        "node_b"
+      ]
+    }
+  },
+  "undirection_run_mode": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "功能選單開啟",
+          "請使用上下鍵選擇導航模式",
+          "方向探索",
+          "3 之 1"
+        ]
+      }
+    ],
+    "state_id": "mode",
+    "undirection": {
+      "current": "node_a",
+      "line": null,
+      "station": null,
+      "sub_line": [
+        "node_a",
+        "node_b"
+      ]
+    }
+  },
+  "undirection_run_right_has_neighbor": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "請使用左右鍵在車站間移動",
+          "Central"
+        ]
+      }
+    ],
+    "state_id": "undirection_run",
+    "undirection": {
+      "current": "node_b",
+      "line": null,
+      "station": null,
+      "sub_line": [
+        "node_a",
+        "node_b"
+      ]
+    }
+  },
+  "undirection_run_right_no_neighbor": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "beep_failure",
+        "payload": []
+      },
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "請使用左右鍵在車站間移動",
+          "Central"
+        ]
+      }
+    ],
+    "state_id": "undirection_run",
+    "undirection": {
+      "current": "node_b",
+      "line": null,
+      "station": null,
+      "sub_line": [
+        "node_a",
+        "node_b"
+      ]
+    }
+  },
+  "undirection_run_transfer_has_options": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "轉乘選單開啟",
+          "transfer",
+          "Transfer A",
+          "1 之 1"
+        ]
+      }
+    ],
+    "state_id": "undirection_transfer",
+    "undirection": {
+      "current": "node_a",
+      "line": null,
+      "station": null,
+      "sub_line": [
+        "node_a",
+        "node_b"
+      ]
+    }
+  },
+  "undirection_run_transfer_zero_options": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "beep_failure",
+        "payload": []
+      },
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "請使用左右鍵在車站間移動",
+          "Central"
+        ]
+      }
+    ],
+    "state_id": "undirection_run",
+    "undirection": {
+      "current": "node_a",
+      "line": null,
+      "station": null,
+      "sub_line": [
+        "node_a",
+        "node_b"
+      ]
+    }
+  },
+  "undirection_stations_confirm_with_line": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "切換至子路線列表，請使用上下鍵選擇子路線",
+          "Central to East",
+          "2 之 1"
+        ]
+      }
+    ],
+    "state_id": "undirection_sub_lines",
+    "undirection": {
+      "current": null,
+      "line": "blue",
+      "station": "central",
+      "sub_line": []
+    }
+  },
+  "undirection_stations_confirm_without_line": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "切換至路線列表，請使用上下鍵選擇路線",
+          "Blue Line",
+          "2 之 1"
+        ]
+      }
+    ],
+    "state_id": "undirection_lines",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": "central",
+      "sub_line": []
+    }
+  },
+  "undirection_stations_down_success": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "切換至車站列表，請使用上下鍵選擇起點車站",
+          "East",
+          "2 之 2"
+        ]
+      }
+    ],
+    "state_id": "undirection_stations",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "undirection_stations_line_command": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "切換至路線列表，請使用上下鍵選擇路線",
+          "Blue Line",
+          "2 之 1"
+        ]
+      }
+    ],
+    "state_id": "undirection_lines",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "undirection_stations_up_boundary": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "beep_failure",
+        "payload": []
+      },
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "切換至車站列表，請使用上下鍵選擇起點車站",
+          "Central",
+          "2 之 1"
+        ]
+      }
+    ],
+    "state_id": "undirection_stations",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "undirection_sub_lines_confirm": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "請使用左右鍵在車站間移動",
+          "Central"
+        ]
+      }
+    ],
+    "state_id": "undirection_run",
+    "undirection": {
+      "current": "node_central_blue",
+      "line": "blue",
+      "station": "central",
+      "sub_line": [
+        "central",
+        "east"
+      ]
+    }
+  },
+  "undirection_sub_lines_down_success": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "切換至子路線列表，請使用上下鍵選擇子路線",
+          "Central to West",
+          "2 之 2"
+        ]
+      }
+    ],
+    "state_id": "undirection_sub_lines",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "undirection_sub_lines_up_boundary": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "beep_failure",
+        "payload": []
+      },
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "切換至子路線列表，請使用上下鍵選擇子路線",
+          "Central to East",
+          "2 之 1"
+        ]
+      }
+    ],
+    "state_id": "undirection_sub_lines",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "undirection_transfer_confirm": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "轉乘選單關閉",
+          "轉乘Blue Line，Central往East",
+          "請使用左右鍵在車站間移動",
+          "Central",
+          "可轉乘，如要轉乘請用上下鍵瀏覽並選擇項目"
+        ]
+      }
+    ],
+    "state_id": "undirection_run",
+    "undirection": {
+      "current": "node_a",
+      "line": null,
+      "station": null,
+      "sub_line": [
+        "node_a",
+        "node_b"
+      ]
+    }
+  },
+  "undirection_transfer_down_success": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "transfer",
+          "Transfer A",
+          "2 之 2"
+        ]
+      }
+    ],
+    "state_id": "undirection_transfer",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  },
+  "undirection_transfer_quit": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "轉乘選單關閉",
+          "請使用左右鍵在車站間移動",
+          "Central",
+          "可轉乘，如要轉乘請用上下鍵瀏覽並選擇項目"
+        ]
+      }
+    ],
+    "state_id": "undirection_run",
+    "undirection": {
+      "current": "node_a",
+      "line": null,
+      "station": null,
+      "sub_line": [
+        "node_a",
+        "node_b"
+      ]
+    }
+  },
+  "undirection_transfer_up_boundary": {
+    "background_state_id": null,
+    "direction": {
+      "current": null,
+      "destination": null,
+      "line": null,
+      "run": false,
+      "source": null,
+      "station": null
+    },
+    "output_calls": [
+      {
+        "kind": "beep_failure",
+        "payload": []
+      },
+      {
+        "kind": "cancel_speech",
+        "payload": []
+      },
+      {
+        "kind": "speak",
+        "payload": [
+          "transfer",
+          "Transfer A",
+          "1 之 1"
+        ]
+      }
+    ],
+    "state_id": "undirection_transfer",
+    "undirection": {
+      "current": null,
+      "line": null,
+      "station": null,
+      "sub_line": []
+    }
+  }
+}

@@ -23,3 +23,8 @@ class TransitionNavigationFlow:
         result = self._engine.dispatch(command)
         self._presenter.present(result)
         return result
+
+    def start(self) -> TransitionResult:
+        result = self._engine.start()
+        self._presenter.present(result)
+        return result

@@ -39,7 +39,7 @@ def _noop_result(*args, **kwargs):
 
 
 def _help_edges():
-    """Return two rules that satisfy the HELP return validation."""
+    """Return rules that satisfy complete HELP return validation."""
     return (
         TransitionRule(
             source=NavigationStateId.MODE,
@@ -53,14 +53,21 @@ def _help_edges():
             target=NavigationStateId.MODE,
             action_id=ActionId("noop"),
         ),
+        TransitionRule(
+            source=NavigationStateId.HELP,
+            command=NavigationCommand.CONFIRM,
+            target=NavigationStateId.MODE,
+            action_id=ActionId("noop"),
+            guard_id=GuardId("help_mode_selected_m"),
+        ),
     )
 
 
 def _resolve_guards(raw_guards):
     """Convert guards dict keys to GuardId if they are strings."""
+    resolved = {GuardId("help_mode_selected_m"): lambda snapshot: False}
     if raw_guards is None:
-        return {}
-    resolved = {}
+        return resolved
     for k, v in raw_guards.items():
         key = GuardId(k) if isinstance(k, str) else k
         resolved[key] = v
@@ -474,6 +481,67 @@ def test_32_automatic_steps_succeed_33_raises_cycle_error():
 
     with pytest.raises(AutomaticTransitionCycleError):
         engine.dispatch(NavigationCommand.CONFIRM)
+
+
+def test_exactly_32_auto_steps_with_no_more_rules_succeeds():
+    from apps.access8graph.navigation.engine import (
+        TransitionEngine,
+    )
+
+    S1 = NavigationStateId.MODE
+    S2 = NavigationStateId.STATIONS
+
+    step_counter = [0]
+
+    def make_guard(n):
+        def guard(snapshot):
+            return step_counter[0] == n
+        return guard
+
+    def counting_action(snapshot, context):
+        step_counter[0] += 1
+        return ActionResult.accepted_with()
+
+    rules = [
+        TransitionRule(
+            source=S1,
+            command=NavigationCommand.CONFIRM,
+            target=S2,
+            action_id=ActionId("init"),
+            guard_id=GuardId("g_init"),
+        )
+    ]
+
+    guards: dict = {"g_init": lambda s: True}
+    actions = {ActionId("init"): counting_action}
+
+    # Exactly 32 AUTO rules — after 32 steps, no more matching guards
+    N = TransitionEngine.MAX_AUTO_STEPS
+    for i in range(N):
+        src = S1 if i % 2 == 0 else S2
+        tgt = S2 if i % 2 == 0 else S1
+        rules.append(
+            TransitionRule(
+                source=src,
+                command=NavigationCommand.AUTO,
+                target=tgt,
+                action_id=ActionId(f"a_{i}"),
+                guard_id=GuardId(f"g_{i}"),
+            )
+        )
+        guards[f"g_{i}"] = make_guard(i)
+        actions[ActionId(f"a_{i}")] = counting_action
+
+    engine = _build_engine_with_rules(
+        rules=tuple(rules),
+        guards=guards,
+        actions=actions,
+        current_state=S1,
+    )
+
+    result = engine.dispatch(NavigationCommand.CONFIRM)
+    assert step_counter[0] == N
+    assert result.outcome.value == "transitioned"
 
 
 def test_entry_handler_cannot_change_state():

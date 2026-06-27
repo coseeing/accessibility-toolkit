@@ -126,4 +126,4 @@ def test_access8graph_transition_flow_confirm_direction_moves_to_lines() -> None
     assert result.outcome == TransitionOutcome.TRANSITIONED
     assert output.calls[0] == ("cancel", None)
     assert output.calls[1][0] == "speak"
-    assert "功能選單關閉" in output.calls[1][1]
+    assert "切換至路線列表，請使用上下鍵選擇路線" in output.calls[1][1]

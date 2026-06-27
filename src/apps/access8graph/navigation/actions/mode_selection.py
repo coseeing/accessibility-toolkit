@@ -5,6 +5,7 @@ from apps.access8graph.navigation.model import (
     ActionResult,
     NavigationContext,
     NavigationStateId,
+    PresentationEffects,
 )
 
 from apps.access8graph.navigation.actions.common import (
@@ -109,7 +110,9 @@ def _build_run_common_actions(direction_nav, undirection_nav):
         return ActionResult.accepted_with()
 
     def run_browser(snapshot, context: NavigationContext) -> ActionResult:
-        return ActionResult.accepted_with()
+        return ActionResult.accepted_with(
+            PresentationEffects(open_messages=("車站瀏覽選單開啟",))
+        )
 
     return run_mode, run_browser
 

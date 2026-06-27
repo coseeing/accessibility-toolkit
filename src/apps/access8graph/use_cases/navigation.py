@@ -24,9 +24,8 @@ from apps.access8graph.navigation.flow import TransitionNavigationFlow
 from apps.access8graph.navigation.model import (
     NavigationContext,
     NavigationStateId,
-    TransitionResult,
 )
-from apps.access8graph.navigation.presenter import FlowPresenter, OutputPort
+from apps.access8graph.navigation.presenter import FlowPresenter
 from apps.access8graph.navigation.table import (
     build_transition_rules,
     validate_transition_table,
@@ -95,16 +94,7 @@ class MrtFlowFactory:
 
         flow = TransitionNavigationFlow(engine=engine, presenter=presenter)
 
-        mode_entry = entry_effects.get(NavigationStateId.MODE)
-        if mode_entry is not None:
-            snap = snap_factory.create(context)
-            effects = mode_entry(snap, context)
-            result = TransitionResult.transitioned(
-                source=NavigationStateId.MODE,
-                target=NavigationStateId.MODE,
-                effects=effects,
-            )
-            presenter.present(result)
+        flow.start()
 
         return flow
 

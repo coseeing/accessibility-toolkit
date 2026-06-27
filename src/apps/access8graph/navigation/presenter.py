@@ -27,8 +27,13 @@ class FlowPresenter:
     def _present_rejected(self, result: TransitionResult) -> None:
         effects = result.effects
         self._output.beep()
-        items = tuple(item for item in effects.view_items if item)
+        items = tuple(
+            item
+            for item in (effects.hints + effects.view_items)
+            if item
+        )
         if items:
+            self._output.cancel()
             self._output.speak(items)
 
     def _present_transitioned(self, result: TransitionResult) -> None:

@@ -120,6 +120,7 @@ def test_presenter_rejected_beeps_and_speaks_current_view():
 
     assert output.calls == [
         ("beep",),
+        ("cancel",),
         ("speak", ("current label", "current detail")),
     ]
 

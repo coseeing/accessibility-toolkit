@@ -136,6 +136,30 @@ def test_validator_rejects_missing_help_return():
         )
 
 
+def test_validator_rejects_incomplete_help_confirm_coverage():
+    rules = (
+        rule(
+            NavigationStateId.MODE,
+            NavigationCommand.OPEN_HELP,
+            NavigationStateId.HELP,
+        ),
+        rule(
+            NavigationStateId.HELP,
+            NavigationCommand.QUIT,
+            NavigationStateId.MODE,
+            guard="return_is_mode",
+        ),
+    )
+
+    with pytest.raises(TransitionTableValidationError, match="HELP.*CONFIRM.*mode"):
+        validate_transition_table(
+            rules=rules,
+            initial_state=NavigationStateId.MODE,
+            action_ids={ActionId("noop")},
+            guard_ids={"return_is_mode"},
+        )
+
+
 def test_validator_rejects_static_auto_cycle():
     rules = (
         rule(
@@ -297,8 +321,15 @@ def test_validator_accepts_linear_auto_chain():
         ),
         rule(
             NavigationStateId.HELP,
-            NavigationCommand.DOWN,
+            NavigationCommand.QUIT,
             NavigationStateId.MODE,
+            guard="return_is_mode",
+        ),
+        rule(
+            NavigationStateId.HELP,
+            NavigationCommand.CONFIRM,
+            NavigationStateId.MODE,
+            guard="help_mode_selected_m",
         ),
         rule(
             NavigationStateId.MODE,
@@ -311,7 +342,7 @@ def test_validator_accepts_linear_auto_chain():
         rules=rules,
         initial_state=NavigationStateId.MODE,
         action_ids={ActionId("noop")},
-        guard_ids=set(),
+        guard_ids={"return_is_mode", "help_mode_selected_m"},
     )
     assert result is not None
     assert result.initial_state == NavigationStateId.MODE

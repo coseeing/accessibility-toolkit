@@ -155,17 +155,41 @@ def _validate_help_return(
     index: dict[tuple[NavigationStateId, NavigationCommand], list[TransitionRule]],
 ) -> None:
     help_state = NavigationStateId.HELP
-    help_outgoing = False
+    help_sources = {
+        source
+        for (source, command), rule_list in index.items()
+        if command == NavigationCommand.OPEN_HELP
+        and any(rule.target == help_state for rule in rule_list)
+    }
+    outgoing = [
+        rule
+        for (source, _command), rule_list in index.items()
+        if source == help_state
+        for rule in rule_list
+        if rule.target != help_state
+    ]
 
-    for (source, _command), rule_list in index.items():
-        for r in rule_list:
-            if source == help_state and r.target != help_state:
-                help_outgoing = True
-
-    if not help_outgoing:
+    if help_sources and not outgoing:
         raise TransitionTableValidationError(
             "missing HELP return edge: need at least one rule from HELP to another state"
         )
+
+    quit_rules = index.get((help_state, NavigationCommand.QUIT), ())
+    confirm_rules = index.get((help_state, NavigationCommand.CONFIRM), ())
+    for source in help_sources:
+        if not any(rule.target == source for rule in quit_rules):
+            raise TransitionTableValidationError(
+                f"missing HELP QUIT return coverage for {source.value}"
+            )
+        guard_prefix = f"help_{source.value}_selected_"
+        if not any(
+            rule.guard_id is not None
+            and _guard_val(rule.guard_id).startswith(guard_prefix)
+            for rule in confirm_rules
+        ):
+            raise TransitionTableValidationError(
+                f"missing HELP CONFIRM return coverage for {source.value}"
+            )
 
 
 def _validate_auto_cycles(

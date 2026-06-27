@@ -25,13 +25,13 @@ class ListViewModel:
     hint: str = ""
 
     @property
-    def selected_id(self) -> str | None:
+    def selected_id(self) -> Any | None:
         if 0 <= self.current_index < len(self.items):
             item = self.items[self.current_index]
             raw = item.get("id")
             if raw is None:
                 return None
-            return str(raw)
+            return raw
         return None
 
     @property
@@ -112,11 +112,11 @@ class RunViewModel:
     hint: str = ""
 
     @property
-    def selected_id(self) -> str | None:
+    def selected_id(self) -> Any | None:
         raw = self.current_data.get("id")
         if raw is None:
             return None
-        return str(raw)
+        return raw
 
     @property
     def attribute(self) -> str:
@@ -255,6 +255,17 @@ G_RUN_ACTIVE = GuardId("run_active")
 
 G_RETURN_IS_DIRECTION_RUN = GuardId("return_is_direction_run")
 G_RETURN_IS_PLAN_RUN = GuardId("return_is_plan_run")
+G_RETURN_IS_UNDIRECTION_RUN = GuardId("return_is_undirection_run")
+G_RETURN_IS_STATIONS = GuardId("return_is_stations")
+G_RETURN_IS_LINES = GuardId("return_is_lines")
+G_RETURN_IS_DIRECTION_STATIONS = GuardId("return_is_direction_stations")
+G_RETURN_IS_DIRECTION_LINES = GuardId("return_is_direction_lines")
+G_RETURN_IS_UNDIRECTION_STATIONS = GuardId("return_is_undirection_stations")
+G_RETURN_IS_UNDIRECTION_LINES = GuardId("return_is_undirection_lines")
+G_RETURN_IS_SOURCE_STATIONS = GuardId("return_is_source_stations")
+G_RETURN_IS_SOURCE_LINES = GuardId("return_is_source_lines")
+G_RETURN_IS_DESTINATION_STATIONS = GuardId("return_is_destination_stations")
+G_RETURN_IS_DESTINATION_LINES = GuardId("return_is_destination_lines")
 
 G_HAS_PREVIOUS = GuardId("has_previous")
 G_HAS_NO_PREVIOUS = GuardId("has_no_previous")
@@ -266,6 +277,30 @@ G_HELP_SELECTED_BROWSER = GuardId("help_selected_browser")
 G_HELP_SELECTED_STATION = GuardId("help_selected_station")
 G_HELP_SELECTED_LINE = GuardId("help_selected_line")
 G_HELP_SELECTED_ENDPOINT = GuardId("help_selected_endpoint")
+
+HELP_CONFIRM_GUARDS = {
+    (return_state, selected_id): GuardId(
+        f"help_{return_state.value}_selected_{selected_id}"
+    )
+    for return_state, selected_id in (
+        (NavigationStateId.STATIONS, "l"),
+        (NavigationStateId.LINES, "s"),
+        (NavigationStateId.DIRECTION_STATIONS, "l"),
+        (NavigationStateId.DIRECTION_LINES, "s"),
+        (NavigationStateId.UNDIRECTION_STATIONS, "l"),
+        (NavigationStateId.UNDIRECTION_LINES, "s"),
+        (NavigationStateId.SOURCE_STATIONS, "l"),
+        (NavigationStateId.SOURCE_LINES, "s"),
+        (NavigationStateId.DESTINATION_STATIONS, "l"),
+        (NavigationStateId.DESTINATION_LINES, "s"),
+        (NavigationStateId.DIRECTION_RUN, "m"),
+        (NavigationStateId.DIRECTION_RUN, "v"),
+        (NavigationStateId.UNDIRECTION_RUN, "m"),
+        (NavigationStateId.UNDIRECTION_RUN, "v"),
+        (NavigationStateId.PLAN_RUN, "m"),
+        (NavigationStateId.PLAN_RUN, "v"),
+    )
+}
 
 G_UNDIRECTION_LEFT_HAS_NEXT = GuardId("undirection_left_has_next")
 G_UNDIRECTION_LEFT_NO_NEXT_EXTRA = GuardId("undirection_left_no_next_extra")
@@ -300,6 +335,17 @@ ALL_GUARD_IDS = frozenset({
     G_RUN_ACTIVE,
     G_RETURN_IS_DIRECTION_RUN,
     G_RETURN_IS_PLAN_RUN,
+    G_RETURN_IS_UNDIRECTION_RUN,
+    G_RETURN_IS_STATIONS,
+    G_RETURN_IS_LINES,
+    G_RETURN_IS_DIRECTION_STATIONS,
+    G_RETURN_IS_DIRECTION_LINES,
+    G_RETURN_IS_UNDIRECTION_STATIONS,
+    G_RETURN_IS_UNDIRECTION_LINES,
+    G_RETURN_IS_SOURCE_STATIONS,
+    G_RETURN_IS_SOURCE_LINES,
+    G_RETURN_IS_DESTINATION_STATIONS,
+    G_RETURN_IS_DESTINATION_LINES,
     G_HAS_PREVIOUS,
     G_HAS_NO_PREVIOUS,
     G_HAS_NEXT,
@@ -309,6 +355,7 @@ ALL_GUARD_IDS = frozenset({
     G_HELP_SELECTED_STATION,
     G_HELP_SELECTED_LINE,
     G_HELP_SELECTED_ENDPOINT,
+    *HELP_CONFIRM_GUARDS.values(),
     G_UNDIRECTION_LEFT_HAS_NEXT,
     G_UNDIRECTION_LEFT_NO_NEXT_EXTRA,
     G_UNDIRECTION_RIGHT_HAS_NEXT,
@@ -413,9 +460,7 @@ def _move_up(snapshot, context: NavigationContext) -> ActionResult:
     if vm is None:
         return ActionResult.rejected()
     if vm.move_up():
-        return ActionResult.accepted_with(
-            PresentationEffects(view_items=_list_view_items(vm))
-        )
+        return ActionResult.accepted_with()
     return ActionResult.rejected()
 
 
@@ -424,9 +469,7 @@ def _move_down(snapshot, context: NavigationContext) -> ActionResult:
     if vm is None:
         return ActionResult.rejected()
     if vm.move_down():
-        return ActionResult.accepted_with(
-            PresentationEffects(view_items=_list_view_items(vm))
-        )
+        return ActionResult.accepted_with()
     return ActionResult.rejected()
 
 
@@ -435,9 +478,7 @@ def _move_home(snapshot, context: NavigationContext) -> ActionResult:
     if vm is None:
         return ActionResult.rejected()
     vm.move_home()
-    return ActionResult.accepted_with(
-        PresentationEffects(view_items=_list_view_items(vm))
-    )
+    return ActionResult.accepted_with()
 
 
 def _move_end(snapshot, context: NavigationContext) -> ActionResult:
@@ -445,9 +486,7 @@ def _move_end(snapshot, context: NavigationContext) -> ActionResult:
     if vm is None:
         return ActionResult.rejected()
     vm.move_end()
-    return ActionResult.accepted_with(
-        PresentationEffects(view_items=_list_view_items(vm))
-    )
+    return ActionResult.accepted_with()
 
 
 def _build_open_help():
@@ -569,8 +608,52 @@ def build_guard_registry(direction_nav=None, undirection_nav=None) -> dict[Guard
     def _return_is_plan_run(snapshot):
         return snapshot.return_state == NavigationStateId.PLAN_RUN
 
+    def _return_is_undirection_run(snapshot):
+        return snapshot.return_state == NavigationStateId.UNDIRECTION_RUN
+
+    def _return_is_stations(snapshot):
+        return snapshot.return_state == NavigationStateId.STATIONS
+
+    def _return_is_lines(snapshot):
+        return snapshot.return_state == NavigationStateId.LINES
+
+    def _return_is_direction_stations(snapshot):
+        return snapshot.return_state == NavigationStateId.DIRECTION_STATIONS
+
+    def _return_is_direction_lines(snapshot):
+        return snapshot.return_state == NavigationStateId.DIRECTION_LINES
+
+    def _return_is_undirection_stations(snapshot):
+        return snapshot.return_state == NavigationStateId.UNDIRECTION_STATIONS
+
+    def _return_is_undirection_lines(snapshot):
+        return snapshot.return_state == NavigationStateId.UNDIRECTION_LINES
+
+    def _return_is_source_stations(snapshot):
+        return snapshot.return_state == NavigationStateId.SOURCE_STATIONS
+
+    def _return_is_source_lines(snapshot):
+        return snapshot.return_state == NavigationStateId.SOURCE_LINES
+
+    def _return_is_destination_stations(snapshot):
+        return snapshot.return_state == NavigationStateId.DESTINATION_STATIONS
+
+    def _return_is_destination_lines(snapshot):
+        return snapshot.return_state == NavigationStateId.DESTINATION_LINES
+
     guards[G_RETURN_IS_DIRECTION_RUN] = _return_is_direction_run
     guards[G_RETURN_IS_PLAN_RUN] = _return_is_plan_run
+    guards[G_RETURN_IS_UNDIRECTION_RUN] = _return_is_undirection_run
+    guards[G_RETURN_IS_STATIONS] = _return_is_stations
+    guards[G_RETURN_IS_LINES] = _return_is_lines
+    guards[G_RETURN_IS_DIRECTION_STATIONS] = _return_is_direction_stations
+    guards[G_RETURN_IS_DIRECTION_LINES] = _return_is_direction_lines
+    guards[G_RETURN_IS_UNDIRECTION_STATIONS] = _return_is_undirection_stations
+    guards[G_RETURN_IS_UNDIRECTION_LINES] = _return_is_undirection_lines
+    guards[G_RETURN_IS_SOURCE_STATIONS] = _return_is_source_stations
+    guards[G_RETURN_IS_SOURCE_LINES] = _return_is_source_lines
+    guards[G_RETURN_IS_DESTINATION_STATIONS] = _return_is_destination_stations
+    guards[G_RETURN_IS_DESTINATION_LINES] = _return_is_destination_lines
 
     def _has_previous(snapshot):
         return snapshot.neighbor_count > 0
@@ -609,6 +692,10 @@ def build_guard_registry(direction_nav=None, undirection_nav=None) -> dict[Guard
     guards[G_HELP_SELECTED_STATION] = _help_selected_station
     guards[G_HELP_SELECTED_LINE] = _help_selected_line
     guards[G_HELP_SELECTED_ENDPOINT] = _help_selected_endpoint
+    for (return_state, selected_id), guard_id in HELP_CONFIRM_GUARDS.items():
+        guards[guard_id] = lambda snapshot, rs=return_state, sid=selected_id: (
+            snapshot.return_state == rs and snapshot.selected_id == sid
+        )
 
     def _und_left_has_next(snapshot):
         return snapshot.neighbor_count > 0
@@ -913,11 +1000,6 @@ def build_exit_effects(
 ) -> dict[NavigationStateId, callable]:
     exit_map: dict[NavigationStateId, callable] = {}
 
-    def mode_exit(snapshot, context):
-        return PresentationEffects(close_messages=("功能選單關閉",))
-
-    exit_map[NavigationStateId.MODE] = mode_exit
-
     def direction_transfer_exit(snapshot, context):
         return PresentationEffects(close_messages=("轉乘選單關閉",))
 
@@ -937,12 +1019,6 @@ def build_exit_effects(
         return PresentationEffects(close_messages=("路線選單關閉",))
 
     exit_map[NavigationStateId.EXPLORE_SUB_LINE] = explore_sub_line_exit
-
-    def stations_exit(snapshot, context):
-        return PresentationEffects(close_messages=("車站瀏覽選單關閉",))
-
-    exit_map[NavigationStateId.STATIONS] = stations_exit
-    exit_map[NavigationStateId.LINES] = stations_exit
 
     def help_exit(snapshot, context):
         return PresentationEffects(close_messages=("說明選單關閉",))
