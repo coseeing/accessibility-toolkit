@@ -111,6 +111,9 @@ class TransitionResult:
     source: NavigationStateId
     target: NavigationStateId
     effects: PresentationEffects
+    auto_steps: tuple[
+        tuple[NavigationStateId, ActionId, NavigationStateId], ...
+    ] = ()
 
     @classmethod
     def transitioned(
@@ -119,8 +122,17 @@ class TransitionResult:
         source: NavigationStateId,
         target: NavigationStateId,
         effects: PresentationEffects,
+        auto_steps: tuple[
+            tuple[NavigationStateId, ActionId, NavigationStateId], ...
+        ] = (),
     ) -> "TransitionResult":
-        return cls(TransitionOutcome.TRANSITIONED, source, target, effects)
+        return cls(
+            TransitionOutcome.TRANSITIONED,
+            source,
+            target,
+            effects,
+            auto_steps,
+        )
 
     @classmethod
     def handled(

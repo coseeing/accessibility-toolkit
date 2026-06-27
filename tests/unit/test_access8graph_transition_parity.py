@@ -169,17 +169,18 @@ def capture_transition_trace(scenario: FlowScenario) -> FlowTrace:
     if scenario.command or start_nav_state == NavigationStateId.MODE:
         out.calls.clear()
 
+    result = None
     if scenario.command:
         cmd = _CMD_MAP.get(scenario.command)
         if cmd is not None:
-            flow.enter(cmd)
+            result = flow.enter(cmd)
         else:
             # Runtime misuse still rejects consistently at the flow boundary;
             # production callers use the typed NavigationCommand contract.
-            flow.enter(scenario.command)  # type: ignore[arg-type]
+            result = flow.enter(scenario.command)  # type: ignore[arg-type]
     elif not scenario.command and scenario.expected_state != scenario.start_state:
         try:
-            engine.dispatch(NavigationCommand.AUTO)
+            result = engine.dispatch(NavigationCommand.AUTO)
         except Exception:
             pass
 
@@ -205,6 +206,12 @@ def capture_transition_trace(scenario: FlowScenario) -> FlowTrace:
             "current": unav.current,
             "sub_line": unav.sub_line,
         },
+        auto_steps=tuple(
+            (source.value, action.value, target.value)
+            for source, action, target in (
+                result.auto_steps if result is not None else ()
+            )
+        ),
     )
 
 
@@ -243,6 +250,22 @@ def test_transition_flow_scenario(scenario: FlowScenario):
     trace = capture_transition_trace(scenario)
 
     assert _normalize_trace(trace) == _LEGACY_TRACES[scenario.id]
+
+
+def test_golden_trace_rejects_same_final_state_with_different_auto_path():
+    scenario = next(
+        item
+        for item in FLOW_SCENARIOS
+        if item.id == "direction_lines_auto_select_single_item"
+    )
+    actual = _normalize_trace(capture_transition_trace(scenario))
+    wrong_path = dict(actual)
+    wrong_path["auto_steps"] = [
+        ["direction_lines", "wrong_auto_action", "direction_stations"]
+    ]
+
+    assert actual == _LEGACY_TRACES[scenario.id]
+    assert wrong_path != _LEGACY_TRACES[scenario.id]
 
 
 @pytest.mark.parametrize(

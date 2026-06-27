@@ -333,6 +333,13 @@ def test_two_step_auto_chain_presents_one_macrostep_result():
     assert result.outcome == "transitioned"
     assert result.source == NavigationStateId.MODE
     assert result.target == NavigationStateId.LINES
+    assert result.auto_steps == (
+        (
+            NavigationStateId.STATIONS,
+            ActionId("a2"),
+            NavigationStateId.LINES,
+        ),
+    )
     assert engine.context.current_state == NavigationStateId.LINES
 
 

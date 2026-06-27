@@ -108,9 +108,13 @@ class TransitionEngine:
         initial_source: NavigationStateId,
         initial_effects: PresentationEffects,
         visited: set[tuple[NavigationStateId, TransitionRule]],
+        initial_auto_steps: tuple[
+            tuple[NavigationStateId, ActionId, NavigationStateId], ...
+        ] = (),
     ) -> TransitionResult:
         effects = initial_effects
         current_source = initial_source
+        auto_steps = list(initial_auto_steps)
         steps = 0
 
         while True:
@@ -147,12 +151,15 @@ class TransitionEngine:
 
             result = self._apply_rule(rule, snapshot, is_auto=True)
             effects = _merge_effects(effects, result.effects)
+            if result.outcome == TransitionOutcome.TRANSITIONED:
+                auto_steps.append((rule.source, rule.action_id, rule.target))
             steps += 1
 
         return TransitionResult.transitioned(
             source=current_source,
             target=self.context.current_state,
             effects=effects,
+            auto_steps=tuple(auto_steps),
         )
 
     # ------------------------------------------------------------------
@@ -215,7 +222,15 @@ class TransitionEngine:
         effects = _merge_effects(effects, _current_view_effects(self.context))
 
         if not is_auto:
-            return self._run_auto_loop(old_state, effects, visited=set())
+            initial_auto_steps = ()
+            if rule.command == NavigationCommand.AUTO:
+                initial_auto_steps = ((rule.source, rule.action_id, rule.target),)
+            return self._run_auto_loop(
+                old_state,
+                effects,
+                visited=set(),
+                initial_auto_steps=initial_auto_steps,
+            )
 
         return TransitionResult.transitioned(
             source=old_state,

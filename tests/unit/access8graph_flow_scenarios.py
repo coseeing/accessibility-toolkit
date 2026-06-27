@@ -23,6 +23,7 @@ class FlowTrace:
     output_calls: tuple[OutputCall, ...]
     direction: dict[str, Any]
     undirection: dict[str, Any]
+    auto_steps: tuple[tuple[str, str, str], ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

@@ -1,5 +1,12 @@
 {
   "destination_lines_auto_select_single_item": {
+    "auto_steps": [
+      [
+        "destination_lines",
+        "destination_lines_auto",
+        "destination_stations"
+      ]
+    ],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -19,6 +26,7 @@
     }
   },
   "destination_lines_confirm_with_station": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -50,6 +58,7 @@
     }
   },
   "destination_lines_confirm_without_station": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -82,6 +91,7 @@
     }
   },
   "destination_lines_down_success": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -114,6 +124,7 @@
     }
   },
   "destination_lines_station_command": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -146,6 +157,7 @@
     }
   },
   "destination_lines_up_boundary": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -182,6 +194,13 @@
     }
   },
   "destination_stations_auto_select_single_item": {
+    "auto_steps": [
+      [
+        "destination_stations",
+        "destination_stations_auto",
+        "destination_lines"
+      ]
+    ],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -201,6 +220,7 @@
     }
   },
   "destination_stations_confirm_with_line": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -232,6 +252,7 @@
     }
   },
   "destination_stations_confirm_without_line": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -264,6 +285,7 @@
     }
   },
   "destination_stations_down_success": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -296,6 +318,7 @@
     }
   },
   "destination_stations_line_command": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -328,6 +351,7 @@
     }
   },
   "destination_stations_up_boundary": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -364,6 +388,7 @@
     }
   },
   "direction_end_point_confirm": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": "node_central_blue",
@@ -395,6 +420,7 @@
     }
   },
   "direction_end_point_down_success": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": "node_central_blue",
@@ -427,6 +453,7 @@
     }
   },
   "direction_end_point_up_boundary": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": "node_central_blue",
@@ -463,6 +490,13 @@
     }
   },
   "direction_lines_auto_select_single_item": {
+    "auto_steps": [
+      [
+        "direction_lines",
+        "direction_lines_auto",
+        "direction_stations"
+      ]
+    ],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -482,6 +516,7 @@
     }
   },
   "direction_lines_confirm_with_station": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": "node_central_blue",
@@ -514,6 +549,7 @@
     }
   },
   "direction_lines_confirm_without_station": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -546,6 +582,7 @@
     }
   },
   "direction_lines_down_success": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -578,6 +615,7 @@
     }
   },
   "direction_lines_station_command": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -610,6 +648,7 @@
     }
   },
   "direction_lines_up_boundary": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -646,6 +685,7 @@
     }
   },
   "direction_run_browser": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": "node_central_blue",
@@ -679,6 +719,7 @@
     }
   },
   "direction_run_endpoint": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": "node_central_blue",
@@ -711,6 +752,7 @@
     }
   },
   "direction_run_help_h": {
+    "auto_steps": [],
     "background_state_id": "direction_run",
     "direction": {
       "current": "node_central_blue",
@@ -745,6 +787,7 @@
     }
   },
   "direction_run_left_many_reverse_neighbors": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": "node_central_blue",
@@ -778,6 +821,7 @@
     }
   },
   "direction_run_left_one_reverse_neighbor": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": "node_prev",
@@ -809,6 +853,7 @@
     }
   },
   "direction_run_left_zero_reverse_neighbors": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": "node_central_blue",
@@ -844,6 +889,7 @@
     }
   },
   "direction_run_mode": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": "node_central_blue",
@@ -877,6 +923,7 @@
     }
   },
   "direction_run_right_has_forward": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": "node_next",
@@ -908,6 +955,7 @@
     }
   },
   "direction_run_right_zero_forward": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": "node_central_blue",
@@ -943,6 +991,7 @@
     }
   },
   "direction_run_transfer_with_options": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": "node_central_blue",
@@ -976,6 +1025,7 @@
     }
   },
   "direction_run_transfer_with_zero_options": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": "node_central_blue",
@@ -1011,6 +1061,7 @@
     }
   },
   "direction_stations_confirm_with_line": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": "node_central_blue",
@@ -1043,6 +1094,7 @@
     }
   },
   "direction_stations_confirm_without_line": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -1075,6 +1127,7 @@
     }
   },
   "direction_stations_down_success": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -1107,6 +1160,7 @@
     }
   },
   "direction_stations_line_command": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -1139,6 +1193,7 @@
     }
   },
   "direction_stations_up_boundary": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -1175,6 +1230,7 @@
     }
   },
   "direction_transfer_confirm": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": "node_a",
@@ -1209,6 +1265,7 @@
     }
   },
   "direction_transfer_down_success": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -1241,6 +1298,7 @@
     }
   },
   "direction_transfer_quit": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": "node_central_blue",
@@ -1274,6 +1332,7 @@
     }
   },
   "direction_transfer_up_boundary": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -1310,6 +1369,7 @@
     }
   },
   "explore_neighbor_confirm": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": "node_a",
@@ -1342,6 +1402,7 @@
     }
   },
   "explore_neighbor_down_success": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -1374,6 +1435,7 @@
     }
   },
   "explore_neighbor_quit": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -1406,6 +1468,7 @@
     }
   },
   "explore_neighbor_up_boundary": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -1442,6 +1505,7 @@
     }
   },
   "explore_sub_line_confirm": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -1478,6 +1542,7 @@
     }
   },
   "explore_sub_line_down_success": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -1510,6 +1575,7 @@
     }
   },
   "explore_sub_line_quit": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -1543,6 +1609,7 @@
     }
   },
   "explore_sub_line_up_boundary": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -1579,6 +1646,7 @@
     }
   },
   "help_confirm_invokes_help_item": {
+    "auto_steps": [],
     "background_state_id": "direction_run",
     "direction": {
       "current": null,
@@ -1613,6 +1681,7 @@
     }
   },
   "help_down_success": {
+    "auto_steps": [],
     "background_state_id": "direction_run",
     "direction": {
       "current": null,
@@ -1645,6 +1714,7 @@
     }
   },
   "help_enter_from_stations": {
+    "auto_steps": [],
     "background_state_id": "stations",
     "direction": {
       "current": null,
@@ -1679,6 +1749,7 @@
     }
   },
   "help_quit_returns_to_calling_state": {
+    "auto_steps": [],
     "background_state_id": "direction_run",
     "direction": {
       "current": null,
@@ -1711,6 +1782,7 @@
     }
   },
   "help_up_boundary": {
+    "auto_steps": [],
     "background_state_id": "direction_run",
     "direction": {
       "current": null,
@@ -1747,6 +1819,7 @@
     }
   },
   "lines_confirm": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -1779,6 +1852,7 @@
     }
   },
   "lines_down_success": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -1811,6 +1885,7 @@
     }
   },
   "lines_station_command": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -1843,6 +1918,7 @@
     }
   },
   "lines_up_boundary": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -1879,6 +1955,7 @@
     }
   },
   "mode_end_success": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -1910,6 +1987,7 @@
     }
   },
   "mode_home_success": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -1941,6 +2019,7 @@
     }
   },
   "mode_quit_with_active_background": {
+    "auto_steps": [],
     "background_state_id": "direction_run",
     "direction": {
       "current": null,
@@ -1973,6 +2052,7 @@
     }
   },
   "mode_quit_without_background_rejected": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -2008,6 +2088,7 @@
     }
   },
   "mode_rejected_help_from_mode": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -2043,6 +2124,7 @@
     }
   },
   "mode_rejected_unknown_key": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -2078,6 +2160,7 @@
     }
   },
   "mode_select_direction": {
+    "auto_steps": [],
     "background_state_id": "direction_run",
     "direction": {
       "current": null,
@@ -2110,6 +2193,7 @@
     }
   },
   "mode_select_plan": {
+    "auto_steps": [],
     "background_state_id": "plan_run",
     "direction": {
       "current": null,
@@ -2142,6 +2226,7 @@
     }
   },
   "mode_select_undirection": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -2174,6 +2259,7 @@
     }
   },
   "mode_up_boundary": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -2209,6 +2295,7 @@
     }
   },
   "mode_up_success": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -2240,6 +2327,7 @@
     }
   },
   "plan_run_browser": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": "node_central_blue",
@@ -2273,6 +2361,7 @@
     }
   },
   "plan_run_left_has_neighbor": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": "node_central_blue",
@@ -2304,6 +2393,7 @@
     }
   },
   "plan_run_left_no_neighbor": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": "node_central_blue",
@@ -2339,6 +2429,7 @@
     }
   },
   "plan_run_mode": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": "node_central_blue",
@@ -2372,6 +2463,7 @@
     }
   },
   "plan_run_right_has_neighbor": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": "node_east",
@@ -2403,6 +2495,7 @@
     }
   },
   "plan_run_right_no_neighbor": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": "node_north",
@@ -2438,6 +2531,13 @@
     }
   },
   "source_lines_auto_select_single_item": {
+    "auto_steps": [
+      [
+        "source_lines",
+        "source_lines_auto",
+        "source_stations"
+      ]
+    ],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -2457,6 +2557,7 @@
     }
   },
   "source_lines_confirm_with_station": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": "node_central_blue",
@@ -2489,6 +2590,7 @@
     }
   },
   "source_lines_confirm_without_station": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -2521,6 +2623,7 @@
     }
   },
   "source_lines_down_success": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -2553,6 +2656,7 @@
     }
   },
   "source_lines_station_command": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -2585,6 +2689,7 @@
     }
   },
   "source_lines_up_boundary": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -2621,6 +2726,13 @@
     }
   },
   "source_stations_auto_select_single_item": {
+    "auto_steps": [
+      [
+        "source_stations",
+        "source_stations_auto",
+        "source_lines"
+      ]
+    ],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -2640,6 +2752,7 @@
     }
   },
   "source_stations_confirm_with_line": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": "node_central_blue",
@@ -2672,6 +2785,7 @@
     }
   },
   "source_stations_confirm_without_line": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -2704,6 +2818,7 @@
     }
   },
   "source_stations_down_success": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -2736,6 +2851,7 @@
     }
   },
   "source_stations_line_command": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -2768,6 +2884,7 @@
     }
   },
   "source_stations_up_boundary": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -2804,6 +2921,7 @@
     }
   },
   "stations_confirm": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -2836,6 +2954,7 @@
     }
   },
   "stations_down_success": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -2868,6 +2987,7 @@
     }
   },
   "stations_end_success": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -2900,6 +3020,7 @@
     }
   },
   "stations_home_success": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -2932,6 +3053,7 @@
     }
   },
   "stations_line_command": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -2964,6 +3086,7 @@
     }
   },
   "stations_quit_with_active_background": {
+    "auto_steps": [],
     "background_state_id": "direction_run",
     "direction": {
       "current": null,
@@ -2996,6 +3119,7 @@
     }
   },
   "stations_quit_without_run_rejected": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -3032,6 +3156,7 @@
     }
   },
   "stations_up_boundary": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -3068,6 +3193,13 @@
     }
   },
   "undirection_lines_auto_select_single_item": {
+    "auto_steps": [
+      [
+        "undirection_lines",
+        "undirection_lines_auto",
+        "undirection_stations"
+      ]
+    ],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -3087,6 +3219,7 @@
     }
   },
   "undirection_lines_confirm_with_station": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -3119,6 +3252,7 @@
     }
   },
   "undirection_lines_confirm_without_station": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -3151,6 +3285,7 @@
     }
   },
   "undirection_lines_down_success": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -3183,6 +3318,7 @@
     }
   },
   "undirection_lines_station_command": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -3215,6 +3351,7 @@
     }
   },
   "undirection_lines_up_boundary": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -3251,6 +3388,7 @@
     }
   },
   "undirection_run_browser": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -3287,6 +3425,7 @@
     }
   },
   "undirection_run_left_has_neighbor": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -3321,6 +3460,7 @@
     }
   },
   "undirection_run_left_no_neighbor": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -3359,6 +3499,7 @@
     }
   },
   "undirection_run_mode": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -3395,6 +3536,7 @@
     }
   },
   "undirection_run_right_has_neighbor": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -3429,6 +3571,7 @@
     }
   },
   "undirection_run_right_no_neighbor": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -3467,6 +3610,7 @@
     }
   },
   "undirection_run_transfer_has_options": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -3503,6 +3647,7 @@
     }
   },
   "undirection_run_transfer_zero_options": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -3541,6 +3686,7 @@
     }
   },
   "undirection_stations_confirm_with_line": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -3573,6 +3719,7 @@
     }
   },
   "undirection_stations_confirm_without_line": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -3605,6 +3752,7 @@
     }
   },
   "undirection_stations_down_success": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -3637,6 +3785,7 @@
     }
   },
   "undirection_stations_line_command": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -3669,6 +3818,7 @@
     }
   },
   "undirection_stations_up_boundary": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -3705,6 +3855,7 @@
     }
   },
   "undirection_sub_lines_confirm": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -3739,6 +3890,7 @@
     }
   },
   "undirection_sub_lines_down_success": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -3771,6 +3923,7 @@
     }
   },
   "undirection_sub_lines_up_boundary": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -3807,6 +3960,7 @@
     }
   },
   "undirection_transfer_confirm": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -3844,6 +3998,7 @@
     }
   },
   "undirection_transfer_down_success": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -3876,6 +4031,7 @@
     }
   },
   "undirection_transfer_quit": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
@@ -3912,6 +4068,7 @@
     }
   },
   "undirection_transfer_up_boundary": {
+    "auto_steps": [],
     "background_state_id": null,
     "direction": {
       "current": null,
