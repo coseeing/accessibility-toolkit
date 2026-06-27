@@ -2,9 +2,12 @@ from pathlib import Path
 
 import pytest
 
+from application.input.results import AppKeyEventResult
 from apps.access8graph.events import GraphNavigationChanged
+from apps.access8graph.use_cases.command_dispatch import Access8GraphCommandDispatcher
 from apps.access8graph.use_cases.graph_selection import GraphSelectionUseCase
 from apps.access8graph.use_cases.navigation import Access8GraphNavigationSession
+from interop.key import HID, KeyEvent
 
 
 def test_graph_selection_accepts_existing_graphml_file(tmp_path: Path) -> None:
@@ -109,3 +112,69 @@ def test_navigation_session_stop_flow_clears_flow_cancels_speech_and_reports_sta
     assert session.current_flow is None
     assert output.cancel_count == 1
     assert statuses == [GraphNavigationChanged(active=False)]
+
+
+class FakeTranslator:
+    def __init__(self, command) -> None:
+        self.command = command
+        self.events = []
+
+    def translate(self, event):
+        self.events.append(event)
+        return self.command
+
+
+class FakeNavigationWithFlow:
+    def __init__(self, flow) -> None:
+        self.current_flow = flow
+
+
+class RecordingFlow:
+    def __init__(self) -> None:
+        self.commands = []
+
+    def enter(self, command) -> bool:
+        self.commands.append(command)
+        return True
+
+
+def test_command_dispatcher_consumes_unknown_keys() -> None:
+    dispatcher = Access8GraphCommandDispatcher(
+        translator=FakeTranslator(None),
+        navigation=FakeNavigationWithFlow(RecordingFlow()),
+    )
+
+    result = dispatcher.handle_key_event(
+        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.F1, pressed=True)
+    )
+
+    assert result is AppKeyEventResult.HANDLED_STOP
+
+
+def test_command_dispatcher_returns_unhandled_without_active_flow() -> None:
+    dispatcher = Access8GraphCommandDispatcher(
+        translator=FakeTranslator({"key": "down", "repeat": 0, "pressing": 0}),
+        navigation=FakeNavigationWithFlow(None),
+    )
+
+    result = dispatcher.handle_key_event(
+        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.DOWN, pressed=True)
+    )
+
+    assert result is AppKeyEventResult.UNHANDLED
+
+
+def test_command_dispatcher_sends_commands_to_active_flow() -> None:
+    flow = RecordingFlow()
+    command = {"key": "down", "repeat": 0, "pressing": 0}
+    dispatcher = Access8GraphCommandDispatcher(
+        translator=FakeTranslator(command),
+        navigation=FakeNavigationWithFlow(flow),
+    )
+
+    result = dispatcher.handle_key_event(
+        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.DOWN, pressed=True)
+    )
+
+    assert result is AppKeyEventResult.HANDLED_STOP
+    assert flow.commands == [command]

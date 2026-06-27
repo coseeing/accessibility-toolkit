@@ -19,6 +19,7 @@ from apps.access8graph.events import GraphNavigationChanged
 from apps.access8graph.input import Access8GraphKeyTranslator
 from apps.access8graph.output import Access8GraphFlowOutput
 from apps.access8graph.use_cases import (
+    Access8GraphCommandDispatcher,
     Access8GraphNavigationSession,
     GraphSelectionUseCase,
     MrtFlowFactory,
@@ -32,8 +33,9 @@ class Access8GraphNavigationMode:
     enter_usage = HID.F10
     exit_usage = HID.ESCAPE
 
-    def __init__(self, navigation):
+    def __init__(self, *, navigation, command_dispatcher):
         self._navigation = navigation
+        self._command_dispatcher = command_dispatcher
 
     def can_enter(self) -> bool:
         return self._navigation.can_start()
@@ -51,15 +53,7 @@ class Access8GraphNavigationMode:
         return True
 
     def handle_key_event(self, event):
-        translator = Access8GraphKeyTranslator()
-        command = translator.translate(event)
-        if command is None:
-            return AppKeyEventResult.HANDLED_STOP
-        flow = self._navigation.current_flow
-        if flow is None:
-            return AppKeyEventResult.UNHANDLED
-        flow.enter(command)
-        return AppKeyEventResult.HANDLED_STOP
+        return self._command_dispatcher.handle_key_event(event)
 
 
 class Access8GraphAppService(KeyEventHandler):
@@ -101,6 +95,10 @@ class Access8GraphAppService(KeyEventHandler):
             flow_output=self._flow_output,
             notify_status=self._notify_status_listener,
         )
+        self._command_dispatcher = Access8GraphCommandDispatcher(
+            translator=Access8GraphKeyTranslator(),
+            navigation=self._navigation,
+        )
         self._activation = InputActivationUseCase(
             input_capture=input_capture,
             hotkey_capture=hotkey_capture,
@@ -118,7 +116,10 @@ class Access8GraphAppService(KeyEventHandler):
     def attach_input_service(self, input_service: KeyboardInputService) -> None:
         self._input_service = input_service
         self._mode_manager.register(
-            Access8GraphNavigationMode(self._navigation)
+            Access8GraphNavigationMode(
+                navigation=self._navigation,
+                command_dispatcher=self._command_dispatcher,
+            )
         )
 
     def bind(self) -> None:
