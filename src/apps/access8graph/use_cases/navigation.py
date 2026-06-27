@@ -2,6 +2,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Protocol
 
+from application.events import ErrorRaised
 from apps.access8graph.events import GraphNavigationChanged
 from apps.access8graph.flow import MrtFlow
 from apps.access8graph.graphml import (
@@ -43,7 +44,7 @@ class Access8GraphNavigationSession:
         graph_selection,
         flow_factory: FlowFactory,
         flow_output: FlowOutput,
-        notify_status: Callable[[GraphNavigationChanged], None],
+        notify_status: Callable[[object], None],
     ) -> None:
         self._graph_selection = graph_selection
         self._flow_factory = flow_factory
@@ -69,6 +70,9 @@ class Access8GraphNavigationSession:
         path = self._graph_selection.require_existing_graphml_path()
         self._flow = self._flow_factory.create(path)
         self._notify_status(GraphNavigationChanged(active=True))
+
+    def report_error(self, message: str) -> None:
+        self._notify_status(ErrorRaised(message))
 
     def stop_flow(self) -> None:
         had_flow = self._flow is not None

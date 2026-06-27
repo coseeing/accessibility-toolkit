@@ -41,7 +41,7 @@ class Access8GraphNavigationMode:
         try:
             self._navigation.start_flow()
         except Exception as error:
-            self._navigation._notify_status(ErrorRaised(str(error)))
+            self._navigation.report_error(str(error))
             return False
         return True
 
@@ -124,6 +124,7 @@ class Access8GraphAppService(KeyEventHandler):
         return self._graph_selection.get_selected_graphml_path()
 
     def start_navigation(self) -> None:
+        self._graph_selection.require_existing_graphml_path()
         if not self._mode_manager.activate_mode("navigation"):
             raise RuntimeError("Failed to start navigation")
 

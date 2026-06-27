@@ -166,8 +166,8 @@ def test_idle_hotkey_without_selected_graphml_reports_error_without_starting_cap
 
     pending.pop(0)()
 
-    assert delivered == [ErrorRaised("Failed to start navigation")]
-    assert ("speak", SpeechSequence(items=("Failed to start navigation",))) in speech.calls
+    assert delivered == [ErrorRaised("No GraphML file selected")]
+    assert ("speak", SpeechSequence(items=("No GraphML file selected",))) in speech.calls
 
 
 def test_idle_hotkey_with_malformed_graphml_keeps_specific_error_message(
@@ -241,7 +241,7 @@ def test_idle_hotkey_reports_generic_start_failure_when_no_specific_error_preced
 def test_service_cannot_start_without_selected_graphml() -> None:
     service, input_capture, _hotkey_capture, _speech = build_service()
 
-    with pytest.raises(RuntimeError, match="Failed to start"):
+    with pytest.raises(RuntimeError, match="No GraphML file selected"):
         service.start_navigation()
 
     assert service.is_navigation_running() is False
@@ -427,7 +427,7 @@ def test_service_deleted_file_fails_before_activation(tmp_path: Path) -> None:
     path.unlink()
     hotkey_capture.start()
 
-    with pytest.raises(RuntimeError, match="Failed to start"):
+    with pytest.raises(FileNotFoundError, match="will_be_deleted"):
         service.start_navigation()
 
     assert service.is_navigation_running() is False
