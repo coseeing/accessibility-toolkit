@@ -1,6 +1,6 @@
 from collections.abc import Callable
 
-from application.state import ControlState, RuntimeState
+from apps.nvda_remote.state import ControlState, RuntimeState
 from apps.nvda_remote.events import RemoteControlChanged
 
 

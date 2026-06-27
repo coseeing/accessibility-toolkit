@@ -6,7 +6,4 @@ from apps.nvda_remote.use_cases.input_forwarding import (
     NvdaRemoteInputForwardingUseCase,
 )
 from apps.nvda_remote.use_cases.protocol_events import RemoteProtocolEventHandler
-from apps.nvda_remote.use_cases.speech_settings import (
-    NvdaRemoteSpeechSettingsUseCase,
-)
 from apps.nvda_remote.use_cases.status_presentation import RemoteStatusPresenter

@@ -1,4 +1,4 @@
-from application.state import ConnectionState, ControlState, RuntimeState
+from apps.nvda_remote.state import ConnectionState, ControlState, RuntimeState
 from apps.nvda_remote.events import RemoteConnectionChanged
 
 

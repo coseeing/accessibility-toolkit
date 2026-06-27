@@ -49,13 +49,13 @@ class FakeSpeech:
 
 
 def test_key_echo_speech_settings_use_case_proxies_engine_and_voice_controls():
-    from apps.key_echo.use_cases.speech_settings import KeyEchoSpeechSettingsUseCase
+    from apps.shared.speech_settings_facade import SpeechSettingsFacade
 
     speech = FakeSpeech()
-    use_case = KeyEchoSpeechSettingsUseCase(speech=speech)
+    use_case = SpeechSettingsFacade(speech=speech)
 
-    use_case.set_engine("pyttsx3")
-    use_case.set_voice("voice-2")
+    use_case.set_speech_engine("pyttsx3")
+    use_case.set_selected_voice("voice-2")
     use_case.set_rate(120)
 
     assert speech.get_selected_engine() == "pyttsx3"

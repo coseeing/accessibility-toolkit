@@ -1,4 +1,4 @@
-from application.state import ConnectionState, ControlState, RuntimeState
+from apps.nvda_remote.state import ConnectionState, ControlState, RuntimeState
 from apps.nvda_remote.events import RemoteConnectionChanged, RemoteControlChanged, RemoteMessageReceived
 from interop.key import HID, KeyEvent
 
@@ -52,17 +52,17 @@ class FakeSpeech:
 
 
 def test_nvda_speech_settings_use_case_proxies_engine_and_voice_controls():
-    from apps.nvda_remote.use_cases.speech_settings import NvdaRemoteSpeechSettingsUseCase
+    from apps.shared.speech_settings_facade import SpeechSettingsFacade
 
     speech = FakeSpeech()
     saved = []
-    use_case = NvdaRemoteSpeechSettingsUseCase(
+    use_case = SpeechSettingsFacade(
         speech=speech,
         on_engine_changed=saved.append,
     )
 
-    use_case.set_engine("pyttsx3")
-    use_case.set_voice("voice-2")
+    use_case.set_speech_engine("pyttsx3")
+    use_case.set_selected_voice("voice-2")
     use_case.set_rate(120)
 
     assert speech.get_selected_engine() == "pyttsx3"

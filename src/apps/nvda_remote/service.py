@@ -17,7 +17,7 @@ from application.input import (
 from application.input import KeyEventHandler
 from application.output import Capabilities
 from application.output import ClipboardService
-from application.state import ConnectionState, ControlState, RuntimeState
+from apps.nvda_remote.state import ConnectionState, ControlState, RuntimeState
 from interop.key import HID
 from interop.protocol.connection_info import ConnectionInfo
 from interop.protocol.messages import RemoteMessageType
