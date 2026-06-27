@@ -165,8 +165,8 @@ def test_idle_hotkey_without_selected_graphml_reports_error_without_starting_cap
 
     pending.pop(0)()
 
-    assert delivered == [ErrorRaised("No GraphML file selected")]
-    assert ("speak", SpeechSequence(items=("No GraphML file selected",))) in speech.calls
+    assert delivered == [ErrorRaised("Failed to start navigation")]
+    assert ("speak", SpeechSequence(items=("Failed to start navigation",))) in speech.calls
 
 
 def test_idle_hotkey_with_malformed_graphml_keeps_specific_error_message(
@@ -240,7 +240,7 @@ def test_idle_hotkey_reports_generic_start_failure_when_no_specific_error_preced
 def test_service_cannot_start_without_selected_graphml() -> None:
     service, input_capture, _hotkey_capture, _speech = build_service()
 
-    with pytest.raises(RuntimeError, match="No GraphML file selected"):
+    with pytest.raises(RuntimeError, match="Failed to start"):
         service.start_navigation()
 
     assert service.is_navigation_running() is False
@@ -341,7 +341,7 @@ def test_service_stops_navigation_and_reports_flow_dispatch_exception() -> None:
     service.set_status_listener(statuses.append)
     service.choose_graphml(str(FIXTURE))
     service.start_navigation()
-    service._flow = FailingFlow()
+    service._navigation._flow = FailingFlow()
 
     result = service.handle_key_event(
         CapturedKeyEvent(
@@ -426,9 +426,25 @@ def test_service_deleted_file_fails_before_activation(tmp_path: Path) -> None:
     path.unlink()
     hotkey_capture.start()
 
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises(RuntimeError, match="Failed to start"):
         service.start_navigation()
 
     assert service.is_navigation_running() is False
     assert input_capture.running is False
     assert hotkey_capture.running is True
+
+
+def test_navigation_mode_does_not_require_service_private_flow_methods() -> None:
+    service, _input_capture, _hotkey_capture, _speech = build_service()
+    service.choose_graphml(str(FIXTURE))
+
+    assert not hasattr(service, "_start_flow")
+    assert not hasattr(service, "_stop_flow")
+
+
+def test_service_keeps_selected_graphml_after_lifecycle_extraction() -> None:
+    service, _input_capture, _hotkey_capture, _speech = build_service()
+
+    service.choose_graphml(str(FIXTURE))
+
+    assert service.get_selected_graphml_path() == str(FIXTURE)

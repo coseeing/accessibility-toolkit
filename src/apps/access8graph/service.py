@@ -1,4 +1,3 @@
-from pathlib import Path
 from collections.abc import Callable
 
 from adapters.inputs.base import HotkeyCapture, InputCapture
@@ -17,10 +16,13 @@ from interop.key import HID
 from interop.speech.speech_sequence import SpeechSequence
 
 from apps.access8graph.events import GraphNavigationChanged
-from apps.access8graph.flow import MrtFlow
-from apps.access8graph.graphml import Graph, MrtDirectionNavigator, MrtModel, MrtUndirectionNavigator
 from apps.access8graph.input import Access8GraphKeyTranslator
 from apps.access8graph.output import Access8GraphFlowOutput
+from apps.access8graph.use_cases import (
+    Access8GraphNavigationSession,
+    GraphSelectionUseCase,
+    MrtFlowFactory,
+)
 from apps.shared.mode_manager import ModeManager
 from apps.shared.speech_settings_controller import SpeechSettingsController
 
@@ -30,22 +32,22 @@ class Access8GraphNavigationMode:
     enter_usage = HID.F10
     exit_usage = HID.ESCAPE
 
-    def __init__(self, service):
-        self._service = service
+    def __init__(self, navigation):
+        self._navigation = navigation
 
     def can_enter(self) -> bool:
-        return self._service.get_selected_graphml_path() is not None
+        return self._navigation.can_start()
 
     def enter(self) -> bool:
         try:
-            self._service._start_flow()
+            self._navigation.start_flow()
         except Exception as error:
-            self._service._notify_status_listener(ErrorRaised(str(error)))
+            self._navigation._notify_status(ErrorRaised(str(error)))
             return False
         return True
 
     def exit(self) -> bool:
-        self._service._stop_flow()
+        self._navigation.stop_flow()
         return True
 
     def handle_key_event(self, event):
@@ -53,7 +55,7 @@ class Access8GraphNavigationMode:
         command = translator.translate(event)
         if command is None:
             return AppKeyEventResult.HANDLED_STOP
-        flow = self._service._flow
+        flow = self._navigation.current_flow
         if flow is None:
             return AppKeyEventResult.UNHANDLED
         flow.enter(command)
@@ -82,9 +84,6 @@ class Access8GraphAppService(KeyEventHandler):
         self._main_thread_dispatch = main_thread_dispatch or (
             lambda callback: callback()
         )
-        self._selected_path: str | None = None
-        self._navigation_running = False
-        self._flow = None
         self._hotkey_start_in_progress = False
         self._hotkey_start_reported_error = False
 
@@ -95,11 +94,18 @@ class Access8GraphAppService(KeyEventHandler):
             on_voice_changed=on_voice_changed,
             on_numeric_setting_changed=on_numeric_setting_changed,
         )
+        self._graph_selection = GraphSelectionUseCase()
+        self._navigation = Access8GraphNavigationSession(
+            graph_selection=self._graph_selection,
+            flow_factory=MrtFlowFactory(output=self._flow_output),
+            flow_output=self._flow_output,
+            notify_status=self._notify_status_listener,
+        )
         self._activation = InputActivationUseCase(
             input_capture=input_capture,
             hotkey_capture=hotkey_capture,
-            is_active=self.is_navigation_running,
-            set_active=self._set_navigation_active,
+            is_active=self._navigation.is_active,
+            set_active=self._navigation.set_active,
             notify_error=lambda message: self._notify_status_listener(
                 ErrorRaised(message)
             ),
@@ -112,7 +118,7 @@ class Access8GraphAppService(KeyEventHandler):
     def attach_input_service(self, input_service: KeyboardInputService) -> None:
         self._input_service = input_service
         self._mode_manager.register(
-            Access8GraphNavigationMode(self)
+            Access8GraphNavigationMode(self._navigation)
         )
 
     def bind(self) -> None:
@@ -123,23 +129,12 @@ class Access8GraphAppService(KeyEventHandler):
         self._status_listener = listener
 
     def choose_graphml(self, path: str) -> None:
-        graphml_path = Path(path)
-        if graphml_path.suffix.lower() != ".graphml":
-            raise ValueError("Selected file must have a .graphml extension")
-        if not graphml_path.is_file():
-            raise FileNotFoundError(str(graphml_path))
-        self._selected_path = str(graphml_path)
+        self._graph_selection.choose_graphml(path)
 
     def get_selected_graphml_path(self) -> str | None:
-        return self._selected_path
+        return self._graph_selection.get_selected_graphml_path()
 
     def start_navigation(self) -> None:
-        if self._selected_path is None:
-            raise RuntimeError("No GraphML file selected")
-        if not Path(self._selected_path).is_file():
-            raise FileNotFoundError(
-                f"GraphML file no longer exists: {self._selected_path}"
-            )
         if not self._mode_manager.activate_mode("navigation"):
             raise RuntimeError("Failed to start navigation")
 
@@ -147,33 +142,10 @@ class Access8GraphAppService(KeyEventHandler):
         if self._mode_manager.active_mode_id == "navigation":
             self._mode_manager.exit_active_mode()
         else:
-            self._stop_flow()
+            self._navigation.stop_flow()
 
     def is_navigation_running(self) -> bool:
-        return self._navigation_running
-
-    def _set_navigation_active(self, active: bool) -> None:
-        self._navigation_running = active
-
-    def _start_flow(self) -> None:
-        graph = Graph(path=self._selected_path)
-        model = MrtModel(graph)
-        self._flow = MrtFlow(
-            navigator={
-                "direction": MrtDirectionNavigator(model),
-                "undirection": MrtUndirectionNavigator(model),
-            },
-            output=self._flow_output,
-        )
-        self._notify_status_listener(GraphNavigationChanged(active=True))
-
-    def _stop_flow(self) -> None:
-        had_flow = self._flow is not None
-        self._navigation_running = False
-        self._flow = None
-        self._flow_output.cancel_speech()
-        if had_flow:
-            self._notify_status_listener(GraphNavigationChanged(active=False))
+        return self._navigation.is_active()
 
     def get_speech_engine_options(self) -> tuple[tuple[str, str], ...]:
         return self._speech_settings.get_engine_options()
