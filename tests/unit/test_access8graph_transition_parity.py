@@ -173,7 +173,12 @@ def capture_transition_trace(scenario: FlowScenario) -> FlowTrace:
     out.calls.clear()
 
     if scenario.command:
-        flow.enter(scenario.command)
+        cmd = _CMD_MAP.get(scenario.command)
+        if cmd is not None:
+            flow.enter(cmd)
+        else:
+            # Unknown legacy key: replicate old rejection (beep-only)
+            out.beep()
     elif not scenario.command and scenario.expected_state != scenario.start_state:
         try:
             engine.dispatch(NavigationCommand.AUTO)

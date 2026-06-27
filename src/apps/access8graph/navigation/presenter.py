@@ -19,13 +19,10 @@ class FlowPresenter:
         if result.outcome == TransitionOutcome.UNHANDLED:
             return
 
-        try:
-            if result.outcome == TransitionOutcome.REJECTED:
-                self._present_rejected(result)
-            else:
-                self._present_transitioned(result)
-        except Exception:
-            pass
+        if result.outcome == TransitionOutcome.REJECTED:
+            self._present_rejected(result)
+        else:
+            self._present_transitioned(result)
 
     def _present_rejected(self, result: TransitionResult) -> None:
         effects = result.effects

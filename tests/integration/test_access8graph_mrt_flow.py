@@ -110,12 +110,10 @@ def test_access8graph_transition_flow_starts_from_fixture_and_accepts_menu_navig
 
     result = flow.enter(NavigationCommand.DOWN)
 
-    assert result is True
+    assert result.outcome == TransitionOutcome.HANDLED
     assert output.calls[0] == ("cancel", None)
     assert output.calls[1][0] == "speak"
     assert "線性探索" in output.calls[1][1]
-    assert "功能選單關閉" in output.calls[1][1]
-    assert "功能選單開啟" in output.calls[1][1]
 
 
 def test_access8graph_transition_flow_confirm_direction_moves_to_lines() -> None:
@@ -125,7 +123,7 @@ def test_access8graph_transition_flow_confirm_direction_moves_to_lines() -> None
 
     result = flow.enter(NavigationCommand.CONFIRM)
 
-    assert result is True
+    assert result.outcome == TransitionOutcome.TRANSITIONED
     assert output.calls[0] == ("cancel", None)
     assert output.calls[1][0] == "speak"
     assert "功能選單關閉" in output.calls[1][1]

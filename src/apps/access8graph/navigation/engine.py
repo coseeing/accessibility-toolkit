@@ -30,7 +30,7 @@ class AutomaticTransitionCycleError(Exception):
 
 
 class TransitionEngine:
-    MAX_AUTO_STEPS = 32
+    MAX_AUTO_STEPS = 32  # up to 32 automatic transitions per macrostep; the 33rd raises
 
     def __init__(
         self,
@@ -65,12 +65,18 @@ class TransitionEngine:
         rules = list(self._table.lookup(self.context.current_state, command))
 
         if not rules:
-            return TransitionResult.rejected(source=self.context.current_state)
+            return TransitionResult.rejected(
+                source=self.context.current_state,
+                effects=_current_view_effects(self.context),
+            )
 
         matching = self._evaluate_guards(rules, snapshot)
 
         if len(matching) == 0:
-            return TransitionResult.rejected(source=self.context.current_state)
+            return TransitionResult.rejected(
+                source=self.context.current_state,
+                effects=_current_view_effects(self.context),
+            )
         if len(matching) > 1:
             raise AmbiguousTransitionError(
                 f"multiple rules match {self.context.current_state.value} + {command.value}"
@@ -93,7 +99,12 @@ class TransitionEngine:
         current_source = initial_source
         steps = 0
 
-        while steps < self.MAX_AUTO_STEPS:
+        while True:
+            if steps >= self.MAX_AUTO_STEPS:
+                raise AutomaticTransitionCycleError(
+                    f"exceeded maximum AUTO steps ({self.MAX_AUTO_STEPS})"
+                )
+
             snapshot = self._build_snapshot()
             rules = list(
                 self._table.lookup(self.context.current_state, NavigationCommand.AUTO)
@@ -124,11 +135,6 @@ class TransitionEngine:
             effects = _merge_effects(effects, result.effects)
             steps += 1
 
-        if steps >= self.MAX_AUTO_STEPS:
-            raise AutomaticTransitionCycleError(
-                "exceeded maximum AUTO steps (32)"
-            )
-
         return TransitionResult.transitioned(
             source=current_source,
             target=self.context.current_state,
@@ -150,12 +156,23 @@ class TransitionEngine:
         action_result = action(snapshot, self.context)
 
         if not action_result.accepted:
+            effects = action_result.effects
+            effects = _merge_effects(effects, _current_view_effects(self.context))
             return TransitionResult.rejected(
                 source=self.context.current_state,
-                effects=action_result.effects,
+                effects=effects,
             )
 
         effects = action_result.effects
+        old_state = self.context.current_state
+        same_target = (rule.source == rule.target)
+
+        if same_target:
+            effects = _merge_effects(effects, _current_view_effects(self.context))
+            return TransitionResult.handled(
+                source=old_state,
+                effects=effects,
+            )
 
         # run source exit effects
         exit_handler = self._exit_effects.get(rule.source)
@@ -163,19 +180,23 @@ class TransitionEngine:
             exit_effects = exit_handler(snapshot, self.context)
             effects = _merge_effects(effects, exit_effects)
 
-        old_state = self.context.current_state
-
         # commit target
         self.context.current_state = rule.target
+
+        # build fresh snapshot for entry handler (so helpers see updated return_state, etc.)
+        fresh_snapshot = self._build_snapshot()
 
         # run target entry effects
         entry_handler = self._entry_effects.get(rule.target)
         if entry_handler is not None:
-            entry_effects = entry_handler(snapshot, self.context)
+            entry_effects = entry_handler(fresh_snapshot, self.context)
             effects = _merge_effects(effects, entry_effects)
 
         # re-affirm state after entry handler (it must not change state)
         self.context.current_state = rule.target
+
+        # add view display from the view model built by entry handler
+        effects = _merge_effects(effects, _current_view_effects(self.context))
 
         if not is_auto:
             return self._run_auto_loop(old_state, effects, visited=set())
@@ -222,4 +243,17 @@ def _merge_effects(
         open_messages=a.open_messages + b.open_messages,
         hints=a.hints + b.hints,
         view_items=a.view_items + b.view_items,
+    )
+
+
+def _current_view_effects(context: NavigationContext) -> PresentationEffects:
+    vm = context.view_model
+    if vm is None:
+        return PresentationEffects()
+    hint = getattr(vm, "hint", None)
+    display = getattr(vm, "display", ())
+    items = tuple(item for item in display if item)
+    return PresentationEffects(
+        hints=(hint,) if hint else (),
+        view_items=items,
     )

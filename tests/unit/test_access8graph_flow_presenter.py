@@ -234,17 +234,17 @@ def test_presenter_filters_empty_items():
 # ---------------------------------------------------------------------------
 
 
-def test_presenter_exception_before_presentation_produces_no_output():
+def test_presenter_propagates_exceptions_to_app_boundary():
+    """Exceptions during presentation propagate to the caller (app-service boundary)."""
     output = RecordingOutput()
     from apps.access8graph.navigation.presenter import FlowPresenter
 
     presenter = FlowPresenter(output)
 
-    # A broken effects object that raises on attribute access
     class BrokenEffects:
         @property
         def close_messages(self):
-            raise RuntimeError("break before presentation")
+            raise RuntimeError("output adapter failure")
 
     result = TransitionResult(
         outcome=TransitionOutcome.TRANSITIONED,
@@ -253,6 +253,7 @@ def test_presenter_exception_before_presentation_produces_no_output():
         effects=BrokenEffects(),
     )
 
-    presenter.present(result)
+    with pytest.raises(RuntimeError, match="output adapter failure"):
+        presenter.present(result)
 
     assert output.calls == []

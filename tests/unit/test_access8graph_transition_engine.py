@@ -412,8 +412,11 @@ def test_repeated_state_rule_raises_cycle_error():
         engine.dispatch(NavigationCommand.CONFIRM)
 
 
-def test_33_automatic_steps_raises_cycle_error():
-    from apps.access8graph.navigation.engine import AutomaticTransitionCycleError
+def test_32_automatic_steps_succeed_33_raises_cycle_error():
+    from apps.access8graph.navigation.engine import (
+        AutomaticTransitionCycleError,
+        TransitionEngine,
+    )
 
     S1 = NavigationStateId.MODE
     S2 = NavigationStateId.STATIONS
@@ -440,11 +443,14 @@ def test_33_automatic_steps_raises_cycle_error():
         )
     ]
 
-    guards = {"g_init": lambda s: True}
+    guards: dict = {"g_init": lambda s: True}
     actions = {ActionId("init"): counting_action}
 
-    # 33 AUTO rules, alternating between S1 and S2
-    for i in range(33):
+    # 34 AUTO rules, alternating between S1 and S2
+    # init sets counter=1, so g(1)..g(32) execute (32 steps),
+    # then check blocks the 33rd attempt (g(33) never executes)
+    N = TransitionEngine.MAX_AUTO_STEPS + 2
+    for i in range(N):
         src = S1 if i % 2 == 0 else S2
         tgt = S2 if i % 2 == 0 else S1
         rules.append(

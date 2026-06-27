@@ -854,8 +854,8 @@ def build_entry_effects(
 
     def help_entry(snapshot, context):
         help_items = []
-        if snapshot.return_state is not None:
-            rs = snapshot.return_state
+        rs = context.return_state
+        if rs is not None:
             if rs == NavigationStateId.STATIONS:
                 help_items = [{"key": "l", "doc": "切換至路線列表"}]
             elif rs == NavigationStateId.LINES:
