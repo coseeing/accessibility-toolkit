@@ -44,7 +44,7 @@ class Access8GraphNavigationSession:
         graph_selection,
         flow_factory: FlowFactory,
         flow_output: FlowOutput,
-        notify_status: Callable[[object], None],
+        notify_status: Callable[[ErrorRaised | GraphNavigationChanged], None],
     ) -> None:
         self._graph_selection = graph_selection
         self._flow_factory = flow_factory
