@@ -69,9 +69,19 @@ class MrtNavigator:
 	def sub_lines_display(self):
 		display = []
 		if self.line and self.station:
-			result = list(self.model.get_node_from_station_id_line_id(self.station, self.line))[0]
+			node_ids = sorted(self.model.get_node_from_station_id_line_id(self.station, self.line))
+			if not node_ids:
+				return display
+			result = node_ids[0]
 			datas = [{"id": sub_line, "node_info": (self.node_info_display(sub_line[0]), self.node_info_display(sub_line[-1]))} for sub_line in self.model.get_sub_line_from_node_id(result)]
-			# datas = sorted(datas, key=lambda x: x['node_info'][0]["name"])
+			datas = sorted(
+				datas,
+				key=lambda item: (
+					item["node_info"][0]["name"],
+					item["node_info"][1]["name"],
+					item["id"],
+				),
+			)
 			for item in datas:
 				display.append({
 					"id": item["id"],
