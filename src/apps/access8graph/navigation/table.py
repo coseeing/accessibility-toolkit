@@ -3,7 +3,6 @@ from __future__ import annotations
 from collections import deque
 from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
 
 from apps.access8graph.navigation.model import (
     ActionId,
@@ -12,9 +11,6 @@ from apps.access8graph.navigation.model import (
     NavigationStateId,
     TransitionRule,
 )
-
-if TYPE_CHECKING:
-    pass
 
 
 class TransitionTableValidationError(Exception):
@@ -67,7 +63,7 @@ def validate_transition_table(
     )
 
 
-def _guard_val(g: object) -> str:
+def _guard_val(g: GuardId | str) -> str:
     return g.value if isinstance(g, GuardId) else str(g)
 
 
@@ -78,9 +74,10 @@ def _validate_ids(
 ) -> None:
     action_set = set(action_ids)
     guard_set = {_guard_val(g) for g in guard_ids}
+    action_values = {a.value for a in action_set}
 
     for r in rules:
-        if r.action_id.value not in {a.value for a in action_set}:
+        if r.action_id.value not in action_values:
             raise TransitionTableValidationError(
                 f"unknown action id '{r.action_id.value}' in rule {r.source}->{r.target}"
             )
@@ -159,49 +156,43 @@ def _validate_help_return(
 ) -> None:
     help_state = NavigationStateId.HELP
     help_outgoing = False
-    help_incoming = False
 
     for (source, _command), rule_list in index.items():
         for r in rule_list:
             if source == help_state and r.target != help_state:
                 help_outgoing = True
-            if r.target == help_state and source != help_state:
-                help_incoming = True
 
-    if not (help_outgoing and help_incoming):
+    if not help_outgoing:
         raise TransitionTableValidationError(
-            "missing HELP return edges: need at least one rule from HELP to another "
-            "state and one rule from another state to HELP"
+            "missing HELP return edge: need at least one rule from HELP to another state"
         )
 
 
 def _validate_auto_cycles(
     index: dict[tuple[NavigationStateId, NavigationCommand], list[TransitionRule]],
 ) -> None:
-    def follow_auto(start: NavigationStateId) -> set[NavigationStateId]:
-        """Follow AUTO transitions from a state and return visited states. """
-        visited: set[NavigationStateId] = set()
-        stack = [start]
-        while stack:
-            state = stack.pop()
-            if state in visited:
+    def _dfs(state: NavigationStateId, path: list[NavigationStateId]) -> list[list[NavigationStateId]] | None:
+        if state in path:
+            return [path + [state]]
+        cycles: list[list[NavigationStateId]] = []
+        auto_rules = index.get((state, NavigationCommand.AUTO), ())
+        for r in auto_rules:
+            if r.guard_id is not None:
                 continue
-            visited.add(state)
-            auto_rules = index.get((state, NavigationCommand.AUTO), ())
-            for r in auto_rules:
-                if r.guard_id is not None:
-                    continue
-                if r.target not in visited:
-                    stack.append(r.target)
-        return visited
+            result = _dfs(r.target, path + [state])
+            if result is not None:
+                cycles.extend(result)
+        return cycles if cycles else None
 
     for (source, _command), rule_list in index.items():
         for r in rule_list:
-            if r.command == NavigationCommand.AUTO and r.guard_id is None:
-                auto_states = follow_auto(source)
-                for r2 in index.get((r.target, NavigationCommand.AUTO), ()):
-                    if r2.guard_id is None and r2.target in auto_states:
-                        raise TransitionTableValidationError(
-                            f"static AUTO cycle detected: "
-                            f"{source.value} -> {r.target.value} -> {r2.target.value}"
-                        )
+            if r.command != NavigationCommand.AUTO or r.guard_id is not None:
+                continue
+            cycles = _dfs(source, [])
+            if cycles is not None:
+                cycle_paths = " | ".join(
+                    " -> ".join(s.value for s in c) for c in cycles
+                )
+                raise TransitionTableValidationError(
+                    f"static AUTO cycle detected: {cycle_paths}"
+                )

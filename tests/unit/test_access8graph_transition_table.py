@@ -157,3 +157,39 @@ def test_validator_rejects_static_auto_cycle():
             action_ids={ActionId("noop")},
             guard_ids=set(),
         )
+
+
+def test_validator_accepts_linear_auto_chain():
+    rules = (
+        rule(NavigationStateId.MODE, NavigationCommand.AUTO, NavigationStateId.STATIONS),
+        rule(NavigationStateId.STATIONS, NavigationCommand.AUTO, NavigationStateId.LINES),
+        rule(
+            NavigationStateId.LINES,
+            NavigationCommand.AUTO,
+            NavigationStateId.DIRECTION_RUN,
+        ),
+        rule(
+            NavigationStateId.DIRECTION_RUN,
+            NavigationCommand.DOWN,
+            NavigationStateId.MODE,
+        ),
+        rule(
+            NavigationStateId.HELP,
+            NavigationCommand.DOWN,
+            NavigationStateId.MODE,
+        ),
+        rule(
+            NavigationStateId.MODE,
+            NavigationCommand.OPEN_HELP,
+            NavigationStateId.HELP,
+        ),
+    )
+
+    result = validate_transition_table(
+        rules=rules,
+        initial_state=NavigationStateId.MODE,
+        action_ids={ActionId("noop")},
+        guard_ids=set(),
+    )
+    assert result is not None
+    assert result.initial_state == NavigationStateId.MODE
