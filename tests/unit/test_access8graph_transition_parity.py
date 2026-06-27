@@ -25,15 +25,13 @@ from apps.access8graph.navigation.table import (
 )
 
 from tests.unit.access8graph_flow_scenarios import (
+    _ArrangeAdapter,
     FLOW_SCENARIOS,
     FakeDirectionNavigator,
     FakeUndirectionNavigator,
     FlowScenario,
     FlowTrace,
     OutputCall,
-    RecordingOutput,
-    build_legacy_flow,
-    capture_legacy_trace,
 )
 
 
@@ -117,31 +115,12 @@ def capture_transition_trace(scenario: FlowScenario) -> FlowTrace:
     dnav = FakeDirectionNavigator()
     unav = FakeUndirectionNavigator()
 
-    # Run arrangement on legacy flow to get navigator into the right state
-    leg_flow, leg_rec = build_legacy_flow(dnav, unav)
-    leg_rec.calls.clear()
-    scenario.arrange(leg_flow)
+    adapter = _ArrangeAdapter({"direction": dnav, "undirection": unav})
+    scenario.arrange(adapter)
 
-    # Extract background state from legacy flow
-    bg_state_id = None
-    bg = leg_flow.background_state
-    if bg is not None:
-        for k, v in leg_flow.states.items():
-            if v is bg:
-                bg_state_id = _STATE_MAP.get(k)
-                break
+    bg_state_id = _STATE_MAP.get(adapter.background_state) if adapter.background_state else None
+    help_return_state = _STATE_MAP.get(adapter._help_from) if adapter._help_from else None
 
-    # For help state, extract the calling state from HelpState
-    help_return_state = None
-    state_obj = leg_flow._state
-    if hasattr(state_obj, "state"):
-        help_return_state = state_obj.state
-        for k, v in leg_flow.states.items():
-            if v is help_return_state:
-                help_return_state = _STATE_MAP.get(k)
-                break
-
-    # Build transition flow
     out = TransitionRecordingOutput()
     presenter = FlowPresenter(out)
 
@@ -178,7 +157,6 @@ def capture_transition_trace(scenario: FlowScenario) -> FlowTrace:
 
     flow = TransitionNavigationFlow(engine=engine, presenter=presenter)
 
-    # Run entry effects for start state
     handler = entry.get(start_nav_state)
     if handler is not None:
         from apps.access8graph.navigation.snapshot import NavigationSnapshot
@@ -192,20 +170,16 @@ def capture_transition_trace(scenario: FlowScenario) -> FlowTrace:
         )
         handler(snap, context)
 
-    # Discard setup output
     out.calls.clear()
 
-    # Dispatch command (or trigger AUTO for empty-command scenarios)
     if scenario.command:
         flow.enter(scenario.command)
     elif not scenario.command and scenario.expected_state != scenario.start_state:
-        # Auto-select scenario: trigger AUTO progression manually
         try:
             engine.dispatch(NavigationCommand.AUTO)
         except Exception:
             pass
 
-    # Resolve final state
     final_state = _STATE_REV.get(context.current_state, "unknown")
 
     return FlowTrace(
@@ -237,19 +211,17 @@ def capture_transition_trace(scenario: FlowScenario) -> FlowTrace:
 
 
 @pytest.mark.parametrize("scenario", FLOW_SCENARIOS, ids=lambda s: s.id)
-def test_new_transition_flow_matches_legacy_trace(scenario: FlowScenario):
-    legacy = capture_legacy_trace(scenario)
-    replacement = capture_transition_trace(scenario)
+def test_transition_flow_scenario(scenario: FlowScenario):
+    trace = capture_transition_trace(scenario)
 
-    assert replacement.state_id == scenario.expected_state, (
+    assert trace.state_id == scenario.expected_state, (
         f"[{scenario.id}] Expected state '{scenario.expected_state}', "
-        f"got '{replacement.state_id}'"
+        f"got '{trace.state_id}'"
     )
 
-    legacy_success = all(call.kind != "beep_failure" for call in legacy.output_calls)
-    repl_success = all(call.kind != "beep_failure" for call in replacement.output_calls)
+    success = all(call.kind != "beep_failure" for call in trace.output_calls)
 
-    assert repl_success == scenario.expected_success, (
+    assert success == scenario.expected_success, (
         f"[{scenario.id}] Expected success={scenario.expected_success}, "
-        f"got success={repl_success}"
+        f"got success={success}"
     )

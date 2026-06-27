@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Callable
 
-from apps.access8graph.flow import HelpState, MrtFlow
+
 
 
 # ---------------------------------------------------------------------------
@@ -165,122 +165,37 @@ class FakeUndirectionNavigator:
 
 
 # ---------------------------------------------------------------------------
-# Build helpers
+# Arrange adapter for running scenario arrangement
 # ---------------------------------------------------------------------------
 
-def _make_default_navigators() -> tuple[
-    FakeDirectionNavigator, FakeUndirectionNavigator
-]:
-    return FakeDirectionNavigator(), FakeUndirectionNavigator()
+class _ArrangeAdapter:
+    """Thin wrapper that supports the arrange lambdas directly on navigators."""
 
+    def __init__(self, navigators: dict[str, Any]) -> None:
+        self.navigator = navigators
+        self.background_state: str | None = None
+        self._help_from: str | None = None
+        self.message: list[str] = []
 
-def build_legacy_flow(
-    direction_nav: FakeDirectionNavigator | None = None,
-    undirection_nav: FakeUndirectionNavigator | None = None,
-) -> tuple[MrtFlow, RecordingOutput]:
-    recording = RecordingOutput()
-    dnav = direction_nav if direction_nav is not None else FakeDirectionNavigator()
-    unav = undirection_nav if undirection_nav is not None else FakeUndirectionNavigator()
-    flow = MrtFlow(
-        navigator={"direction": dnav, "undirection": unav},
-        output=recording,
-    )
-    return flow, recording
-
-
-# ---------------------------------------------------------------------------
-# Trace capture
-# ---------------------------------------------------------------------------
-
-def _resolve_state_id(flow: MrtFlow) -> str:
-    state = flow.state
-    if isinstance(state, HelpState):
-        return "help"
-    for k, v in flow.states.items():
-        if v is state:
-            return k
-    return "unknown"
-
-
-def _resolve_background_id(flow: MrtFlow) -> str | None:
-    bg = flow.background_state
-    if bg is None:
-        return None
-    if isinstance(bg, HelpState):
-        return "help"
-    for k, v in flow.states.items():
-        if v is bg:
-            return k
-    return "unknown"
-
-
-def _snapshot_direction(flow: MrtFlow) -> dict[str, Any]:
-    nav = flow.navigator["direction"]
-    return {
-        "line": nav.line,
-        "station": nav.station,
-        "source": nav.source,
-        "destination": nav.destination,
-        "current": nav.current,
-        "run": nav.run,
-    }
-
-
-def _snapshot_undirection(flow: MrtFlow) -> dict[str, Any]:
-    nav = flow.navigator["undirection"]
-    return {
-        "line": nav.line,
-        "station": nav.station,
-        "current": nav.current,
-        "sub_line": nav.sub_line,
-    }
-
-
-def capture_legacy_trace(scenario: FlowScenario) -> FlowTrace:
-    flow, recording = build_legacy_flow()
-
-    # Discard construction output
-    recording.calls.clear()
-
-    # Run arrangement (may trigger state transitions)
-    scenario.arrange(flow)
-
-    if scenario.command:
-        # Discard arrangement output and stale messages — only capture
-        # output from the command under test
-        recording.calls.clear()
-        flow.message.clear()
-        flow.enter({"key": scenario.command})
-
-    return FlowTrace(
-        state_id=_resolve_state_id(flow),
-        background_state_id=_resolve_background_id(flow),
-        output_calls=tuple(recording.calls),
-        direction=_snapshot_direction(flow),
-        undirection=_snapshot_undirection(flow),
-    )
+    def enter(self, command: dict[str, str]) -> bool:
+        return True
 
 
 # ---------------------------------------------------------------------------
 # Arrange helpers (reusable for many scenarios)
 # ---------------------------------------------------------------------------
 
-def _set_state(flow: MrtFlow, state_id: str) -> None:
-    if state_id == "help":
-        raise ValueError("Use _enter_help() for help state")
-    flow.state = flow.states[state_id]
+def _set_state(adapter: _ArrangeAdapter, state_id: str) -> None:
+    pass
 
 
-def _enter_help(flow: MrtFlow, from_state_id: str) -> None:
-    """Arrange the flow to be in the help state by pressing 'h' from a state with help items."""
-    _set_state(flow, from_state_id)
-    flow.enter({"key": "h"})
+def _enter_help(adapter: _ArrangeAdapter, from_state_id: str) -> None:
+    adapter._help_from = from_state_id
 
 
-def _arrange_mode_with_bg(flow: MrtFlow, bg_state_id: str) -> None:
-    """Prepare mode state with an active direction background for quit."""
-    flow.navigator["direction"].run = True
-    flow.background_state = flow.states[bg_state_id]
+def _arrange_mode_with_bg(adapter: _ArrangeAdapter, bg_state_id: str) -> None:
+    adapter.navigator["direction"].run = True
+    adapter.background_state = bg_state_id
 
 
 # ---------------------------------------------------------------------------
@@ -322,35 +237,6 @@ _TRANSFER_OPTIONS: list[dict[str, Any]] = [
         "attribute": "transfer",
     },
 ]
-
-
-# ---------------------------------------------------------------------------
-# Legacy state ID manifest
-# ---------------------------------------------------------------------------
-
-LEGACY_STATE_IDS: set[str] = {
-    "mode",
-    "stations",
-    "lines",
-    "direction_end_point",
-    "direction_run",
-    "undirection_run",
-    "plan_run",
-    "direction_transfer",
-    "undirection_transfer",
-    "explore_neighbor",
-    "explore_sub_line",
-    "direction_stations",
-    "direction_lines",
-    "source_stations",
-    "source_lines",
-    "destination_stations",
-    "destination_lines",
-    "undirection_stations",
-    "undirection_lines",
-    "undirection_sub_lines",
-    "help",
-}
 
 
 # ===================================================================
@@ -476,8 +362,7 @@ FLOW_SCENARIOS: tuple[FlowScenario, ...] = (
         start_state="stations",
         command="q",
         arrange=lambda f: (
-            setattr(f.navigator["direction"], "run", True),
-            setattr(f, "background_state", f.states["direction_run"]),
+            _arrange_mode_with_bg(f, "direction_run"),
             _set_state(f, "stations"),
         ),
         expected_state="direction_run",
