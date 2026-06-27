@@ -953,9 +953,6 @@ def test_nvda_remote_main_build_runtime_composes_app_service_and_gui(monkeypatch
             hotkey_capture,
             clipboard,
             capabilities,
-            on_speech_engine_changed,
-            on_voice_changed,
-            on_numeric_setting_changed,
             main_thread_dispatch,
             use_windows_native_key_payload,
         ):
@@ -964,15 +961,12 @@ def test_nvda_remote_main_build_runtime_composes_app_service_and_gui(monkeypatch
             self.hotkey_capture = hotkey_capture
             self.clipboard = clipboard
             self.capabilities = capabilities
-            self.on_speech_engine_changed = on_speech_engine_changed
-            self.on_voice_changed = on_voice_changed
-            self.on_numeric_setting_changed = on_numeric_setting_changed
             self.main_thread_dispatch = main_thread_dispatch
             self.use_windows_native_key_payload = use_windows_native_key_payload
             self.bind_calls = 0
 
-        def get_selected_speech_engine(self):
-            return self.capabilities.speech.get_selected_engine()
+        def notify_speech_engine_changed(self, engine_id):
+            pass
 
         def bind(self):
             self.bind_calls += 1
@@ -982,6 +976,7 @@ def test_nvda_remote_main_build_runtime_composes_app_service_and_gui(monkeypatch
 
         def __init__(self, controller, **kwargs):
             self.controller = controller
+            self.speech_controller = kwargs.get("speech_controller")
 
         def MainLoop(self):
             return 77
@@ -1049,16 +1044,14 @@ def test_nvda_remote_main_build_runtime_composes_app_service_and_gui(monkeypatch
     assert runtime.speaker.speech is runtime.speech
     assert runtime.app_service.capabilities.speech is runtime.speaker
     assert runtime.app_service.capabilities.tone is tone_output
-    assert callable(runtime.app_service.on_speech_engine_changed)
-    assert runtime.app_service.on_voice_changed == runtime.config_store.save_voice
-    assert runtime.app_service.on_numeric_setting_changed == runtime.config_store.save_numeric_setting
     assert runtime.app_service.main_thread_dispatch is FakeApp.dispatch
     assert runtime.app_service.bind_calls == 1
     assert runtime.input_service.capture is runtime.input_capture
     assert runtime.input_service.handler is runtime.app_service
     assert runtime.input_service.bind_calls == 1
     assert runtime.app.controller is runtime.app_service
-    assert runtime.app_service.get_selected_speech_engine() == runtime.speech.get_selected_engine()
+    assert runtime.app.speech_controller is not None
+    assert runtime.app.speech_controller.get_selected_speech_engine() == "Pyttsx3"
 
 
 def test_nvda_remote_main_build_runtime_reloads_saved_settings_when_engine_changes(
@@ -1110,11 +1103,20 @@ def test_nvda_remote_main_build_runtime_reloads_saved_settings_when_engine_chang
         def get_selected_engine(self):
             return self.selected_engine_id
 
+        def set_engine(self, engine_id):
+            self.selected_engine_id = engine_id
+
+        def get_engine_options(self):
+            return (("Pyttsx3", "Pyttsx3"), ("NvdaController", "Nvda Controller"))
+
         def list_voices(self):
             return (
                 ("voice-p", "Voice P"),
                 ("voice-n", "Voice N"),
             )
+
+        def get_voice(self):
+            return None
 
         def set_voice(self, voice_id):
             self.voice_calls.append((self.selected_engine_id, voice_id))
@@ -1125,11 +1127,20 @@ def test_nvda_remote_main_build_runtime_reloads_saved_settings_when_engine_chang
                 SpeechNumericSetting(id="pitch", label="Pitch"),
             )
 
+        def get_rate(self):
+            return None
+
         def set_rate(self, value):
             self.rate_calls.append((self.selected_engine_id, value))
 
+        def get_pitch(self):
+            return None
+
         def set_pitch(self, value):
             self.pitch_calls.append((self.selected_engine_id, value))
+
+        def get_volume(self):
+            return None
 
         def set_volume(self, value):
             self.volume_calls.append((self.selected_engine_id, value))
@@ -1148,6 +1159,9 @@ def test_nvda_remote_main_build_runtime_reloads_saved_settings_when_engine_chang
         def __init__(self, **kwargs):
             self.__dict__.update(kwargs)
 
+        def notify_speech_engine_changed(self, engine_id):
+            pass
+
         def bind(self):
             return None
 
@@ -1160,6 +1174,7 @@ def test_nvda_remote_main_build_runtime_reloads_saved_settings_when_engine_chang
 
         def __init__(self, controller, **kwargs):
             self.controller = controller
+            self.speech_controller = kwargs.get("speech_controller")
 
         def MainLoop(self):
             return 0
@@ -1200,8 +1215,7 @@ def test_nvda_remote_main_build_runtime_reloads_saved_settings_when_engine_chang
     assert speech.pitch_calls == []
     assert speech.volume_calls == []
 
-    speech.selected_engine_id = "NvdaController"
-    runtime.app_service.on_speech_engine_changed("NvdaController")
+    runtime.app.speech_controller.set_speech_engine("NvdaController")
 
     assert runtime.config_store.saved_engine_ids == ["NvdaController"]
     assert speech.voice_calls == [
@@ -2271,15 +2285,16 @@ def test_access8graph_main_build_runtime_injects_tone_output(monkeypatch):
         enter_usage = HID.F11
 
         def __init__(self, *, hotkey_capture, input_capture, capabilities,
-                     on_speech_engine_changed=None, on_voice_changed=None,
-                     on_numeric_setting_changed=None, main_thread_dispatch=None):
+                     main_thread_dispatch=None):
             self.hotkey_capture = hotkey_capture
             self.input_capture = input_capture
             self._capabilities = capabilities
-            self.on_speech_engine_changed = on_speech_engine_changed
             self.main_thread_dispatch = main_thread_dispatch
             self.attached_input_service = None
             self.bind_calls = 0
+
+        def notify_speech_engine_changed(self, engine_id):
+            pass
 
         def attach_input_service(self, input_service):
             self.attached_input_service = input_service
@@ -2292,6 +2307,7 @@ def test_access8graph_main_build_runtime_injects_tone_output(monkeypatch):
 
         def __init__(self, controller, **kwargs):
             self.controller = controller
+            self.speech_controller = kwargs.get("speech_controller")
 
     tone_output = FakeToneOutput()
     keyboard_capture = FakeKeyboardCapture()

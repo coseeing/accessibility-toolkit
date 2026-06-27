@@ -37,7 +37,6 @@ from apps.nvda_remote.events import (
     RemoteTransportDisconnected,
 )
 from apps.shared.mode_manager import ModeManager
-from apps.shared.speech_settings_controller import SpeechSettingsController
 
 
 class RemoteControlMode:
@@ -77,9 +76,6 @@ class NvdaRemoteAppService(KeyEventHandler):
         hotkey_capture: HotkeyCapture,
         clipboard: ClipboardService,
         capabilities: Capabilities,
-        on_speech_engine_changed: Callable[[str], None] | None = None,
-        on_voice_changed: Callable[[str, str], None] | None = None,
-        on_numeric_setting_changed: Callable[[str, str, int], None] | None = None,
         main_thread_dispatch: Callable[[Callable[[], None]], None] | None = None,
         use_windows_native_key_payload: bool = False,
     ) -> None:
@@ -88,7 +84,6 @@ class NvdaRemoteAppService(KeyEventHandler):
         self.hotkey_capture = hotkey_capture
         self.clipboard = clipboard
         self._capabilities = capabilities
-        self._on_speech_engine_changed = on_speech_engine_changed
         self.state = RuntimeState()
         self._status_listener: Callable[[NvdaRemoteEvent], None] | None = None
         self._main_thread_dispatch = main_thread_dispatch or (lambda callback: callback())
@@ -119,17 +114,6 @@ class NvdaRemoteAppService(KeyEventHandler):
             on_local_stop=self.stop_control,
             local_stop_usage=self._LOCAL_STOP_USAGE,
             use_windows_native_key_payload=use_windows_native_key_payload,
-        )
-
-        def _on_engine_changed_wrapper(engine_id: str) -> None:
-            if self._on_speech_engine_changed is not None:
-                self._on_speech_engine_changed(engine_id)
-
-        self._speech_settings = SpeechSettingsController(
-            speech=self._capabilities.speech,
-            on_engine_changed=_on_engine_changed_wrapper,
-            on_voice_changed=on_voice_changed,
-            on_numeric_setting_changed=on_numeric_setting_changed,
         )
 
         self._activation = InputActivationUseCase(
@@ -227,45 +211,8 @@ class NvdaRemoteAppService(KeyEventHandler):
     ) -> None:
         self._status_listener = listener
 
-    def get_speech_engine_options(self) -> tuple[tuple[str, str], ...]:
-        return self._speech_settings.get_engine_options()
-
-    def get_selected_speech_engine(self) -> str:
-        return self._speech_settings.get_selected_engine()
-
-    def set_speech_engine(self, engine_id: str) -> None:
-        self._speech_settings.set_engine(engine_id)
+    def notify_speech_engine_changed(self, engine_id: str) -> None:
         self._notify_status_listener(SpeechEngineChanged(engine_id))
-
-    def get_supported_numeric_settings(self):
-        return self._speech_settings.get_supported_numeric_settings()
-
-    def get_available_voices(self) -> tuple[tuple[str, str], ...]:
-        return self._speech_settings.list_voices()
-
-    def get_selected_voice(self) -> str | None:
-        return self._speech_settings.get_voice()
-
-    def set_selected_voice(self, voice_id: str) -> None:
-        self._speech_settings.set_voice(voice_id)
-
-    def get_rate(self) -> int | None:
-        return self._speech_settings.get_rate()
-
-    def set_rate(self, value: int) -> None:
-        self._speech_settings.set_rate(value)
-
-    def get_pitch(self) -> int | None:
-        return self._speech_settings.get_pitch()
-
-    def set_pitch(self, value: int) -> None:
-        self._speech_settings.set_pitch(value)
-
-    def get_volume(self) -> int | None:
-        return self._speech_settings.get_volume()
-
-    def set_volume(self, value: int) -> None:
-        self._speech_settings.set_volume(value)
 
     def shutdown(self) -> None:
         self.disconnect()

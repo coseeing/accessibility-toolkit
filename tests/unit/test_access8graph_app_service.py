@@ -124,7 +124,8 @@ def test_service_dispatches_status_updates_through_main_thread_callback() -> Non
     )
     service.set_status_listener(delivered.append)
 
-    service.set_speech_engine("default")
+    speech.set_engine("default")
+    service.notify_speech_engine_changed("default")
 
     assert delivered == []
     assert len(pending) == 1

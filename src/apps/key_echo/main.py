@@ -47,18 +47,20 @@ def build_runtime() -> KeyEchoRuntime:
         hotkey_capture=parts.hotkey_capture,
         input_capture=parts.input_capture,
         capabilities=parts.output.capabilities,
-        on_speech_engine_changed=on_speech_engine_changed,
-        on_voice_changed=config_store.save_voice,
-        on_numeric_setting_changed=config_store.save_numeric_setting,
         main_thread_dispatch=getattr(EchoApp, "dispatch", None),
     )
     input_service = KeyboardInputService(parts.input_capture, app_service)
     app_service.attach_input_service(input_service)
     app_service.bind()
     parts.hotkey_capture.start()
+
+    def _on_engine_changed(engine_id: str) -> None:
+        on_speech_engine_changed(engine_id)
+        app_service.notify_speech_engine_changed(engine_id)
+
     speech_settings = SpeechSettingsFacade(
         speech=parts.output.speech,
-        on_engine_changed=on_speech_engine_changed,
+        on_engine_changed=_on_engine_changed,
         on_voice_changed=config_store.save_voice,
         on_numeric_setting_changed=config_store.save_numeric_setting,
     )

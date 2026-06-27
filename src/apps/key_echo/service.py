@@ -1,5 +1,3 @@
-from collections.abc import Callable
-
 from application.events import AppEvent, ErrorRaised, SpeechEngineChanged
 from adapters.inputs.base import HotkeyCapture, InputCapture
 from adapters.inputs.captured_event import CapturedKeyEvent
@@ -19,7 +17,6 @@ from apps.key_echo.use_cases import (
 )
 from apps.key_echo.events import EchoStateChanged
 from apps.shared.mode_manager import ModeManager
-from apps.shared.speech_settings_controller import SpeechSettingsController
 
 
 class EchoKeysMode:
@@ -55,9 +52,6 @@ class KeyEchoAppService(KeyEventHandler):
         hotkey_capture: HotkeyCapture,
         input_capture: InputCapture,
         capabilities: Capabilities,
-        on_speech_engine_changed: Callable[[str], None] | None = None,
-        on_voice_changed: Callable[[str, str], None] | None = None,
-        on_numeric_setting_changed: Callable[[str, str, int], None] | None = None,
         main_thread_dispatch=None,
     ) -> None:
         self.hotkey_capture = hotkey_capture
@@ -73,12 +67,6 @@ class KeyEchoAppService(KeyEventHandler):
         self._echo_input = KeyEchoInputUseCase(
             cancel=lambda: self._capabilities.speech.cancel(),
             speak=lambda sequence: self._capabilities.speech.speak(sequence),
-        )
-        self._speech_settings = SpeechSettingsController(
-            speech=capabilities.speech,
-            on_engine_changed=on_speech_engine_changed,
-            on_voice_changed=on_voice_changed,
-            on_numeric_setting_changed=on_numeric_setting_changed,
         )
         self._activation = InputActivationUseCase(
             input_capture=input_capture,
@@ -132,45 +120,8 @@ class KeyEchoAppService(KeyEventHandler):
             return False
         return self._echo_control.is_running()
 
-    def get_speech_engine_options(self) -> tuple[tuple[str, str], ...]:
-        return self._speech_settings.get_engine_options()
-
-    def get_selected_speech_engine(self) -> str:
-        return self._speech_settings.get_selected_engine()
-
-    def set_speech_engine(self, engine_id: str) -> None:
-        self._speech_settings.set_engine(engine_id)
+    def notify_speech_engine_changed(self, engine_id: str) -> None:
         self._notify_status_listener(SpeechEngineChanged(engine_id))
-
-    def get_supported_numeric_settings(self):
-        return self._speech_settings.get_supported_numeric_settings()
-
-    def get_available_voices(self) -> tuple[tuple[str, str], ...]:
-        return self._speech_settings.list_voices()
-
-    def get_selected_voice(self) -> str | None:
-        return self._speech_settings.get_voice()
-
-    def set_selected_voice(self, voice_id: str) -> None:
-        self._speech_settings.set_voice(voice_id)
-
-    def get_rate(self) -> int | None:
-        return self._speech_settings.get_rate()
-
-    def set_rate(self, value: int) -> None:
-        self._speech_settings.set_rate(value)
-
-    def get_pitch(self) -> int | None:
-        return self._speech_settings.get_pitch()
-
-    def set_pitch(self, value: int) -> None:
-        self._speech_settings.set_pitch(value)
-
-    def get_volume(self) -> int | None:
-        return self._speech_settings.get_volume()
-
-    def set_volume(self, value: int) -> None:
-        self._speech_settings.set_volume(value)
 
     def shutdown(self) -> None:
         self.stop_echo()

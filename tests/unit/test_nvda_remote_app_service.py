@@ -585,7 +585,6 @@ def test_nvda_remote_service_stop_control_handles_hotkey_start_failure():
 
 def test_nvda_remote_service_dispatches_speech_engine_notifications():
     delivered = []
-    saved_engine_ids = []
     pending = []
 
     def deferred_dispatch(callback):
@@ -594,13 +593,13 @@ def test_nvda_remote_service_dispatches_speech_engine_notifications():
     service, _transport, _capture, _hotkey, dispatch_calls = build_service(
         dispatch=deferred_dispatch
     )
-    service._on_speech_engine_changed = saved_engine_ids.append
     service.set_status_listener(delivered.append)
 
-    service.set_speech_engine("pyttsx3")
-
+    service._capabilities.speech.set_engine("pyttsx3")
     assert service._capabilities.speech.engine_calls == ["pyttsx3"]
-    assert saved_engine_ids == ["pyttsx3"]
+
+    service.notify_speech_engine_changed("pyttsx3")
+
     assert delivered == []
     assert len(dispatch_calls) == 1
 

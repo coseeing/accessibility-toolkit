@@ -394,27 +394,6 @@ def test_key_echo_app_service_dispatches_typed_echo_state_notifications() -> Non
     ]
 
 
-def test_key_echo_app_service_exposes_speech_settings_api() -> None:
-    speech_output = FakeSpeechOutput()
-    service = KeyEchoAppService(
-        hotkey_capture=FakeHotkeyCapture(),
-        input_capture=FakeCapture(),
-        capabilities=Capabilities(speech=SpeechService.single_backend(speech_output)),
-    )
-
-    assert service.get_speech_engine_options() == (("default", "Default"),)
-    assert service.get_selected_speech_engine() == "default"
-    service.set_selected_voice("voice-2")
-    service.set_rate(120)
-    service.set_pitch(3)
-    service.set_volume(80)
-
-    assert service.get_selected_voice() == "voice-2"
-    assert service.get_rate() == 120
-    assert service.get_pitch() == 3
-    assert service.get_volume() == 80
-
-
 def test_key_echo_app_service_dispatches_typed_speech_engine_notification() -> None:
     speech_output = FakeSpeechOutput()
     delivered = []
@@ -425,7 +404,7 @@ def test_key_echo_app_service_dispatches_typed_speech_engine_notification() -> N
     )
     service.set_status_listener(delivered.append)
 
-    service.set_speech_engine("default")
+    service.notify_speech_engine_changed("default")
 
     assert delivered == [SpeechEngineChanged("default")]
 
