@@ -7,7 +7,7 @@ from application.input import (
     KeyboardPipelineResult,
     should_pass_through_system_toggle,
 )
-from application.keyboard import KeyEventHandler, KeyboardInputService
+from application.input import KeyEventHandler, KeyboardInputService
 from application.output import Capabilities
 from interop.key import HID
 

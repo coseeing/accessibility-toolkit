@@ -8,7 +8,7 @@ from application.input import (
     should_pass_through_system_toggle,
 )
 from application.input.results import AppKeyEventResult
-from application.keyboard import KeyEventHandler, KeyboardInputService
+from application.input import KeyEventHandler, KeyboardInputService
 from application.output import Capabilities
 from interop.key import HID
 from interop.speech.speech_sequence import SpeechSequence

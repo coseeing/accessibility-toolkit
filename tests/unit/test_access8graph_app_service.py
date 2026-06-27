@@ -5,7 +5,7 @@ import pytest
 from adapters.inputs.captured_event import CapturedKeyEvent
 from application.events import ErrorRaised, SpeechEngineChanged
 from application.input.results import AppKeyEventResult, KeyboardPipelineResult
-from application.keyboard import KeyboardInputService
+from application.input import KeyboardInputService
 from application.output import Capabilities
 from apps.access8graph.events import GraphNavigationChanged
 from apps.access8graph.service import Access8GraphAppService

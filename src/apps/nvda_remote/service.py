@@ -14,7 +14,7 @@ from application.input import (
     assemble_pipeline_result,
     should_pass_through_system_toggle,
 )
-from application.keyboard import KeyEventHandler
+from application.input import KeyEventHandler
 from application.output import Capabilities
 from application.output import ClipboardService
 from application.state import ConnectionState, ControlState, RuntimeState

@@ -3,7 +3,7 @@ import logging
 import os
 from adapters.inputs.base import HotkeyCapture, InputCapture
 from application.config import SpeechEngineConfigStore
-from application.keyboard import KeyboardInputService
+from application.input import KeyboardInputService
 from application.output import Scheduler
 from application.output import QueuedService
 from application.output import ClipboardService

@@ -5,7 +5,7 @@ from adapters.inputs.captured_event import CapturedKeyEvent
 from adapters.windows.native_key_context import WindowsNativeKeyContext
 from application.input.results import AppKeyEventResult, KeyboardPipelineResult
 from application.events import ErrorRaised, ModeChanged, SpeechEngineChanged
-from application.keyboard import KeyboardInputService
+from application.input import KeyboardInputService
 from application.output import Capabilities
 from application.output.speech import SpeechService
 from interop.key import HID, KeyEvent

@@ -1,6 +1,6 @@
 from adapters.inputs.base import KeyEventDecision
 from adapters.inputs.captured_event import CapturedKeyEvent
-from application.keyboard import KeyboardInputService
+from application.input import KeyboardInputService
 from interop.key import HID, KeyEvent
 
 
