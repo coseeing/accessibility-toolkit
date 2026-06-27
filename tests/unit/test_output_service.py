@@ -158,7 +158,7 @@ def test_application_output_speech_exports_engine_types() -> None:
         ScheduledFuture,
         Scheduler,
     )
-    from application.output.manager import ClipboardService
+    from application.output import ClipboardService
     from application.output.speech import (
         SpeechEngineManager,
         SpeechEngineOption,
@@ -178,6 +178,12 @@ def test_application_output_speech_exports_engine_types() -> None:
     assert SpeechEngineOption is not None
     assert SpeechService is not None
     assert SpeechServiceProtocol is not None
+
+
+def test_application_output_exports_clipboard_service_protocol():
+    from application.output import ClipboardService
+
+    assert ClipboardService is not None
 
 
 def test_queued_output_service_switches_engine_via_speech_service() -> None:

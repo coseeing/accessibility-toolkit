@@ -1,5 +1,6 @@
 from application.output.capabilities import Capabilities
-from application.output.manager import ClipboardService, Manager
+from application.output.clipboard import ClipboardService
+from application.output.manager import Manager
 from application.output.scheduler import (
     CancellationToken,
     EventCallbacks,
