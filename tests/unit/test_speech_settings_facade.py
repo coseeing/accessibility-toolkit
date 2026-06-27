@@ -1,4 +1,4 @@
-from apps.shared.speech_settings_controller import SpeechSettingsController
+from apps.shared.speech_settings_facade import SpeechSettingsFacade
 
 
 class FakeSpeech:
@@ -51,40 +51,40 @@ class FakeSpeech:
         return ("rate", "pitch", "volume")
 
 
-def test_speech_settings_controller_proxies_engine_and_voice_settings():
+def test_speech_settings_facade_proxies_engine_and_voice_settings():
     speech = FakeSpeech()
-    controller = SpeechSettingsController(speech=speech)
+    facade = SpeechSettingsFacade(speech=speech)
 
-    controller.set_speech_engine("alt")
-    controller.set_selected_voice("voice-2")
-    controller.set_rate(60)
-    controller.set_pitch(55)
-    controller.set_volume(80)
+    facade.set_speech_engine("alt")
+    facade.set_selected_voice("voice-2")
+    facade.set_rate(60)
+    facade.set_pitch(55)
+    facade.set_volume(80)
 
-    assert controller.get_selected_speech_engine() == "alt"
-    assert controller.get_selected_voice() == "voice-2"
-    assert controller.get_rate() == 60
-    assert controller.get_pitch() == 55
-    assert controller.get_volume() == 80
+    assert facade.get_selected_speech_engine() == "alt"
+    assert facade.get_selected_voice() == "voice-2"
+    assert facade.get_rate() == 60
+    assert facade.get_pitch() == 55
+    assert facade.get_volume() == 80
 
 
-def test_speech_settings_controller_calls_engine_changed_callback():
+def test_speech_settings_facade_calls_engine_changed_callback():
     seen = []
     speech = FakeSpeech()
-    controller = SpeechSettingsController(
+    facade = SpeechSettingsFacade(
         speech=speech,
         on_engine_changed=seen.append,
     )
 
-    controller.set_speech_engine("alt")
+    facade.set_speech_engine("alt")
 
     assert seen == ["alt"]
 
 
-def test_speech_settings_controller_calls_voice_and_numeric_callbacks():
+def test_speech_settings_facade_calls_voice_and_numeric_callbacks():
     calls = []
     speech = FakeSpeech()
-    controller = SpeechSettingsController(
+    facade = SpeechSettingsFacade(
         speech=speech,
         on_voice_changed=lambda engine_id, voice_id: calls.append(
             ("voice", engine_id, voice_id)
@@ -94,11 +94,11 @@ def test_speech_settings_controller_calls_voice_and_numeric_callbacks():
         ),
     )
 
-    controller.set_speech_engine("alt")
-    controller.set_selected_voice("voice-2")
-    controller.set_rate(60)
-    controller.set_pitch(55)
-    controller.set_volume(80)
+    facade.set_speech_engine("alt")
+    facade.set_selected_voice("voice-2")
+    facade.set_rate(60)
+    facade.set_pitch(55)
+    facade.set_volume(80)
 
     assert calls == [
         ("voice", "alt", "voice-2"),
@@ -108,8 +108,8 @@ def test_speech_settings_controller_calls_voice_and_numeric_callbacks():
     ]
 
 
-def test_speech_settings_controller_proxies_supported_numeric_settings():
+def test_speech_settings_facade_proxies_supported_numeric_settings():
     speech = FakeSpeech()
-    controller = SpeechSettingsController(speech=speech)
+    facade = SpeechSettingsFacade(speech=speech)
 
-    assert controller.get_supported_numeric_settings() == ("rate", "pitch", "volume")
+    assert facade.get_supported_numeric_settings() == ("rate", "pitch", "volume")
