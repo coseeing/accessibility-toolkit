@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from application.config import SpeechEngineConfigStore
 from application.output.speech import SpeechService
+from application.output.speech.settings_store import SpeechSettingsStore
 
 
 class SpeechRuntimeSettingsCoordinator:
-    def __init__(self, *, config_store: SpeechEngineConfigStore) -> None:
+    def __init__(self, *, config_store: SpeechSettingsStore) -> None:
         self._config_store = config_store
 
     def selected_engine_id(self, *, default_engine_id: str) -> str:

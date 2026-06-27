@@ -983,7 +983,7 @@ def test_nvda_remote_main_build_runtime_composes_app_service_and_gui(monkeypatch
 
     monkeypatch.setitem(
         nvda_remote_main.build_runtime.__globals__,
-        "SpeechEngineConfigStore",
+        "JsonSpeechSettingsStore",
         FakeConfigStore,
     )
     monkeypatch.setattr(nvda_remote_main, "RelayTransport", FakeTransport)
@@ -1198,7 +1198,7 @@ def test_nvda_remote_main_build_runtime_reloads_saved_settings_when_engine_chang
 
     monkeypatch.setitem(
         nvda_remote_main.build_runtime.__globals__,
-        "SpeechEngineConfigStore",
+        "JsonSpeechSettingsStore",
         FakeConfigStore,
     )
     monkeypatch.setattr(nvda_remote_main, "RelayTransport", FakeTransport)
@@ -1334,7 +1334,7 @@ def test_nvda_remote_build_runtime_uses_mode_enter_hotkey_as_single_source_of_tr
 
     monkeypatch.setitem(
         nvda_remote_main.build_runtime.__globals__,
-        "SpeechEngineConfigStore",
+        "JsonSpeechSettingsStore",
         FakeConfigStore,
     )
     monkeypatch.setattr(nvda_remote_main, "RelayTransport", FakeTransport)
@@ -1490,7 +1490,7 @@ def test_build_runtime_uses_macos_input_and_hotkey_on_darwin(monkeypatch):
 
     monkeypatch.setitem(
         nvda_remote_main.build_runtime.__globals__,
-        "SpeechEngineConfigStore",
+        "JsonSpeechSettingsStore",
         FakeConfigStore,
     )
     monkeypatch.setattr(nvda_remote_main, "RelayTransport", FakeTransport)
@@ -1635,7 +1635,7 @@ def test_build_runtime_uses_safe_clipboard_on_darwin(monkeypatch):
 
     monkeypatch.setitem(
         nvda_remote_main.build_runtime.__globals__,
-        "SpeechEngineConfigStore",
+        "JsonSpeechSettingsStore",
         FakeConfigStore,
     )
     monkeypatch.setattr(nvda_remote_main, "RelayTransport", FakeTransport)
@@ -1787,7 +1787,7 @@ def test_nvda_remote_main_build_runtime_falls_back_for_unknown_engine(monkeypatc
 
     monkeypatch.setitem(
         nvda_remote_main.build_runtime.__globals__,
-        "SpeechEngineConfigStore",
+        "JsonSpeechSettingsStore",
         FakeConfigStore,
     )
     monkeypatch.setattr(nvda_remote_main, "RelayTransport", FakeTransport)
@@ -1948,7 +1948,7 @@ def test_nvda_remote_main_build_runtime_enables_windows_native_payload_from_env(
 
     monkeypatch.setitem(
         nvda_remote_main.build_runtime.__globals__,
-        "SpeechEngineConfigStore",
+        "JsonSpeechSettingsStore",
         FakeConfigStore,
     )
     monkeypatch.setattr(nvda_remote_main, "RelayTransport", FakeTransport)
@@ -2338,7 +2338,7 @@ def test_access8graph_main_build_runtime_injects_tone_output(monkeypatch):
             ),
         )
 
-    monkeypatch.setattr(access8graph_main, "SpeechEngineConfigStore", FakeConfigStore)
+    monkeypatch.setattr(access8graph_main, "JsonSpeechSettingsStore", FakeConfigStore)
     monkeypatch.setattr(access8graph_main, "KeyboardInputService", FakeKeyboardInputService)
     monkeypatch.setattr(access8graph_main, "Access8GraphAppService", FakeAppService)
     monkeypatch.setattr(

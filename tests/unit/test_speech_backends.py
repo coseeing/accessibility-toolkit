@@ -5,7 +5,7 @@ import time
 import pytest
 
 from adapters.outputs.drivers.pyttsx3 import Pyttsx3SpeechOutput
-from application.config import SpeechEngineConfigStore
+from adapters.config.json_speech_settings import JsonSpeechSettingsStore
 from application.output.speech import (
     SpeechEngineManager,
     SpeechEngineOption,
@@ -1181,7 +1181,7 @@ def test_pyttsx3_driver_execution_strategy_is_explicit_per_driver():
 
 def test_speech_engine_config_store_loads_and_saves_engine_id(tmp_path):
     config_path = tmp_path / "client-config.json"
-    store = SpeechEngineConfigStore(config_path)
+    store = JsonSpeechSettingsStore(config_path)
 
     assert store.load_engine_id(default_engine_id="NvdaController") == "NvdaController"
 
@@ -1195,7 +1195,7 @@ def test_speech_engine_config_store_loads_and_saves_engine_id(tmp_path):
 
 def test_speech_engine_config_store_persists_settings_per_engine(tmp_path):
     config_path = tmp_path / "client-config.json"
-    store = SpeechEngineConfigStore(config_path)
+    store = JsonSpeechSettingsStore(config_path)
 
     store.save_voice("NvdaController", "voice-a")
     store.save_numeric_setting("NvdaController", "rate", 120)
@@ -1224,7 +1224,7 @@ def test_speech_engine_config_store_ignores_bool_numeric_settings(tmp_path):
         json.dumps({"speech_engines": {"Pyttsx3": {"rate": True, "pitch": False}}}),
         encoding="utf-8",
     )
-    store = SpeechEngineConfigStore(config_path)
+    store = JsonSpeechSettingsStore(config_path)
 
     assert store.load_numeric_setting("Pyttsx3", "rate") is None
     assert store.load_numeric_setting("Pyttsx3", "pitch") is None

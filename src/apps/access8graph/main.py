@@ -3,7 +3,7 @@ import logging
 from typing import Any
 
 from adapters.inputs.base import HotkeyCapture, InputCapture
-from application.config import SpeechEngineConfigStore
+from adapters.config.json_speech_settings import JsonSpeechSettingsStore
 from application.input import KeyboardInputService
 from application.output import Scheduler
 from application.output import QueuedService
@@ -18,7 +18,7 @@ from bootstrap.runtime import configure_logging, default_config_path
 
 @dataclass(frozen=True)
 class Access8GraphRuntime:
-    config_store: SpeechEngineConfigStore
+    config_store: JsonSpeechSettingsStore
     input_capture: InputCapture
     hotkey_capture: HotkeyCapture
     tone_output: object
@@ -33,7 +33,7 @@ class Access8GraphRuntime:
 def build_runtime() -> Access8GraphRuntime:
     from ui.access8graph.app import Access8GraphApp
 
-    config_store = SpeechEngineConfigStore(default_config_path())
+    config_store = JsonSpeechSettingsStore(default_config_path())
     coordinator = SpeechRuntimeSettingsCoordinator(config_store=config_store)
     provider = PlatformProvider()
     default_engine_id = provider.default_speech_engine_id()

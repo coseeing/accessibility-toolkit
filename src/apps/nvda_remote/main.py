@@ -2,7 +2,7 @@ from dataclasses import dataclass
 import logging
 import os
 from adapters.inputs.base import HotkeyCapture, InputCapture
-from application.config import SpeechEngineConfigStore
+from adapters.config.json_speech_settings import JsonSpeechSettingsStore
 from application.input import KeyboardInputService
 from application.output import Scheduler
 from application.output import QueuedService
@@ -21,7 +21,7 @@ from ui.nvda_remote.app import NvdaRemoteApp
 
 @dataclass(frozen=True)
 class NvdaRemoteRuntime:
-    config_store: SpeechEngineConfigStore
+    config_store: JsonSpeechSettingsStore
     transport: RelayTransport
     input_capture: InputCapture
     hotkey_capture: HotkeyCapture
@@ -45,7 +45,7 @@ def _use_windows_native_key_payload() -> bool:
 
 
 def build_runtime() -> NvdaRemoteRuntime:
-    config_store = SpeechEngineConfigStore(default_config_path())
+    config_store = JsonSpeechSettingsStore(default_config_path())
     coordinator = SpeechRuntimeSettingsCoordinator(config_store=config_store)
     provider = PlatformProvider()
     default_engine_id = provider.default_speech_engine_id()

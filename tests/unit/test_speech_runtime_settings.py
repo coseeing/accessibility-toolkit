@@ -1,4 +1,4 @@
-from application.config import SpeechEngineConfigStore
+from adapters.config.json_speech_settings import JsonSpeechSettingsStore
 from apps.shared.speech_runtime_settings import SpeechRuntimeSettingsCoordinator
 
 
@@ -40,7 +40,7 @@ class FakeSetting:
 
 
 def test_coordinator_applies_saved_voice_and_supported_numeric_settings(tmp_path):
-    store = SpeechEngineConfigStore(tmp_path / "speech.json")
+    store = JsonSpeechSettingsStore(tmp_path / "speech.json")
     store.save_voice("engine-a", "voice-a")
     store.save_numeric_setting("engine-a", "rate", 70)
     store.save_numeric_setting("engine-a", "pitch", 20)
@@ -58,7 +58,7 @@ def test_coordinator_applies_saved_voice_and_supported_numeric_settings(tmp_path
 
 
 def test_coordinator_builds_engine_change_callback_that_persists_and_reapplies(tmp_path):
-    store = SpeechEngineConfigStore(tmp_path / "speech.json")
+    store = JsonSpeechSettingsStore(tmp_path / "speech.json")
     store.save_voice("engine-b", "voice-b")
     speech = FakeSpeech()
     speech.voices = (("voice-b", "Voice B"),)

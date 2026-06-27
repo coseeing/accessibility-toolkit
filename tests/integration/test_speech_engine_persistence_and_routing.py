@@ -3,7 +3,7 @@ from typing import Callable
 
 import pytest
 
-from application.config import SpeechEngineConfigStore
+from adapters.config.json_speech_settings import JsonSpeechSettingsStore
 from application.output.speech import SpeechEngineOption, SpeechService, SpeechNumericSetting
 from interop.speech.speech_sequence import SpeechSequence
 
@@ -89,7 +89,7 @@ def _build_engines() -> tuple[dict[str, RecordingSpeechOutput], tuple[SpeechEngi
 
 def _apply_saved_settings(
     speech: SpeechService,
-    store: SpeechEngineConfigStore,
+    store: JsonSpeechSettingsStore,
     engine_id: str,
 ) -> None:
     """Mirror apps/nvda_remote/main._apply_saved_speech_settings."""
@@ -110,7 +110,7 @@ def _apply_saved_settings(
 def test_persisted_engine_and_normalized_values_are_restored_on_restart(tmp_path):
     outputs, options = _build_engines()
     config_path = tmp_path / "client-config.json"
-    store = SpeechEngineConfigStore(config_path)
+    store = JsonSpeechSettingsStore(config_path)
     store.save_engine_id("Pyttsx3")
     store.save_voice("Pyttsx3", "voice-1")
     store.save_numeric_setting("Pyttsx3", "rate", 73)
@@ -136,7 +136,7 @@ def test_persisted_engine_and_normalized_values_are_restored_on_restart(tmp_path
 
 def test_per_engine_settings_are_applied_independently_after_switch(tmp_path):
     outputs, options = _build_engines()
-    store = SpeechEngineConfigStore(tmp_path / "client-config.json")
+    store = JsonSpeechSettingsStore(tmp_path / "client-config.json")
     store.save_numeric_setting("Pyttsx3", "rate", 73)
     store.save_numeric_setting("Pyttsx3", "volume", 88)
     store.save_numeric_setting("NvdaController", "rate", 30)

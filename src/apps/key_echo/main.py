@@ -3,7 +3,7 @@ import logging
 from typing import Any
 
 from adapters.inputs.base import HotkeyCapture, InputCapture
-from application.config import SpeechEngineConfigStore
+from adapters.config.json_speech_settings import JsonSpeechSettingsStore
 from application.input import KeyboardInputService
 from application.output import Scheduler
 from application.output import QueuedService
@@ -17,7 +17,7 @@ from bootstrap.runtime import configure_logging, default_config_path
 
 @dataclass(frozen=True)
 class KeyEchoRuntime:
-    config_store: SpeechEngineConfigStore
+    config_store: JsonSpeechSettingsStore
     input_capture: InputCapture
     hotkey_capture: HotkeyCapture
     scheduler: Scheduler
@@ -31,7 +31,7 @@ class KeyEchoRuntime:
 def build_runtime() -> KeyEchoRuntime:
     from ui.echo.app import EchoApp
 
-    config_store = SpeechEngineConfigStore(default_config_path())
+    config_store = JsonSpeechSettingsStore(default_config_path())
     coordinator = SpeechRuntimeSettingsCoordinator(config_store=config_store)
     parts = build_app_runtime_parts(
         hotkey_usage=KeyEchoAppService.enter_usage,

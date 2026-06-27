@@ -4,7 +4,7 @@ from pathlib import Path
 from application.output.speech.settings import clamp_percent
 
 
-class SpeechEngineConfigStore:
+class JsonSpeechSettingsStore:
     def __init__(self, path: Path) -> None:
         self.path = path
 
