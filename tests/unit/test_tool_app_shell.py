@@ -163,6 +163,47 @@ def test_tool_app_shell_menu_triggers_show_main(monkeypatch):
     assert main_frame.raised == 2
 
 
+def test_tool_app_shell_passes_separate_speech_controller_to_speech_frame(monkeypatch):
+    install_fake_wx(monkeypatch)
+    from apps.shared.tool_app_shell import ToolAppShell
+
+    shown = []
+    main_controller = object()
+    speech_controller = object()
+    received = {}
+
+    class FakePanelController:
+        def register(self, name, frame):
+            received[name] = frame
+
+        def show(self, name):
+            shown.append(name)
+
+    class FakeTrayIcon:
+        def __init__(self, **kwargs):
+            received["tray_kwargs"] = kwargs
+
+        def Destroy(self):
+            received["destroyed"] = True
+
+    monkeypatch.setattr("apps.shared.tool_app_shell.PanelController", FakePanelController)
+    monkeypatch.setattr("apps.shared.tool_app_shell.ToolTrayIcon", FakeTrayIcon)
+
+    shell = ToolAppShell(
+        controller=main_controller,
+        speech_controller=speech_controller,
+        main_frame_factory=lambda ctrl: ("main", ctrl),
+        speech_frame_factory=lambda ctrl: ("speech", ctrl),
+        app_name="Test",
+    )
+
+    shell.initialize()
+
+    assert received["main"] == ("main", main_controller)
+    assert received["speech"] == ("speech", speech_controller)
+    assert shown == ["main"]
+
+
 def test_tool_app_shell_shutdown_destroys_tray_and_calls_controller(monkeypatch):
     install_fake_wx(monkeypatch)
     from apps.shared.tool_app_shell import ToolAppShell

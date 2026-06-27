@@ -514,7 +514,7 @@ def test_build_runtime_composes_local_keyboard_and_speech(monkeypatch) -> None:
         pass
 
     class FakeApp:
-        def __init__(self, controller) -> None:
+        def __init__(self, controller, **kwargs) -> None:
             self.controller = controller
             app_calls.append(controller)
 
@@ -615,7 +615,7 @@ def test_build_runtime_macos_path_composes_capture(monkeypatch) -> None:
             self.speech = speech
 
     class FakeApp:
-        def __init__(self, controller):
+        def __init__(self, controller, **kwargs):
             self.controller = controller
 
     capture = MacOSFakeCapture(
@@ -852,7 +852,7 @@ def test_build_runtime_starts_with_hotkey_running_and_keyboard_stopped(monkeypat
 
     import sys as _sys
     fake_echo_app_module = types.ModuleType("ui.echo.app")
-    fake_echo_app_module.EchoApp = lambda controller: None
+    fake_echo_app_module.EchoApp = lambda controller, **kwargs: None
     monkeypatch.setitem(_sys.modules, "ui.echo.app", fake_echo_app_module)
 
     runtime = main_module.build_runtime()
@@ -881,7 +881,7 @@ def test_build_runtime_uses_echo_mode_enter_hotkey_as_single_source_of_truth(mon
 
     import sys as _sys
     fake_echo_app_module = types.ModuleType("ui.echo.app")
-    fake_echo_app_module.EchoApp = lambda controller: None
+    fake_echo_app_module.EchoApp = lambda controller, **kwargs: None
     monkeypatch.setitem(_sys.modules, "ui.echo.app", fake_echo_app_module)
 
     try:
@@ -908,7 +908,7 @@ def test_build_runtime_shutdown_stops_both_captures(monkeypatch) -> None:
 
     import sys as _sys
     fake_echo_app_module = types.ModuleType("ui.echo.app")
-    fake_echo_app_module.EchoApp = lambda controller: None
+    fake_echo_app_module.EchoApp = lambda controller, **kwargs: None
     monkeypatch.setitem(_sys.modules, "ui.echo.app", fake_echo_app_module)
 
     runtime = main_module.build_runtime()

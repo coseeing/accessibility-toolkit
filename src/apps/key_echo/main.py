@@ -10,6 +10,7 @@ from application.output import QueuedService
 from application.output.speech import SpeechService
 from apps.key_echo.service import KeyEchoAppService
 from apps.shared.speech_runtime_settings import SpeechRuntimeSettingsCoordinator
+from apps.shared.speech_settings_facade import SpeechSettingsFacade
 from bootstrap.app_runtime import build_app_runtime_parts
 from bootstrap.runtime import configure_logging, default_config_path
 
@@ -55,7 +56,16 @@ def build_runtime() -> KeyEchoRuntime:
     app_service.attach_input_service(input_service)
     app_service.bind()
     parts.hotkey_capture.start()
-    app = EchoApp(controller=app_service)
+    speech_settings = SpeechSettingsFacade(
+        speech=parts.output.speech,
+        on_engine_changed=on_speech_engine_changed,
+        on_voice_changed=config_store.save_voice,
+        on_numeric_setting_changed=config_store.save_numeric_setting,
+    )
+    app = EchoApp(
+        controller=app_service,
+        speech_controller=speech_settings,
+    )
     return KeyEchoRuntime(
         config_store=config_store,
         input_capture=parts.input_capture,

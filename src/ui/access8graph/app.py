@@ -8,13 +8,15 @@ from ui.shared.speech_settings_frame import SpeechSettingsFrame
 class Access8GraphApp(wx.App):
     dispatch = staticmethod(wx.CallAfter)
 
-    def __init__(self, controller):
+    def __init__(self, controller, speech_controller=None):
         self.controller = controller
+        self.speech_controller = speech_controller if speech_controller is not None else controller
         super().__init__(False)
 
     def OnInit(self):
         self.shell = ToolAppShell(
             controller=self.controller,
+            speech_controller=self.speech_controller,
             main_frame_factory=lambda ctrl: Access8GraphMainFrame(controller=ctrl),
             speech_frame_factory=lambda ctrl: SpeechSettingsFrame(controller=ctrl),
             app_name="Access8Graph",

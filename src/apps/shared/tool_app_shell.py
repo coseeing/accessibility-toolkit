@@ -5,8 +5,17 @@ from apps.shared.tray_icon import ToolTrayIcon
 
 
 class ToolAppShell:
-    def __init__(self, *, controller, main_frame_factory, speech_frame_factory, app_name="NVDA Remote"):
+    def __init__(
+        self,
+        *,
+        controller,
+        main_frame_factory,
+        speech_frame_factory,
+        speech_controller=None,
+        app_name="NVDA Remote",
+    ):
         self.controller = controller
+        self.speech_controller = speech_controller if speech_controller is not None else controller
         self.main_frame_factory = main_frame_factory
         self.speech_frame_factory = speech_frame_factory
         self.app_name = app_name
@@ -17,7 +26,7 @@ class ToolAppShell:
         if self.tray_icon is not None:
             return
         main_frame = self.main_frame_factory(self.controller)
-        speech_frame = self.speech_frame_factory(self.controller)
+        speech_frame = self.speech_frame_factory(self.speech_controller)
         self.panel_controller.register("main", main_frame)
         self.panel_controller.register("speech", speech_frame)
         self.tray_icon = ToolTrayIcon(
