@@ -1,13 +1,13 @@
 from collections.abc import Callable
 
-from application.output import SpeechServiceProtocol
+from application.output import SpeechSettingsPort
 
 
 class SpeechSettingsFacade:
     def __init__(
         self,
         *,
-        speech: SpeechServiceProtocol,
+        speech: SpeechSettingsPort,
         on_engine_changed: Callable[[str], None] | None = None,
         on_voice_changed: Callable[[str, str], None] | None = None,
         on_numeric_setting_changed: Callable[[str, str, int], None] | None = None,

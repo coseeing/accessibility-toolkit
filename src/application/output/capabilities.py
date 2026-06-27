@@ -1,11 +1,11 @@
 from dataclasses import dataclass
 
 from adapters.outputs.interfaces import BrailleOutput, ToneOutput
-from application.output.service import SpeechServiceProtocol
+from application.output.ports import SpeechServicePort
 
 
 @dataclass(frozen=True)
 class Capabilities:
-    speech: SpeechServiceProtocol
+    speech: SpeechServicePort
     tone: ToneOutput | None = None
     braille: BrailleOutput | None = None

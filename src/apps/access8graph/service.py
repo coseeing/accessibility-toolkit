@@ -75,7 +75,9 @@ class Access8GraphAppService(KeyEventHandler):
         self._hotkey_start_in_progress = False
         self._hotkey_start_reported_error = False
 
-        self._flow_output = Access8GraphFlowOutput(capabilities=capabilities)
+        self._flow_output = Access8GraphFlowOutput(
+            speech=capabilities.speech, tone=capabilities.tone
+        )
         self._graph_selection = GraphSelectionUseCase()
         self._navigation = Access8GraphNavigationSession(
             graph_selection=self._graph_selection,

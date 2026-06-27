@@ -163,7 +163,12 @@ def test_application_output_speech_exports_engine_types() -> None:
         SpeechEngineOption,
         SpeechService,
     )
-    from application.output import SpeechServiceProtocol
+    from application.output import (
+        SpeechLifecyclePort,
+        SpeechOutputPort,
+        SpeechServicePort,
+        SpeechSettingsPort,
+    )
 
     assert Capabilities is not None
     assert EventCallbacks is not None
@@ -175,7 +180,10 @@ def test_application_output_speech_exports_engine_types() -> None:
     assert SpeechEngineManager is not None
     assert SpeechEngineOption is not None
     assert SpeechService is not None
-    assert SpeechServiceProtocol is not None
+    assert SpeechOutputPort is not None
+    assert SpeechSettingsPort is not None
+    assert SpeechLifecyclePort is not None
+    assert SpeechServicePort is not None
 
 
 def test_application_output_exports_clipboard_service_protocol():
