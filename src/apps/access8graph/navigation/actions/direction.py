@@ -9,6 +9,7 @@ from apps.access8graph.navigation.model import (
 )
 
 from apps.access8graph.navigation.actions.common import (
+    _build_run_view,
     _get_list_vm,
     _move_up,
     _move_down,
@@ -87,6 +88,7 @@ def _build_direction_run_actions(direction_nav):
         pointer = direction_nav.reverse
         if len(pointer) == 1:
             direction_nav.source = direction_nav.current = pointer[0]
+            context.view_model = _build_run_view(direction_nav)
             return ActionResult.accepted_with()
         if len(pointer) > 1:
             return ActionResult.accepted_with()
@@ -96,9 +98,11 @@ def _build_direction_run_actions(direction_nav):
         pointer = direction_nav.forward
         if len(pointer) == 1:
             direction_nav.current = pointer[0]
+            context.view_model = _build_run_view(direction_nav)
             return ActionResult.accepted_with()
         if len(pointer) > 1:
             direction_nav.current = pointer[0]
+            context.view_model = _build_run_view(direction_nav)
             return ActionResult.accepted_with()
         return ActionResult.rejected()
 

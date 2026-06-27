@@ -7,6 +7,7 @@ from apps.access8graph.navigation.model import (
 )
 
 from apps.access8graph.navigation.actions.common import (
+    _build_plan_run_view,
     A_PLAN_LEFT,
     A_PLAN_RIGHT,
 )
@@ -17,6 +18,7 @@ def _build_plan_run_actions(direction_nav):
         pointer = getattr(direction_nav, "previous", None)
         if pointer:
             direction_nav.current = pointer
+            context.view_model = _build_plan_run_view(direction_nav)
             return ActionResult.accepted_with()
         return ActionResult.rejected()
 
@@ -24,6 +26,7 @@ def _build_plan_run_actions(direction_nav):
         pointer = getattr(direction_nav, "next", None)
         if pointer:
             direction_nav.current = pointer
+            context.view_model = _build_plan_run_view(direction_nav)
             return ActionResult.accepted_with()
         return ActionResult.rejected()
 

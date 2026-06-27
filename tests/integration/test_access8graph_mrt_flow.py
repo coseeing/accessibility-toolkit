@@ -127,3 +127,23 @@ def test_access8graph_transition_flow_confirm_direction_moves_to_lines() -> None
     assert output.calls[0] == ("cancel", None)
     assert output.calls[1][0] == "speak"
     assert "切換至路線列表，請使用上下鍵選擇路線" in output.calls[1][1]
+
+
+def test_undirected_station_navigation_speaks_station_after_moving_right() -> None:
+    output = FakeOutput()
+    flow = _build_transition_flow(FIXTURE, output)
+
+    flow.enter(NavigationCommand.DOWN)
+    flow.enter(NavigationCommand.CONFIRM)
+    flow.enter(NavigationCommand.CONFIRM)
+    flow.enter(NavigationCommand.CONFIRM)
+    flow.enter(NavigationCommand.CONFIRM)
+    output.calls.clear()
+
+    result = flow.enter(NavigationCommand.RIGHT)
+
+    assert result.outcome == TransitionOutcome.HANDLED
+    assert output.calls == [
+        ("cancel", None),
+        ("speak", ("台北小巨蛋",)),
+    ]

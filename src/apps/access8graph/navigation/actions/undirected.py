@@ -9,6 +9,7 @@ from apps.access8graph.navigation.model import (
 )
 
 from apps.access8graph.navigation.actions.common import (
+    _build_undirection_run_view,
     _get_list_vm,
     _move_up,
     _move_down,
@@ -33,6 +34,7 @@ def _build_undirection_run_actions(undirection_nav):
         pointer = undirection_nav.previous
         if pointer:
             undirection_nav.current = pointer
+            context.view_model = _build_undirection_run_view(undirection_nav)
             return ActionResult.accepted_with()
         return ActionResult.rejected()
 
@@ -40,6 +42,7 @@ def _build_undirection_run_actions(undirection_nav):
         pointer = undirection_nav.next
         if pointer:
             undirection_nav.current = pointer
+            context.view_model = _build_undirection_run_view(undirection_nav)
             return ActionResult.accepted_with()
         return ActionResult.rejected()
 
