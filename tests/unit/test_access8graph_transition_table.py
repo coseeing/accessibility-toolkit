@@ -159,6 +159,128 @@ def test_validator_rejects_static_auto_cycle():
         )
 
 
+# ---------------------------------------------------------------------------
+# Helper builders for parameterized negative validation tests
+# ---------------------------------------------------------------------------
+
+
+def _build_duplicate_rules():
+    return (
+        rule(NavigationStateId.MODE, NavigationCommand.DOWN, NavigationStateId.MODE),
+        rule(NavigationStateId.MODE, NavigationCommand.DOWN, NavigationStateId.MODE),
+    )
+
+
+def _build_mixed_rules():
+    return (
+        rule(NavigationStateId.MODE, NavigationCommand.DOWN, NavigationStateId.MODE),
+        rule(
+            NavigationStateId.MODE,
+            NavigationCommand.DOWN,
+            NavigationStateId.STATIONS,
+            guard="some_guard",
+        ),
+    )
+
+
+def _build_unknown_action_rules():
+    return (
+        rule(NavigationStateId.MODE, NavigationCommand.DOWN, NavigationStateId.MODE),
+    )
+
+
+def _build_unknown_guard_rules():
+    return (
+        rule(
+            NavigationStateId.MODE,
+            NavigationCommand.DOWN,
+            NavigationStateId.MODE,
+            guard="unknown_guard",
+        ),
+    )
+
+
+def _build_unreachable_rules():
+    return (
+        rule(NavigationStateId.MODE, NavigationCommand.DOWN, NavigationStateId.MODE),
+        rule(
+            NavigationStateId.HELP,
+            NavigationCommand.DOWN,
+            NavigationStateId.HELP,
+        ),
+    )
+
+
+def _build_valid_rules():
+    return (
+        rule(NavigationStateId.MODE, NavigationCommand.DOWN, NavigationStateId.MODE),
+    )
+
+
+def _build_no_help_rules():
+    return (
+        rule(NavigationStateId.MODE, NavigationCommand.DOWN, NavigationStateId.MODE),
+        rule(
+            NavigationStateId.MODE,
+            NavigationCommand.OPEN_HELP,
+            NavigationStateId.HELP,
+        ),
+    )
+
+
+def _build_auto_cycle_rules():
+    return (
+        rule(
+            NavigationStateId.MODE,
+            NavigationCommand.AUTO,
+            NavigationStateId.STATIONS,
+        ),
+        rule(
+            NavigationStateId.STATIONS,
+            NavigationCommand.AUTO,
+            NavigationStateId.MODE,
+        ),
+    )
+
+
+INVALID_CASES = (
+    ("duplicate unguarded", _build_duplicate_rules(), "duplicate"),
+    ("unguarded+guarded conflict", _build_mixed_rules(), "unguarded"),
+    ("unknown action", _build_unknown_action_rules(), "action"),
+    ("unknown guard", _build_unknown_guard_rules(), "guard"),
+    ("unreachable state", _build_unreachable_rules(), "unreachable"),
+    ("invalid initial state", _build_valid_rules(), "initial"),
+    ("missing HELP return", _build_no_help_rules(), "HELP"),
+    ("AUTO cycle", _build_auto_cycle_rules(), "AUTO"),
+)
+
+
+@pytest.mark.parametrize("name,rules,match", INVALID_CASES)
+def test_validator_rejects_invalid_configuration(name, rules, match):
+    from apps.access8graph.navigation.model import GuardId
+
+    action_ids = {r.action_id for r in rules}
+    guard_ids = {GuardId(r.guard_id) for r in rules if r.guard_id is not None}
+
+    if name == "unknown action":
+        action_ids = set()
+    elif name == "unknown guard":
+        guard_ids = set()
+
+    if name == "invalid initial state":
+        initial_state = NavigationStateId.HELP
+    else:
+        initial_state = NavigationStateId.MODE
+
+    with pytest.raises(TransitionTableValidationError, match=match):
+        validate_transition_table(
+            rules=rules,
+            initial_state=initial_state,
+            action_ids=action_ids,
+            guard_ids=guard_ids,
+        )
+
+
 def test_validator_accepts_linear_auto_chain():
     rules = (
         rule(NavigationStateId.MODE, NavigationCommand.AUTO, NavigationStateId.STATIONS),

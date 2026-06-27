@@ -277,8 +277,110 @@ G_HAS_SUB_LINE_TRANSFER = GuardId("has_sub_line_transfer")
 G_HAS_NO_SUB_LINE_TRANSFER = GuardId("has_no_sub_line_transfer")
 
 
+ALL_GUARD_IDS = frozenset({
+    G_CAN_MOVE_UP,
+    G_CAN_MOVE_DOWN,
+    G_IS_DIRECTION_SELECTED,
+    G_IS_UNDIRECTION_SELECTED,
+    G_IS_PLAN_SELECTED,
+    G_HAS_ONE_OPTION,
+    G_HAS_LINE,
+    G_HAS_STATION,
+    G_HAS_SOURCE,
+    G_HAS_DEST,
+    G_HAS_NO_LINE,
+    G_HAS_NO_STATION,
+    G_HAS_NO_REVERSE,
+    G_HAS_ONE_REVERSE,
+    G_HAS_MULTI_REVERSE,
+    G_HAS_NO_FORWARD,
+    G_HAS_FORWARD,
+    G_HAS_TRANSFER,
+    G_HAS_NO_TRANSFER,
+    G_RUN_ACTIVE,
+    G_RETURN_IS_DIRECTION_RUN,
+    G_RETURN_IS_PLAN_RUN,
+    G_HAS_PREVIOUS,
+    G_HAS_NO_PREVIOUS,
+    G_HAS_NEXT,
+    G_HAS_NO_NEXT,
+    G_HELP_SELECTED_MODE,
+    G_HELP_SELECTED_BROWSER,
+    G_HELP_SELECTED_STATION,
+    G_HELP_SELECTED_LINE,
+    G_HELP_SELECTED_ENDPOINT,
+    G_UNDIRECTION_LEFT_HAS_NEXT,
+    G_UNDIRECTION_LEFT_NO_NEXT_EXTRA,
+    G_UNDIRECTION_RIGHT_HAS_NEXT,
+    G_UNDIRECTION_RIGHT_NO_NEXT_EXTRA,
+    G_HAS_SUB_LINE_TRANSFER,
+    G_HAS_NO_SUB_LINE_TRANSFER,
+})
+
+ALL_ACTION_IDS = frozenset((
+    A_LIST_MOVE_UP,
+    A_LIST_MOVE_DOWN,
+    A_LIST_MOVE_HOME,
+    A_LIST_MOVE_END,
+    A_SELECT_DIRECTION,
+    A_SELECT_UNDIRECTED,
+    A_SELECT_PLAN,
+    A_STATIONS_CONFIRM,
+    A_LINES_CONFIRM,
+    A_DIRECTION_STATIONS_CONFIRM,
+    A_DIRECTION_LINES_CONFIRM,
+    A_DIRECTION_END_POINT_CONFIRM,
+    A_UNDIRECTION_STATIONS_CONFIRM,
+    A_UNDIRECTION_LINES_CONFIRM,
+    A_UNDIRECTION_SUB_LINES_CONFIRM,
+    A_SOURCE_STATIONS_CONFIRM,
+    A_SOURCE_LINES_CONFIRM,
+    A_DESTINATION_STATIONS_CONFIRM,
+    A_DESTINATION_LINES_CONFIRM,
+    A_DIRECTION_LEFT,
+    A_DIRECTION_RIGHT,
+    A_UNDIRECTION_LEFT,
+    A_UNDIRECTION_RIGHT,
+    A_PLAN_LEFT,
+    A_PLAN_RIGHT,
+    A_DIRECTION_TRANSFER_UP,
+    A_DIRECTION_TRANSFER_DOWN,
+    A_DIRECTION_TRANSFER_CONFIRM,
+    A_DIRECTION_TRANSFER_QUIT,
+    A_UNDIRECTION_TRANSFER_UP,
+    A_UNDIRECTION_TRANSFER_DOWN,
+    A_UNDIRECTION_TRANSFER_CONFIRM,
+    A_UNDIRECTION_TRANSFER_QUIT,
+    A_EXPLORE_NEIGHBOR_CONFIRM,
+    A_EXPLORE_NEIGHBOR_QUIT,
+    A_EXPLORE_SUB_LINE_CONFIRM,
+    A_EXPLORE_SUB_LINE_QUIT,
+    A_RUN_MODE,
+    A_RUN_BROWSER,
+    A_DIRECTION_RUN_ENDPOINT,
+    A_HELP_CONFIRM,
+    A_HELP_QUIT,
+    A_LIST_LINE_COMMAND,
+    A_LIST_STATION_COMMAND,
+    A_MODE_QUIT,
+    A_STATIONS_QUIT,
+    A_LINES_QUIT,
+    A_DIRECTION_LINES_AUTO,
+    A_UNDIRECTION_LINES_AUTO,
+    A_SOURCE_STATIONS_AUTO,
+    A_SOURCE_LINES_AUTO,
+    A_DESTINATION_STATIONS_AUTO,
+    A_DESTINATION_LINES_AUTO,
+    A_DIRECTION_RUN_UP,
+    A_DIRECTION_RUN_DOWN,
+    A_UNDIRECTION_RUN_UP,
+    A_UNDIRECTION_RUN_DOWN,
+    A_OPEN_HELP,
+))
+
+
 # ---------------------------------------------------------------------------
-# List movement actions
+# List movement helpers
 # ---------------------------------------------------------------------------
 
 
@@ -291,6 +393,19 @@ def _get_list_vm(context: NavigationContext) -> ListViewModel | None:
 
 def _list_view_items(vm: ListViewModel) -> tuple[str, ...]:
     return tuple(item for item in vm.display if item)
+
+
+def _to_str_id(val):
+    if isinstance(val, str):
+        return val
+    if hasattr(val, "__iter__") and not isinstance(val, str):
+        return str(list(val))
+    return str(val)
+
+
+# ---------------------------------------------------------------------------
+# List movement actions
+# ---------------------------------------------------------------------------
 
 
 def _move_up(snapshot, context: NavigationContext) -> ActionResult:
@@ -335,655 +450,21 @@ def _move_end(snapshot, context: NavigationContext) -> ActionResult:
     )
 
 
-# ---------------------------------------------------------------------------
-# Mode selection actions (capture navigator via closure)
-# ---------------------------------------------------------------------------
-
-
-def _build_mode_select_actions(direction_nav, undirection_nav):
-    def select_direction(snapshot, context: NavigationContext) -> ActionResult:
-        context.return_state = NavigationStateId.DIRECTION_RUN
-        direction_nav.line = None
-        direction_nav.station = None
-        context.selected_mode = "direction"
+def _build_open_help():
+    def open_help(snapshot, context: NavigationContext) -> ActionResult:
+        context.return_state = snapshot.state
         return ActionResult.accepted_with()
-
-    def select_undirected(snapshot, context: NavigationContext) -> ActionResult:
-        undirection_nav.line = None
-        undirection_nav.station = None
-        context.selected_mode = "undirection"
-        return ActionResult.accepted_with()
-
-    def select_plan(snapshot, context: NavigationContext) -> ActionResult:
-        context.return_state = NavigationStateId.PLAN_RUN
-        direction_nav.line = None
-        direction_nav.station = None
-        context.selected_mode = "plan"
-        return ActionResult.accepted_with()
-
-    return select_direction, select_undirected, select_plan
-
-
-# ---------------------------------------------------------------------------
-# Stations/Lines confirm (browser states)
-# ---------------------------------------------------------------------------
-
-
-def _build_stations_lines_confirm(direction_nav):
-    def stations_confirm(snapshot, context: NavigationContext) -> ActionResult:
-        if snapshot.selected_id is not None:
-            direction_nav.station = snapshot.selected_id
-        return ActionResult.accepted_with()
-
-    def lines_confirm(snapshot, context: NavigationContext) -> ActionResult:
-        if snapshot.selected_id is not None:
-            direction_nav.line = snapshot.selected_id
-        return ActionResult.accepted_with()
-
-    return stations_confirm, lines_confirm
-
-
-# ---------------------------------------------------------------------------
-# Cross-navigation list commands (l/s from stations/lines)
-# ---------------------------------------------------------------------------
-
-
-def _build_list_cross_commands(direction_nav):
-    def list_line_command(snapshot, context: NavigationContext) -> ActionResult:
-        direction_nav.line = None
-        return ActionResult.accepted_with()
-
-    def list_station_command(snapshot, context: NavigationContext) -> ActionResult:
-        direction_nav.station = None
-        return ActionResult.accepted_with()
-
-    return list_line_command, list_station_command
-
-
-# ---------------------------------------------------------------------------
-# Direction stations/lines confirm
-# ---------------------------------------------------------------------------
-
-
-def _build_direction_stations_lines_confirm(direction_nav):
-    def direction_stations_confirm(snapshot, context: NavigationContext) -> ActionResult:
-        if snapshot.selected_id is not None:
-            direction_nav.station = snapshot.selected_id
-        if snapshot.has_line and direction_nav.station:
-            result = list(
-                direction_nav.model.get_node_from_station_id_line_id(
-                    direction_nav.station, direction_nav.line
-                )
-            )[0]
-            direction_nav.current = direction_nav.source = result
-            direction_nav.line = None
-            direction_nav.station = None
-        return ActionResult.accepted_with()
-
-    def direction_lines_confirm(snapshot, context: NavigationContext) -> ActionResult:
-        if snapshot.selected_id is not None:
-            direction_nav.line = snapshot.selected_id
-        if snapshot.has_station and direction_nav.line:
-            result = list(
-                direction_nav.model.get_node_from_station_id_line_id(
-                    direction_nav.station, direction_nav.line
-                )
-            )[0]
-            direction_nav.current = direction_nav.source = result
-            direction_nav.line = None
-            direction_nav.station = None
-        return ActionResult.accepted_with()
-
-    return direction_stations_confirm, direction_lines_confirm
-
-
-# ---------------------------------------------------------------------------
-# Direction end point confirm
-# ---------------------------------------------------------------------------
-
-
-def _build_direction_end_point_confirm(direction_nav):
-    def direction_end_point_confirm(
-        snapshot, context: NavigationContext
-    ) -> ActionResult:
-        if snapshot.selected_id is not None:
-            direction_nav.destination = snapshot.selected_id
-        return ActionResult.accepted_with()
-
-    return direction_end_point_confirm
-
-
-# ---------------------------------------------------------------------------
-# Direction run movement actions
-# ---------------------------------------------------------------------------
-
-
-def _build_direction_run_actions(direction_nav):
-    def direction_left(snapshot, context: NavigationContext) -> ActionResult:
-        pointer = direction_nav.reverse
-        if len(pointer) == 1:
-            direction_nav.source = direction_nav.current = pointer[0]
-            return ActionResult.accepted_with()
-        if len(pointer) > 1:
-            return ActionResult.accepted_with()
-        return ActionResult.rejected()
-
-    def direction_right(snapshot, context: NavigationContext) -> ActionResult:
-        pointer = direction_nav.forward
-        if len(pointer) == 1:
-            direction_nav.current = pointer[0]
-            return ActionResult.accepted_with()
-        if len(pointer) > 1:
-            direction_nav.current = pointer[0]
-            return ActionResult.accepted_with()
-        return ActionResult.rejected()
-
-    def direction_run_endpoint(snapshot, context: NavigationContext) -> ActionResult:
-        direction_nav.source = direction_nav.current
-        direction_nav.destination = None
-        return ActionResult.accepted_with()
-
-    return direction_left, direction_right, direction_run_endpoint
-
-
-# ---------------------------------------------------------------------------
-# Direction run transfer actions (check transfer_display)
-# ---------------------------------------------------------------------------
-
-
-def _build_direction_run_transfer_actions(direction_nav):
-    def direction_run_up(snapshot, context: NavigationContext) -> ActionResult:
-        if len(direction_nav.transfer_display) == 0:
-            return ActionResult.rejected()
-        return ActionResult.accepted_with()
-
-    def direction_run_down(snapshot, context: NavigationContext) -> ActionResult:
-        if len(direction_nav.transfer_display) == 0:
-            return ActionResult.rejected()
-        return ActionResult.accepted_with()
-
-    return direction_run_up, direction_run_down
-
-
-# ---------------------------------------------------------------------------
-# Undirection run transfer actions (check transfer_display)
-# ---------------------------------------------------------------------------
-
-
-def _build_undirection_run_transfer_actions(undirection_nav):
-    def undirection_run_up(snapshot, context: NavigationContext) -> ActionResult:
-        if len(undirection_nav.transfer_display) == 0:
-            return ActionResult.rejected()
-        return ActionResult.accepted_with()
-
-    def undirection_run_down(snapshot, context: NavigationContext) -> ActionResult:
-        if len(undirection_nav.transfer_display) == 0:
-            return ActionResult.rejected()
-        return ActionResult.accepted_with()
-
-    return undirection_run_up, undirection_run_down
-
-
-# ---------------------------------------------------------------------------
-# Undirection run movement actions
-# ---------------------------------------------------------------------------
-
-
-def _build_undirection_run_actions(undirection_nav):
-    def undirection_left(snapshot, context: NavigationContext) -> ActionResult:
-        pointer = undirection_nav.previous
-        if pointer:
-            undirection_nav.current = pointer
-            return ActionResult.accepted_with()
-        return ActionResult.rejected()
-
-    def undirection_right(snapshot, context: NavigationContext) -> ActionResult:
-        pointer = undirection_nav.next
-        if pointer:
-            undirection_nav.current = pointer
-            return ActionResult.accepted_with()
-        return ActionResult.rejected()
-
-    return undirection_left, undirection_right
-
-
-# ---------------------------------------------------------------------------
-# Plan run movement actions
-# ---------------------------------------------------------------------------
-
-
-def _build_plan_run_actions(direction_nav):
-    def plan_left(snapshot, context: NavigationContext) -> ActionResult:
-        pointer = getattr(direction_nav, "previous", None)
-        if pointer:
-            direction_nav.current = pointer
-            return ActionResult.accepted_with()
-        return ActionResult.rejected()
-
-    def plan_right(snapshot, context: NavigationContext) -> ActionResult:
-        pointer = getattr(direction_nav, "next", None)
-        if pointer:
-            direction_nav.current = pointer
-            return ActionResult.accepted_with()
-        return ActionResult.rejected()
-
-    return plan_left, plan_right
-
-
-# ---------------------------------------------------------------------------
-# Direction transfer actions
-# ---------------------------------------------------------------------------
-
-
-def _build_direction_transfer_actions(direction_nav):
-    def direction_transfer_up(snapshot, context: NavigationContext) -> ActionResult:
-        return _move_up(snapshot, context)
-
-    def direction_transfer_down(snapshot, context: NavigationContext) -> ActionResult:
-        return _move_down(snapshot, context)
-
-    def direction_transfer_confirm(
-        snapshot, context: NavigationContext
-    ) -> ActionResult:
-        transfer_id = snapshot.selected_id
-        if transfer_id is not None and isinstance(transfer_id, (list, tuple)):
-            direction_nav.source = direction_nav.current = transfer_id[0]
-            direction_nav.destination = transfer_id[1]
-        elif transfer_id is not None:
-            vm = _get_list_vm(context)
-            if vm is not None and 0 <= vm.current_index < len(vm.items):
-                raw_id = vm.items[vm.current_index].get("id")
-                if isinstance(raw_id, (list, tuple)) and len(raw_id) >= 2:
-                    direction_nav.source = direction_nav.current = raw_id[0]
-                    direction_nav.destination = raw_id[1]
-        dd = direction_nav.destination_display
-        line = dd.get("label", {}).get("line", "")
-        name = dd.get("label", {}).get("name", "")
-        msg = f"轉乘{line}往{name}"
-        return ActionResult.accepted_with(
-            PresentationEffects(open_messages=(msg,))
-        )
-
-    def direction_transfer_quit(snapshot, context: NavigationContext) -> ActionResult:
-        return ActionResult.accepted_with()
-
-    return (
-        direction_transfer_up,
-        direction_transfer_down,
-        direction_transfer_confirm,
-        direction_transfer_quit,
-    )
-
-
-# ---------------------------------------------------------------------------
-# Undirection transfer actions
-# ---------------------------------------------------------------------------
-
-
-def _build_undirection_transfer_actions(undirection_nav):
-    def undirection_transfer_up(snapshot, context: NavigationContext) -> ActionResult:
-        return _move_up(snapshot, context)
-
-    def undirection_transfer_down(snapshot, context: NavigationContext) -> ActionResult:
-        return _move_down(snapshot, context)
-
-    def undirection_transfer_confirm(
-        snapshot, context: NavigationContext
-    ) -> ActionResult:
-        vm = _get_list_vm(context)
-        if vm is not None and 0 <= vm.current_index < len(vm.items):
-            raw_id = vm.items[vm.current_index].get("id")
-            if isinstance(raw_id, dict):
-                undirection_nav.current = raw_id.get("current")
-                undirection_nav.sub_line = raw_id.get("sub_line")
-        line = undirection_nav.line_name_display.get("label", "")
-        left = undirection_nav.left_point_name_display.get("label", "")
-        right = undirection_nav.right_point_name_display.get("label", "")
-        msg = f"轉乘{line}，{left}往{right}"
-        return ActionResult.accepted_with(
-            PresentationEffects(open_messages=(msg,))
-        )
-
-    def undirection_transfer_quit(
-        snapshot, context: NavigationContext
-    ) -> ActionResult:
-        return ActionResult.accepted_with()
-
-    return (
-        undirection_transfer_up,
-        undirection_transfer_down,
-        undirection_transfer_confirm,
-        undirection_transfer_quit,
-    )
-
-
-# ---------------------------------------------------------------------------
-# Explore neighbor actions
-# ---------------------------------------------------------------------------
-
-
-def _build_explore_neighbor_actions(direction_nav):
-    def explore_neighbor_confirm(
-        snapshot, context: NavigationContext
-    ) -> ActionResult:
-        if snapshot.selected_id is not None:
-            direction_nav.source = direction_nav.current = snapshot.selected_id
-        return ActionResult.accepted_with()
-
-    def explore_neighbor_quit(snapshot, context: NavigationContext) -> ActionResult:
-        return ActionResult.accepted_with()
-
-    return explore_neighbor_confirm, explore_neighbor_quit
-
-
-# ---------------------------------------------------------------------------
-# Explore sub line actions
-# ---------------------------------------------------------------------------
-
-
-def _build_explore_sub_line_actions(undirection_nav):
-    def explore_sub_line_confirm(
-        snapshot, context: NavigationContext
-    ) -> ActionResult:
-        vm = _get_list_vm(context)
-        if vm is not None and 0 <= vm.current_index < len(vm.items):
-            raw_id = vm.items[vm.current_index].get("id")
-            if undirection_nav.mode == "left" and isinstance(raw_id, (list, tuple)):
-                undirection_nav.current = raw_id[-1]
-            elif undirection_nav.mode == "right" and isinstance(raw_id, (list, tuple)):
-                undirection_nav.current = raw_id[0]
-            undirection_nav.sub_line = raw_id
-        return ActionResult.accepted_with()
-
-    def explore_sub_line_quit(snapshot, context: NavigationContext) -> ActionResult:
-        return ActionResult.accepted_with()
-
-    return explore_sub_line_confirm, explore_sub_line_quit
-
-
-# ---------------------------------------------------------------------------
-# Undirection stations/lines/sub_lines confirm
-# ---------------------------------------------------------------------------
-
-
-def _build_undirection_stations_lines_confirm(undirection_nav):
-    def undirection_stations_confirm(
-        snapshot, context: NavigationContext
-    ) -> ActionResult:
-        if snapshot.selected_id is not None:
-            undirection_nav.station = snapshot.selected_id
-        return ActionResult.accepted_with()
-
-    def undirection_lines_confirm(
-        snapshot, context: NavigationContext
-    ) -> ActionResult:
-        if snapshot.selected_id is not None:
-            undirection_nav.line = snapshot.selected_id
-        return ActionResult.accepted_with()
-
-    def undirection_sub_lines_confirm(
-        snapshot, context: NavigationContext
-    ) -> ActionResult:
-        if snapshot.selected_id is not None:
-            undirection_nav.sub_line = snapshot.selected_id
-        result = list(
-            undirection_nav.model.get_node_from_station_id_line_id(
-                undirection_nav.station, undirection_nav.line
-            )
-        )[0]
-        undirection_nav.current = result
-        return ActionResult.accepted_with()
-
-    return (
-        undirection_stations_confirm,
-        undirection_lines_confirm,
-        undirection_sub_lines_confirm,
-    )
-
-
-# ---------------------------------------------------------------------------
-# Source stations/lines confirm
-# ---------------------------------------------------------------------------
-
-
-def _build_source_stations_lines_confirm(direction_nav):
-    def source_stations_confirm(
-        snapshot, context: NavigationContext
-    ) -> ActionResult:
-        if snapshot.selected_id is not None:
-            direction_nav.station = snapshot.selected_id
-        if snapshot.has_line and direction_nav.station:
-            result = list(
-                direction_nav.model.get_node_from_station_id_line_id(
-                    direction_nav.station, direction_nav.line
-                )
-            )[0]
-            direction_nav.current = direction_nav.source = result
-            direction_nav.line = None
-            direction_nav.station = None
-        return ActionResult.accepted_with()
-
-    def source_lines_confirm(
-        snapshot, context: NavigationContext
-    ) -> ActionResult:
-        if snapshot.selected_id is not None:
-            direction_nav.line = snapshot.selected_id
-        if snapshot.has_station and direction_nav.line:
-            result = list(
-                direction_nav.model.get_node_from_station_id_line_id(
-                    direction_nav.station, direction_nav.line
-                )
-            )[0]
-            direction_nav.current = direction_nav.source = result
-            direction_nav.line = None
-            direction_nav.station = None
-        return ActionResult.accepted_with()
-
-    return source_stations_confirm, source_lines_confirm
-
-
-# ---------------------------------------------------------------------------
-# Destination stations/lines confirm
-# ---------------------------------------------------------------------------
-
-
-def _build_destination_stations_lines_confirm(direction_nav):
-    def destination_stations_confirm(
-        snapshot, context: NavigationContext
-    ) -> ActionResult:
-        if snapshot.selected_id is not None:
-            direction_nav.station = snapshot.selected_id
-        if snapshot.has_line and direction_nav.station:
-            result = list(
-                direction_nav.model.get_node_from_station_id_line_id(
-                    direction_nav.station, direction_nav.line
-                )
-            )[0]
-            direction_nav.destination = result
-            direction_nav.line = None
-            direction_nav.station = None
-        return ActionResult.accepted_with()
-
-    def destination_lines_confirm(
-        snapshot, context: NavigationContext
-    ) -> ActionResult:
-        if snapshot.selected_id is not None:
-            direction_nav.line = snapshot.selected_id
-        if snapshot.has_station and direction_nav.line:
-            result = list(
-                direction_nav.model.get_node_from_station_id_line_id(
-                    direction_nav.station, direction_nav.line
-                )
-            )[0]
-            direction_nav.destination = result
-            direction_nav.line = None
-            direction_nav.station = None
-        return ActionResult.accepted_with()
-
-    return destination_stations_confirm, destination_lines_confirm
-
-
-# ---------------------------------------------------------------------------
-# Help actions
-# ---------------------------------------------------------------------------
-
-
-def _build_help_actions(direction_nav, undirection_nav):
-    def help_confirm(snapshot, context: NavigationContext) -> ActionResult:
-        selected = snapshot.selected_id
-        if selected == "m":
-            context.selected_mode = None
-            return ActionResult.accepted_with()
-        if selected == "v":
-            return ActionResult.accepted_with()
-        if selected == "s":
-            direction_nav.station = None
-            return ActionResult.accepted_with()
-        if selected == "l":
-            direction_nav.line = None
-            return ActionResult.accepted_with()
-        if selected == "e":
-            direction_nav.source = direction_nav.current
-            direction_nav.destination = None
-            return ActionResult.accepted_with()
-        return ActionResult.accepted_with()
-
-    def help_quit(snapshot, context: NavigationContext) -> ActionResult:
-        return ActionResult.accepted_with()
-
-    return help_confirm, help_quit
-
-
-# ---------------------------------------------------------------------------
-# Run common actions (mode, browser)
-# ---------------------------------------------------------------------------
-
-
-def _build_run_common_actions(direction_nav, undirection_nav):
-    def run_mode(snapshot, context: NavigationContext) -> ActionResult:
-        return ActionResult.accepted_with()
-
-    def run_browser(snapshot, context: NavigationContext) -> ActionResult:
-        return ActionResult.accepted_with()
-
-    return run_mode, run_browser
-
-
-# ---------------------------------------------------------------------------
-# Mode/Stations/Lines quit actions
-# ---------------------------------------------------------------------------
-
-
-def _build_quit_actions(direction_nav):
-    def mode_quit(snapshot, context: NavigationContext) -> ActionResult:
-        return ActionResult.accepted_with(
-            PresentationEffects(
-                close_messages=("功能選單關閉",),
-            )
-        )
-
-    def stations_quit(snapshot, context: NavigationContext) -> ActionResult:
-        direction_nav.line = None
-        direction_nav.station = None
-        return ActionResult.accepted_with(
-            PresentationEffects(
-                close_messages=("車站瀏覽選單關閉",),
-            )
-        )
-
-    def lines_quit(snapshot, context: NavigationContext) -> ActionResult:
-        direction_nav.line = None
-        direction_nav.station = None
-        return ActionResult.accepted_with(
-            PresentationEffects(
-                close_messages=("車站瀏覽選單關閉",),
-            )
-        )
-
-    return mode_quit, stations_quit, lines_quit
-
-
-# ---------------------------------------------------------------------------
-# AUTO actions (for single-option auto-progression)
-# ---------------------------------------------------------------------------
-
-
-def _build_auto_actions(direction_nav):
-    def direction_lines_auto(snapshot, context: NavigationContext) -> ActionResult:
-        vm = _get_list_vm(context)
-        if vm is not None and vm.option_count > 0:
-            raw_id = vm.items[0].get("id")
-            if raw_id is not None:
-                direction_nav.line = raw_id
-        return ActionResult.accepted_with()
-
-    def undirection_lines_auto(snapshot, context: NavigationContext) -> ActionResult:
-        vm = _get_list_vm(context)
-        if vm is not None and vm.option_count > 0:
-            raw_id = vm.items[0].get("id")
-            if raw_id is not None:
-                line_val = raw_id
-        return ActionResult.accepted_with()
-
-    def source_stations_auto(snapshot, context: NavigationContext) -> ActionResult:
-        vm = _get_list_vm(context)
-        if vm is not None and vm.option_count > 0:
-            raw_id = vm.items[0].get("id")
-            if raw_id is not None:
-                direction_nav.station = raw_id
-        return ActionResult.accepted_with()
-
-    def source_lines_auto(snapshot, context: NavigationContext) -> ActionResult:
-        vm = _get_list_vm(context)
-        if vm is not None and vm.option_count > 0:
-            raw_id = vm.items[0].get("id")
-            if raw_id is not None:
-                direction_nav.line = raw_id
-        return ActionResult.accepted_with()
-
-    def destination_stations_auto(
-        snapshot, context: NavigationContext
-    ) -> ActionResult:
-        vm = _get_list_vm(context)
-        if vm is not None and vm.option_count > 0:
-            raw_id = vm.items[0].get("id")
-            if raw_id is not None:
-                direction_nav.station = raw_id
-        return ActionResult.accepted_with()
-
-    def destination_lines_auto(snapshot, context: NavigationContext) -> ActionResult:
-        vm = _get_list_vm(context)
-        if vm is not None and vm.option_count > 0:
-            raw_id = vm.items[0].get("id")
-            if raw_id is not None:
-                direction_nav.line = raw_id
-        return ActionResult.accepted_with()
-
-    return (
-        direction_lines_auto,
-        undirection_lines_auto,
-        source_stations_auto,
-        source_lines_auto,
-        destination_stations_auto,
-        destination_lines_auto,
-    )
-
-
-# ---------------------------------------------------------------------------
-# Undirection cross-navigation commands (l/s in undirection list states)
-# ---------------------------------------------------------------------------
-
-
-def _build_undirection_cross_commands(undirection_nav):
-    def list_line_command(snapshot, context: NavigationContext) -> ActionResult:
-        undirection_nav.line = None
-        return ActionResult.accepted_with()
-
-    def list_station_command(snapshot, context: NavigationContext) -> ActionResult:
-        undirection_nav.station = None
-        return ActionResult.accepted_with()
-
-    return list_line_command, list_station_command
+    return open_help
+
+
+def build_base_actions() -> dict[ActionId, callable]:
+    actions: dict[ActionId, callable] = {}
+    actions[A_LIST_MOVE_UP] = _move_up
+    actions[A_LIST_MOVE_DOWN] = _move_down
+    actions[A_LIST_MOVE_HOME] = _move_home
+    actions[A_LIST_MOVE_END] = _move_end
+    actions[A_OPEN_HELP] = _build_open_help()
+    return actions
 
 
 # ---------------------------------------------------------------------------
@@ -1158,266 +639,8 @@ def build_guard_registry(direction_nav=None, undirection_nav=None) -> dict[Guard
     return guards
 
 
-ALL_GUARD_IDS = frozenset({
-    G_CAN_MOVE_UP,
-    G_CAN_MOVE_DOWN,
-    G_IS_DIRECTION_SELECTED,
-    G_IS_UNDIRECTION_SELECTED,
-    G_IS_PLAN_SELECTED,
-    G_HAS_ONE_OPTION,
-    G_HAS_LINE,
-    G_HAS_STATION,
-    G_HAS_SOURCE,
-    G_HAS_DEST,
-    G_HAS_NO_LINE,
-    G_HAS_NO_STATION,
-    G_HAS_NO_REVERSE,
-    G_HAS_ONE_REVERSE,
-    G_HAS_MULTI_REVERSE,
-    G_HAS_NO_FORWARD,
-    G_HAS_FORWARD,
-    G_HAS_TRANSFER,
-    G_HAS_NO_TRANSFER,
-    G_RUN_ACTIVE,
-    G_RETURN_IS_DIRECTION_RUN,
-    G_RETURN_IS_PLAN_RUN,
-    G_HAS_PREVIOUS,
-    G_HAS_NO_PREVIOUS,
-    G_HAS_NEXT,
-    G_HAS_NO_NEXT,
-    G_HELP_SELECTED_MODE,
-    G_HELP_SELECTED_BROWSER,
-    G_HELP_SELECTED_STATION,
-    G_HELP_SELECTED_LINE,
-    G_HELP_SELECTED_ENDPOINT,
-    G_UNDIRECTION_LEFT_HAS_NEXT,
-    G_UNDIRECTION_LEFT_NO_NEXT_EXTRA,
-    G_UNDIRECTION_RIGHT_HAS_NEXT,
-    G_UNDIRECTION_RIGHT_NO_NEXT_EXTRA,
-    G_HAS_SUB_LINE_TRANSFER,
-    G_HAS_NO_SUB_LINE_TRANSFER,
-})
-
-
 # ---------------------------------------------------------------------------
-# Action registry builder
-# ---------------------------------------------------------------------------
-
-
-def _to_str_id(val):
-    if isinstance(val, str):
-        return val
-    if hasattr(val, "__iter__") and not isinstance(val, str):
-        return str(list(val))
-    return str(val)
-
-
-def _build_open_help():
-    def open_help(snapshot, context: NavigationContext) -> ActionResult:
-        context.return_state = snapshot.state
-        return ActionResult.accepted_with()
-    return open_help
-
-
-def build_action_registry(
-    direction_nav=None, undirection_nav=None
-) -> dict[ActionId, callable]:
-    actions: dict[ActionId, callable] = {}
-
-    actions[A_LIST_MOVE_UP] = _move_up
-    actions[A_LIST_MOVE_DOWN] = _move_down
-    actions[A_LIST_MOVE_HOME] = _move_home
-    actions[A_LIST_MOVE_END] = _move_end
-    actions[A_OPEN_HELP] = _build_open_help()
-
-    if direction_nav is not None:
-        sel_dir, sel_undir, sel_plan = _build_mode_select_actions(
-            direction_nav, undirection_nav
-        )
-        actions[A_SELECT_DIRECTION] = sel_dir
-        actions[A_SELECT_UNDIRECTED] = sel_undir
-        actions[A_SELECT_PLAN] = sel_plan
-
-        sc, lc = _build_stations_lines_confirm(direction_nav)
-        actions[A_STATIONS_CONFIRM] = sc
-        actions[A_LINES_CONFIRM] = lc
-
-        lcl, lcs = _build_list_cross_commands(direction_nav)
-        actions[A_LIST_LINE_COMMAND] = lcl
-        actions[A_LIST_STATION_COMMAND] = lcs
-
-        dsc, dlc = _build_direction_stations_lines_confirm(direction_nav)
-        actions[A_DIRECTION_STATIONS_CONFIRM] = dsc
-        actions[A_DIRECTION_LINES_CONFIRM] = dlc
-
-        depc = _build_direction_end_point_confirm(direction_nav)
-        actions[A_DIRECTION_END_POINT_CONFIRM] = depc
-
-        dl, dr, de = _build_direction_run_actions(direction_nav)
-        actions[A_DIRECTION_LEFT] = dl
-        actions[A_DIRECTION_RIGHT] = dr
-        actions[A_DIRECTION_RUN_ENDPOINT] = de
-
-        pl, pr = _build_plan_run_actions(direction_nav)
-        actions[A_PLAN_LEFT] = pl
-        actions[A_PLAN_RIGHT] = pr
-
-        (
-            dtu,
-            dtd,
-            dtc,
-            dtq,
-        ) = _build_direction_transfer_actions(direction_nav)
-        actions[A_DIRECTION_TRANSFER_UP] = dtu
-        actions[A_DIRECTION_TRANSFER_DOWN] = dtd
-        actions[A_DIRECTION_TRANSFER_CONFIRM] = dtc
-        actions[A_DIRECTION_TRANSFER_QUIT] = dtq
-
-        dru, drd = _build_direction_run_transfer_actions(direction_nav)
-        actions[A_DIRECTION_RUN_UP] = dru
-        actions[A_DIRECTION_RUN_DOWN] = drd
-
-        enc, enq = _build_explore_neighbor_actions(direction_nav)
-        actions[A_EXPLORE_NEIGHBOR_CONFIRM] = enc
-        actions[A_EXPLORE_NEIGHBOR_QUIT] = enq
-
-        src_sc, src_lc = _build_source_stations_lines_confirm(direction_nav)
-        actions[A_SOURCE_STATIONS_CONFIRM] = src_sc
-        actions[A_SOURCE_LINES_CONFIRM] = src_lc
-
-        dst_sc, dst_lc = _build_destination_stations_lines_confirm(direction_nav)
-        actions[A_DESTINATION_STATIONS_CONFIRM] = dst_sc
-        actions[A_DESTINATION_LINES_CONFIRM] = dst_lc
-
-        mq, sq, lq = _build_quit_actions(direction_nav)
-        actions[A_MODE_QUIT] = mq
-        actions[A_STATIONS_QUIT] = sq
-        actions[A_LINES_QUIT] = lq
-
-        (
-            dla,
-            ula,
-            ssa,
-            sla,
-            dsa,
-            dla2,
-        ) = _build_auto_actions(direction_nav)
-        actions[A_DIRECTION_LINES_AUTO] = dla
-        actions[A_UNDIRECTION_LINES_AUTO] = ula
-        actions[A_SOURCE_STATIONS_AUTO] = ssa
-        actions[A_SOURCE_LINES_AUTO] = sla
-        actions[A_DESTINATION_STATIONS_AUTO] = dsa
-        actions[A_DESTINATION_LINES_AUTO] = dla2
-
-    if undirection_nav is not None and direction_nav is not None:
-        hc, hq = _build_help_actions(direction_nav, undirection_nav)
-        actions[A_HELP_CONFIRM] = hc
-        actions[A_HELP_QUIT] = hq
-
-        rm, rb = _build_run_common_actions(direction_nav, undirection_nav)
-        actions[A_RUN_MODE] = rm
-        actions[A_RUN_BROWSER] = rb
-
-    if undirection_nav is not None:
-        ul, ur = _build_undirection_run_actions(undirection_nav)
-        actions[A_UNDIRECTION_LEFT] = ul
-        actions[A_UNDIRECTION_RIGHT] = ur
-
-        (
-            utu,
-            utd,
-            utc,
-            utq,
-        ) = _build_undirection_transfer_actions(undirection_nav)
-        actions[A_UNDIRECTION_TRANSFER_UP] = utu
-        actions[A_UNDIRECTION_TRANSFER_DOWN] = utd
-        actions[A_UNDIRECTION_TRANSFER_CONFIRM] = utc
-        actions[A_UNDIRECTION_TRANSFER_QUIT] = utq
-
-        uru, urd = _build_undirection_run_transfer_actions(undirection_nav)
-        actions[A_UNDIRECTION_RUN_UP] = uru
-        actions[A_UNDIRECTION_RUN_DOWN] = urd
-
-        eslc, eslq = _build_explore_sub_line_actions(undirection_nav)
-        actions[A_EXPLORE_SUB_LINE_CONFIRM] = eslc
-        actions[A_EXPLORE_SUB_LINE_QUIT] = eslq
-
-        usc, ulc, uslc = _build_undirection_stations_lines_confirm(undirection_nav)
-        actions[A_UNDIRECTION_STATIONS_CONFIRM] = usc
-        actions[A_UNDIRECTION_LINES_CONFIRM] = ulc
-        actions[A_UNDIRECTION_SUB_LINES_CONFIRM] = uslc
-
-        ulcl, ulcs = _build_undirection_cross_commands(undirection_nav)
-        actions[A_LIST_LINE_COMMAND] = ulcl
-        actions[A_LIST_STATION_COMMAND] = ulcs
-
-    return actions
-
-
-ALL_ACTION_IDS = frozenset((
-    A_LIST_MOVE_UP,
-    A_LIST_MOVE_DOWN,
-    A_LIST_MOVE_HOME,
-    A_LIST_MOVE_END,
-    A_SELECT_DIRECTION,
-    A_SELECT_UNDIRECTED,
-    A_SELECT_PLAN,
-    A_STATIONS_CONFIRM,
-    A_LINES_CONFIRM,
-    A_DIRECTION_STATIONS_CONFIRM,
-    A_DIRECTION_LINES_CONFIRM,
-    A_DIRECTION_END_POINT_CONFIRM,
-    A_UNDIRECTION_STATIONS_CONFIRM,
-    A_UNDIRECTION_LINES_CONFIRM,
-    A_UNDIRECTION_SUB_LINES_CONFIRM,
-    A_SOURCE_STATIONS_CONFIRM,
-    A_SOURCE_LINES_CONFIRM,
-    A_DESTINATION_STATIONS_CONFIRM,
-    A_DESTINATION_LINES_CONFIRM,
-    A_DIRECTION_LEFT,
-    A_DIRECTION_RIGHT,
-    A_UNDIRECTION_LEFT,
-    A_UNDIRECTION_RIGHT,
-    A_PLAN_LEFT,
-    A_PLAN_RIGHT,
-    A_DIRECTION_TRANSFER_UP,
-    A_DIRECTION_TRANSFER_DOWN,
-    A_DIRECTION_TRANSFER_CONFIRM,
-    A_DIRECTION_TRANSFER_QUIT,
-    A_UNDIRECTION_TRANSFER_UP,
-    A_UNDIRECTION_TRANSFER_DOWN,
-    A_UNDIRECTION_TRANSFER_CONFIRM,
-    A_UNDIRECTION_TRANSFER_QUIT,
-    A_EXPLORE_NEIGHBOR_CONFIRM,
-    A_EXPLORE_NEIGHBOR_QUIT,
-    A_EXPLORE_SUB_LINE_CONFIRM,
-    A_EXPLORE_SUB_LINE_QUIT,
-    A_RUN_MODE,
-    A_RUN_BROWSER,
-    A_DIRECTION_RUN_ENDPOINT,
-    A_HELP_CONFIRM,
-    A_HELP_QUIT,
-    A_LIST_LINE_COMMAND,
-    A_LIST_STATION_COMMAND,
-    A_MODE_QUIT,
-    A_STATIONS_QUIT,
-    A_LINES_QUIT,
-    A_DIRECTION_LINES_AUTO,
-    A_UNDIRECTION_LINES_AUTO,
-    A_SOURCE_STATIONS_AUTO,
-    A_SOURCE_LINES_AUTO,
-    A_DESTINATION_STATIONS_AUTO,
-    A_DESTINATION_LINES_AUTO,
-    A_DIRECTION_RUN_UP,
-    A_DIRECTION_RUN_DOWN,
-    A_UNDIRECTION_RUN_UP,
-    A_UNDIRECTION_RUN_DOWN,
-    A_OPEN_HELP,
-))
-
-
-# ---------------------------------------------------------------------------
-# Entry effects (lifecycle handlers)
+# Entry effects
 # ---------------------------------------------------------------------------
 
 
@@ -1681,7 +904,7 @@ def build_entry_effects(
 
 
 # ---------------------------------------------------------------------------
-# Exit effects (lifecycle handlers)
+# Exit effects
 # ---------------------------------------------------------------------------
 
 
