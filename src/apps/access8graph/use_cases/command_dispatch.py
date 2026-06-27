@@ -1,4 +1,11 @@
+from typing import Protocol
+
+from apps.access8graph.navigation.model import NavigationCommand, TransitionResult
 from application.input.results import AppKeyEventResult
+
+
+class NavigationFlow(Protocol):
+    def enter(self, command: NavigationCommand) -> TransitionResult: ...
 
 
 class Access8GraphCommandDispatcher:

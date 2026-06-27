@@ -1,45 +1,51 @@
 import pytest
 
 from apps.access8graph.input import Access8GraphKeyTranslator
+from apps.access8graph.navigation.model import NavigationCommand
 from interop.key import HID, KeyEvent
 
 
 @pytest.mark.parametrize(
     ("usage", "command"),
     [
-        (HID.UP, "up"),
-        (HID.DOWN, "down"),
-        (HID.LEFT, "left"),
-        (HID.RIGHT, "right"),
-        (HID.ENTER, "enter"),
-        (HID.KEYPAD_ENTER, "enter"),
-        (HID.ESCAPE, "escape"),
-        (HID.HOME, "home"),
-        (HID.END, "end"),
-        (HID.D, "d"),
-        (HID.U, "u"),
-        (HID.P, "p"),
-        (HID.Q, "q"),
-        (HID.H, "h"),
-        (HID.M, "m"),
-        (HID.V, "v"),
-        (HID.S, "s"),
-        (HID.L, "l"),
-        (HID.E, "e"),
+        (HID.UP, NavigationCommand.UP),
+        (HID.DOWN, NavigationCommand.DOWN),
+        (HID.LEFT, NavigationCommand.LEFT),
+        (HID.RIGHT, NavigationCommand.RIGHT),
+        (HID.ENTER, NavigationCommand.CONFIRM),
+        (HID.KEYPAD_ENTER, NavigationCommand.CONFIRM),
+        (HID.HOME, NavigationCommand.HOME),
+        (HID.END, NavigationCommand.END),
+        (HID.D, NavigationCommand.SELECT_DIRECTION),
+        (HID.U, NavigationCommand.SELECT_UNDIRECTED),
+        (HID.P, NavigationCommand.SELECT_PLAN),
+        (HID.Q, NavigationCommand.QUIT),
+        (HID.H, NavigationCommand.OPEN_HELP),
+        (HID.M, NavigationCommand.OPEN_MODE),
+        (HID.V, NavigationCommand.OPEN_BROWSER),
+        (HID.S, NavigationCommand.SELECT_STATION),
+        (HID.L, NavigationCommand.SELECT_LINE),
+        (HID.E, NavigationCommand.SELECT_ENDPOINT),
     ],
 )
-def test_translator_maps_supported_key_down_events(usage: int, command: str) -> None:
+def test_translator_maps_supported_key_down_events(usage: int, command: NavigationCommand) -> None:
     translator = Access8GraphKeyTranslator()
 
     result = translator.translate(
         KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=usage, pressed=True)
     )
 
-    assert result == {
-        "key": command,
-        "repeat": 0,
-        "pressing": 0,
-    }
+    assert result is command
+
+
+def test_translator_returns_none_for_escape_key() -> None:
+    translator = Access8GraphKeyTranslator()
+
+    result = translator.translate(
+        KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.ESCAPE, pressed=True)
+    )
+
+    assert result is None
 
 
 def test_translator_ignores_key_up_events() -> None:

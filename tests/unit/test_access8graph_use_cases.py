@@ -4,6 +4,7 @@ import pytest
 
 from application.input.results import AppKeyEventResult
 from apps.access8graph.events import GraphNavigationChanged
+from apps.access8graph.navigation.model import NavigationCommand
 from apps.access8graph.use_cases.command_dispatch import Access8GraphCommandDispatcher
 from apps.access8graph.use_cases.graph_selection import GraphSelectionUseCase
 from apps.access8graph.use_cases.navigation import Access8GraphNavigationSession
@@ -153,7 +154,7 @@ def test_command_dispatcher_consumes_unknown_keys() -> None:
 
 def test_command_dispatcher_returns_unhandled_without_active_flow() -> None:
     dispatcher = Access8GraphCommandDispatcher(
-        translator=FakeTranslator({"key": "down", "repeat": 0, "pressing": 0}),
+        translator=FakeTranslator(NavigationCommand.DOWN),
         navigation=FakeNavigationWithFlow(None),
     )
 
@@ -166,7 +167,7 @@ def test_command_dispatcher_returns_unhandled_without_active_flow() -> None:
 
 def test_command_dispatcher_sends_commands_to_active_flow() -> None:
     flow = RecordingFlow()
-    command = {"key": "down", "repeat": 0, "pressing": 0}
+    command = NavigationCommand.DOWN
     dispatcher = Access8GraphCommandDispatcher(
         translator=FakeTranslator(command),
         navigation=FakeNavigationWithFlow(flow),
