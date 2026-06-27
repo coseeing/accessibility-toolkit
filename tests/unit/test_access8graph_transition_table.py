@@ -31,6 +31,62 @@ def test_validator_rejects_duplicate_unguarded_rules():
         )
 
 
+def test_validator_rejects_duplicate_guarded_rules():
+    duplicate = rule(
+        NavigationStateId.MODE,
+        NavigationCommand.DOWN,
+        NavigationStateId.MODE,
+        guard="can_move",
+    )
+
+    with pytest.raises(TransitionTableValidationError, match="duplicate"):
+        validate_transition_table(
+            rules=(duplicate, duplicate),
+            initial_state=NavigationStateId.MODE,
+            action_ids={ActionId("noop")},
+            guard_ids={"can_move"},
+        )
+
+
+@pytest.mark.parametrize(
+    ("field", "invalid_value"),
+    (
+        ("source", "unknown_source"),
+        ("command", "unknown_command"),
+        ("target", "unknown_target"),
+    ),
+)
+def test_validator_rejects_unknown_rule_state_or_command(field, invalid_value):
+    values = {
+        "source": NavigationStateId.MODE,
+        "command": NavigationCommand.DOWN,
+        "target": NavigationStateId.MODE,
+    }
+    values[field] = invalid_value
+
+    with pytest.raises(TransitionTableValidationError, match=field):
+        validate_transition_table(
+            rules=(rule(**values),),
+            initial_state=NavigationStateId.MODE,
+            action_ids={ActionId("noop")},
+            guard_ids=set(),
+        )
+
+
+def test_validator_rejects_unknown_initial_state_type():
+    rules = (
+        rule(NavigationStateId.MODE, NavigationCommand.DOWN, NavigationStateId.MODE),
+    )
+
+    with pytest.raises(TransitionTableValidationError, match="initial state"):
+        validate_transition_table(
+            rules=rules,
+            initial_state="unknown_initial",
+            action_ids={ActionId("noop")},
+            guard_ids=set(),
+        )
+
+
 def test_validator_rejects_unknown_action():
     rules = (
         rule(NavigationStateId.MODE, NavigationCommand.DOWN, NavigationStateId.MODE),

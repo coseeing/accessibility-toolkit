@@ -43,6 +43,8 @@ def validate_transition_table(
     if not rules_tuple:
         raise TransitionTableValidationError("transition table must have at least one rule")
 
+    _validate_rule_types(rules_tuple, initial_state)
+    _validate_duplicates(rules_tuple)
     _validate_ids(rules_tuple, action_ids, guard_ids)
     index = _build_index(rules_tuple)
     _validate_unguarded_conflicts(index)
@@ -65,6 +67,36 @@ def validate_transition_table(
 
 def _guard_val(g: GuardId | str) -> str:
     return g.value if isinstance(g, GuardId) else str(g)
+
+
+def _validate_rule_types(
+    rules: tuple[TransitionRule, ...],
+    initial_state: NavigationStateId,
+) -> None:
+    if not isinstance(initial_state, NavigationStateId):
+        raise TransitionTableValidationError(
+            f"invalid initial state type: expected NavigationStateId, "
+            f"got {type(initial_state).__name__}"
+        )
+
+    expected_types = (
+        ("source", NavigationStateId),
+        ("command", NavigationCommand),
+        ("target", NavigationStateId),
+    )
+    for rule in rules:
+        for field_name, expected_type in expected_types:
+            value = getattr(rule, field_name)
+            if not isinstance(value, expected_type):
+                raise TransitionTableValidationError(
+                    f"invalid rule {field_name}: expected {expected_type.__name__}, "
+                    f"got {value!r}"
+                )
+
+
+def _validate_duplicates(rules: tuple[TransitionRule, ...]) -> None:
+    if len(rules) != len(set(rules)):
+        raise TransitionTableValidationError("duplicate transition rule")
 
 
 def _validate_ids(
