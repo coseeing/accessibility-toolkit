@@ -303,6 +303,14 @@ pyinstaller --clean --noconfirm packaging/windows_apps.spec
 - `packaging/macos_apps.spec`
 - `packaging/windows_apps.spec`
 
+## macOS App 安裝
+
+下載並解壓縮 `.zip` 後，macOS 可能因為隔離機制而封鎖 app 執行。在啟動前，請執行以下指令，將路徑替換為實際放置 app 的位置：
+
+```bash
+xattr -dr com.apple.quarantine /path/to/access8graph.app
+```
+
 ## 專案結構
 
 ```text

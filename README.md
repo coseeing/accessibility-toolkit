@@ -305,6 +305,14 @@ The shared build specs live at:
 - `packaging/macos_apps.spec`
 - `packaging/windows_apps.spec`
 
+## macOS App Installation
+
+After downloading and extracting the `.zip`, macOS may block the app from running due to quarantine. Run the following command before launching, replacing the path with wherever you placed the app:
+
+```bash
+xattr -dr com.apple.quarantine /path/to/access8graph.app
+```
+
 ## Project Layout
 
 ```text
