@@ -26,9 +26,9 @@ UI_MODULES = (
     "ui.shared.speech_settings_frame",
     "apps.nvda_remote.main",
     "apps.key_echo.main",
-    "apps.shared.tool_app_shell",
-    "apps.shared.tray_icon",
-    "apps.shared.panel_controller",
+    "ui.shared.tool_app_shell",
+    "ui.shared.tray_icon",
+    "ui.shared.panel_controller",
 )
 
 

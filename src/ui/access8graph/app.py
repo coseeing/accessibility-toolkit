@@ -1,6 +1,6 @@
 import wx
 
-from apps.shared.tool_app_shell import ToolAppShell
+from ui.shared.tool_app_shell import ToolAppShell
 from ui.access8graph.main_frame import Access8GraphMainFrame
 from ui.shared.speech_settings_frame import SpeechSettingsFrame
 

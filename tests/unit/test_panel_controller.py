@@ -1,4 +1,4 @@
-from apps.shared.panel_controller import PanelController
+from ui.shared.panel_controller import PanelController
 
 
 class FakeFrame:

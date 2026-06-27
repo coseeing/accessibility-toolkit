@@ -6,9 +6,9 @@ import pytest
 
 
 UI_MODULES = (
-    "apps.shared.tool_app_shell",
-    "apps.shared.panel_controller",
-    "apps.shared.tray_icon",
+    "ui.shared.tool_app_shell",
+    "ui.shared.panel_controller",
+    "ui.shared.tray_icon",
 )
 
 
@@ -124,7 +124,7 @@ class FakeFrame:
 
 def test_tool_app_shell_creates_tray_and_shows_main_panel_on_startup(monkeypatch):
     install_fake_wx(monkeypatch)
-    from apps.shared.tool_app_shell import ToolAppShell
+    from ui.shared.tool_app_shell import ToolAppShell
 
     controller = FakeController()
     main_frame = FakeFrame(controller)
@@ -146,7 +146,7 @@ def test_tool_app_shell_creates_tray_and_shows_main_panel_on_startup(monkeypatch
 
 def test_tool_app_shell_menu_triggers_show_main(monkeypatch):
     install_fake_wx(monkeypatch)
-    from apps.shared.tool_app_shell import ToolAppShell
+    from ui.shared.tool_app_shell import ToolAppShell
 
     controller = FakeController()
     main_frame = FakeFrame(controller)
@@ -165,7 +165,7 @@ def test_tool_app_shell_menu_triggers_show_main(monkeypatch):
 
 def test_tool_app_shell_passes_separate_speech_controller_to_speech_frame(monkeypatch):
     install_fake_wx(monkeypatch)
-    from apps.shared.tool_app_shell import ToolAppShell
+    from ui.shared.tool_app_shell import ToolAppShell
 
     shown = []
     main_controller = object()
@@ -186,8 +186,8 @@ def test_tool_app_shell_passes_separate_speech_controller_to_speech_frame(monkey
         def Destroy(self):
             received["destroyed"] = True
 
-    monkeypatch.setattr("apps.shared.tool_app_shell.PanelController", FakePanelController)
-    monkeypatch.setattr("apps.shared.tool_app_shell.ToolTrayIcon", FakeTrayIcon)
+    monkeypatch.setattr("ui.shared.tool_app_shell.PanelController", FakePanelController)
+    monkeypatch.setattr("ui.shared.tool_app_shell.ToolTrayIcon", FakeTrayIcon)
 
     shell = ToolAppShell(
         controller=main_controller,
@@ -206,7 +206,7 @@ def test_tool_app_shell_passes_separate_speech_controller_to_speech_frame(monkey
 
 def test_tool_app_shell_shutdown_destroys_tray_and_calls_controller(monkeypatch):
     install_fake_wx(monkeypatch)
-    from apps.shared.tool_app_shell import ToolAppShell
+    from ui.shared.tool_app_shell import ToolAppShell
 
     controller = FakeController()
     shell = ToolAppShell(

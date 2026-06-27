@@ -2,7 +2,7 @@ import wx
 
 from ui.echo.main_frame import EchoMainFrame
 from ui.shared.speech_settings_frame import SpeechSettingsFrame
-from apps.shared.tool_app_shell import ToolAppShell
+from ui.shared.tool_app_shell import ToolAppShell
 
 
 class EchoApp(wx.App):

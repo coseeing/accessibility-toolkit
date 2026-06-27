@@ -1,7 +1,7 @@
 import wx
 
-from apps.shared.panel_controller import PanelController
-from apps.shared.tray_icon import ToolTrayIcon
+from ui.shared.panel_controller import PanelController
+from ui.shared.tray_icon import ToolTrayIcon
 
 
 class ToolAppShell:
