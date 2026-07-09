@@ -2094,33 +2094,31 @@ def test_nvda_remote_main_configures_named_logging_before_building_runtime(monke
     ]
 
 
-def test_default_config_path_uses_app_support_for_frozen_macos(monkeypatch):
+def test_default_config_path_uses_executable_parent_for_frozen_macos(monkeypatch):
     install_fake_wx(monkeypatch)
     nvda_remote_main = importlib.import_module("apps.nvda_remote.main")
 
     monkeypatch.setattr(accessibility_toolkit.runtime.environment.sys, "frozen", True, raising=False)
     monkeypatch.setattr(accessibility_toolkit.runtime.environment.sys, "executable", "/Applications/NVDARemote.app/Contents/MacOS/NVDARemote")
     monkeypatch.setattr(accessibility_toolkit.runtime.environment.sys, "platform", "darwin")
-    monkeypatch.setattr(accessibility_toolkit.runtime.environment.Path, "home", classmethod(lambda cls: cls("/Users/tester")))
 
     assert (
         nvda_remote_main.default_config_path()
-        == accessibility_toolkit.runtime.environment.Path("/Users/tester/Library/Application Support/accessibility-toolkit/accessibility-toolkit.json")
+        == accessibility_toolkit.runtime.environment.Path("/Applications/NVDARemote.app/Contents/MacOS/accessibility-toolkit.json")
     )
 
 
-def test_default_log_path_uses_library_logs_for_frozen_macos(monkeypatch):
+def test_default_log_path_uses_executable_parent_for_frozen_macos(monkeypatch):
     install_fake_wx(monkeypatch)
     nvda_remote_main = importlib.import_module("apps.nvda_remote.main")
 
     monkeypatch.setattr(accessibility_toolkit.runtime.environment.sys, "frozen", True, raising=False)
     monkeypatch.setattr(accessibility_toolkit.runtime.environment.sys, "executable", "/Applications/NVDARemote.app/Contents/MacOS/NVDARemote")
     monkeypatch.setattr(accessibility_toolkit.runtime.environment.sys, "platform", "darwin")
-    monkeypatch.setattr(accessibility_toolkit.runtime.environment.Path, "home", classmethod(lambda cls: cls("/Users/tester")))
 
     assert (
         accessibility_toolkit.runtime.environment.default_log_path()
-        == accessibility_toolkit.runtime.environment.Path("/Users/tester/Library/Logs/accessibility-toolkit/accessibility-toolkit.log")
+        == accessibility_toolkit.runtime.environment.Path("/Applications/NVDARemote.app/Contents/MacOS/accessibility-toolkit.log")
     )
 
 

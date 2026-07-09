@@ -16,26 +16,14 @@ def resource_path(relative_path: str) -> Path:
     return base_path / relative_path
 
 
-def _macos_app_support_dir(app_name: str) -> Path:
-    return Path.home() / "Library" / "Application Support" / app_name
-
-
-def _macos_logs_dir(app_name: str) -> Path:
-    return Path.home() / "Library" / "Logs" / app_name
-
-
 def default_log_path(app_name: str = "accessibility-toolkit") -> Path:
     if is_frozen():
-        if sys.platform == "darwin":
-            return _macos_logs_dir(app_name) / f"{app_name}.log"
         return Path(sys.executable).resolve().parent / f"{app_name}.log"
     return Path.cwd().resolve() / f"{app_name}.log"
 
 
 def default_config_path(app_name: str = "accessibility-toolkit") -> Path:
     if is_frozen():
-        if sys.platform == "darwin":
-            return _macos_app_support_dir(app_name) / f"{app_name}.json"
         return Path(sys.executable).resolve().parent / f"{app_name}.json"
     return Path.cwd().resolve() / f"{app_name}.json"
 

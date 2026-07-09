@@ -30,13 +30,14 @@ class TestDefaultLogPath:
 
         assert result == cwd / "accessibility-toolkit.log"
 
-    def test_frozen_darwin_logs_dir(self, monkeypatch):
+    def test_frozen_darwin_uses_executable_parent(self, monkeypatch):
         monkeypatch.setattr(sys, "frozen", True, raising=False)
         monkeypatch.setattr(sys, "platform", "darwin")
+        monkeypatch.setattr(sys, "executable", "/Applications/MyApp.app/Contents/MacOS/MyApp")
 
         result = default_log_path(app_name="my-app")
 
-        assert result == Path.home() / "Library" / "Logs" / "my-app" / "my-app.log"
+        assert result == Path("/Applications/MyApp.app/Contents/MacOS") / "my-app.log"
 
     def test_frozen_non_darwin_uses_executable_parent(self, monkeypatch):
         monkeypatch.setattr(sys, "frozen", True, raising=False)
@@ -57,13 +58,14 @@ class TestDefaultConfigPath:
 
         assert result == cwd / "test-app.json"
 
-    def test_frozen_darwin_app_support_dir(self, monkeypatch):
+    def test_frozen_darwin_uses_executable_parent(self, monkeypatch):
         monkeypatch.setattr(sys, "frozen", True, raising=False)
         monkeypatch.setattr(sys, "platform", "darwin")
+        monkeypatch.setattr(sys, "executable", "/Applications/MyApp.app/Contents/MacOS/MyApp")
 
         result = default_config_path(app_name="my-app")
 
-        assert result == Path.home() / "Library" / "Application Support" / "my-app" / "my-app.json"
+        assert result == Path("/Applications/MyApp.app/Contents/MacOS") / "my-app.json"
 
     def test_frozen_non_darwin_uses_executable_parent(self, monkeypatch):
         monkeypatch.setattr(sys, "frozen", True, raising=False)
