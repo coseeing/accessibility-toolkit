@@ -4,10 +4,12 @@ from pathlib import Path
 
 import pytest
 
-from accessibility_toolkit.runtime.runtime import (
+from accessibility_toolkit.runtime.environment import (
     configure_logging,
     default_config_path,
     default_log_path,
+    is_frozen,
+    resource_path,
 )
 
 
@@ -106,3 +108,26 @@ class TestConfigureLogging:
 
         content = log_path.read_text(encoding="utf-8")
         assert "hello bootstrap" in content
+
+
+class TestRuntimeEnvironment:
+    def test_is_frozen_uses_sys_frozen(self, monkeypatch):
+        monkeypatch.setattr(sys, "frozen", True, raising=False)
+
+        assert is_frozen() is True
+
+    def test_resource_path_uses_repo_src_root_when_not_frozen(self, monkeypatch):
+        monkeypatch.setattr(sys, "frozen", False, raising=False)
+
+        result = resource_path("accessibility_toolkit")
+
+        assert result.name == "accessibility_toolkit"
+        assert result.parent.name == "src"
+
+    def test_resource_path_uses_meipass_when_available(self, monkeypatch):
+        monkeypatch.setattr(sys, "frozen", True, raising=False)
+        monkeypatch.setattr(sys, "_MEIPASS", "/tmp/bundle", raising=False)
+
+        result = resource_path("vendor/file.txt")
+
+        assert result == Path("/tmp/bundle/vendor/file.txt")

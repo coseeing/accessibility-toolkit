@@ -6,7 +6,7 @@ import types
 import pytest
 
 import accessibility_toolkit.runtime.platform
-import accessibility_toolkit.runtime.runtime
+import accessibility_toolkit.runtime.environment
 from accessibility_toolkit.application.events import ErrorRaised, SpeechEngineChanged
 from accessibility_toolkit.application.output.speech import SpeechEngineOption, SpeechNumericSetting
 from apps.key_echo.events import EchoStateChanged
@@ -2021,7 +2021,7 @@ def test_nvda_remote_configure_logging_preserves_existing_handlers(monkeypatch):
         def setLevel(self, level):
             self.level = level
 
-    monkeypatch.setattr(accessibility_toolkit.runtime.runtime, "default_log_path", lambda _app_name=None: "nvda.log")
+    monkeypatch.setattr(accessibility_toolkit.runtime.environment, "default_log_path", lambda _app_name=None: "nvda.log")
     monkeypatch.setattr(nvda_remote_main.logging, "FileHandler", FakeFileHandler)
     monkeypatch.setenv("ACCESSIBILITY_TOOLKIT_LOGGING", "1")
     monkeypatch.setattr(
@@ -2098,14 +2098,14 @@ def test_default_config_path_uses_app_support_for_frozen_macos(monkeypatch):
     install_fake_wx(monkeypatch)
     nvda_remote_main = importlib.import_module("apps.nvda_remote.main")
 
-    monkeypatch.setattr(accessibility_toolkit.runtime.runtime.sys, "frozen", True, raising=False)
-    monkeypatch.setattr(accessibility_toolkit.runtime.runtime.sys, "executable", "/Applications/NVDARemote.app/Contents/MacOS/NVDARemote")
-    monkeypatch.setattr(accessibility_toolkit.runtime.runtime.sys, "platform", "darwin")
-    monkeypatch.setattr(accessibility_toolkit.runtime.runtime.Path, "home", classmethod(lambda cls: cls("/Users/tester")))
+    monkeypatch.setattr(accessibility_toolkit.runtime.environment.sys, "frozen", True, raising=False)
+    monkeypatch.setattr(accessibility_toolkit.runtime.environment.sys, "executable", "/Applications/NVDARemote.app/Contents/MacOS/NVDARemote")
+    monkeypatch.setattr(accessibility_toolkit.runtime.environment.sys, "platform", "darwin")
+    monkeypatch.setattr(accessibility_toolkit.runtime.environment.Path, "home", classmethod(lambda cls: cls("/Users/tester")))
 
     assert (
         nvda_remote_main.default_config_path()
-        == accessibility_toolkit.runtime.runtime.Path("/Users/tester/Library/Application Support/accessibility-toolkit/accessibility-toolkit.json")
+        == accessibility_toolkit.runtime.environment.Path("/Users/tester/Library/Application Support/accessibility-toolkit/accessibility-toolkit.json")
     )
 
 
@@ -2113,14 +2113,14 @@ def test_default_log_path_uses_library_logs_for_frozen_macos(monkeypatch):
     install_fake_wx(monkeypatch)
     nvda_remote_main = importlib.import_module("apps.nvda_remote.main")
 
-    monkeypatch.setattr(accessibility_toolkit.runtime.runtime.sys, "frozen", True, raising=False)
-    monkeypatch.setattr(accessibility_toolkit.runtime.runtime.sys, "executable", "/Applications/NVDARemote.app/Contents/MacOS/NVDARemote")
-    monkeypatch.setattr(accessibility_toolkit.runtime.runtime.sys, "platform", "darwin")
-    monkeypatch.setattr(accessibility_toolkit.runtime.runtime.Path, "home", classmethod(lambda cls: cls("/Users/tester")))
+    monkeypatch.setattr(accessibility_toolkit.runtime.environment.sys, "frozen", True, raising=False)
+    monkeypatch.setattr(accessibility_toolkit.runtime.environment.sys, "executable", "/Applications/NVDARemote.app/Contents/MacOS/NVDARemote")
+    monkeypatch.setattr(accessibility_toolkit.runtime.environment.sys, "platform", "darwin")
+    monkeypatch.setattr(accessibility_toolkit.runtime.environment.Path, "home", classmethod(lambda cls: cls("/Users/tester")))
 
     assert (
-        accessibility_toolkit.runtime.runtime.default_log_path()
-        == accessibility_toolkit.runtime.runtime.Path("/Users/tester/Library/Logs/accessibility-toolkit/accessibility-toolkit.log")
+        accessibility_toolkit.runtime.environment.default_log_path()
+        == accessibility_toolkit.runtime.environment.Path("/Users/tester/Library/Logs/accessibility-toolkit/accessibility-toolkit.log")
     )
 
 

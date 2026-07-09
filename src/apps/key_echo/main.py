@@ -12,7 +12,7 @@ from apps.key_echo.service import KeyEchoAppService
 from accessibility_toolkit.application_support.speech_runtime_settings import SpeechRuntimeSettingsCoordinator
 from accessibility_toolkit.application_support.speech_settings_facade import SpeechSettingsFacade
 from accessibility_toolkit.runtime.app_runtime import build_app_runtime_parts
-from accessibility_toolkit.runtime.runtime import configure_logging, default_config_path
+from accessibility_toolkit.runtime.environment import configure_logging, default_config_path
 
 
 @dataclass(frozen=True)

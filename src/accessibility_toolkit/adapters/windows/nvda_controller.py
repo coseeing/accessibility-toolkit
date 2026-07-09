@@ -13,7 +13,7 @@ from accessibility_toolkit.interop.speech.speech_commands import (
     VolumeCommand,
 )
 from accessibility_toolkit.interop.speech.speech_sequence import SpeechSequence
-from runtime_paths import resource_path
+from accessibility_toolkit.runtime.environment import resource_path
 
 
 VENDORED_X64_DLL = (

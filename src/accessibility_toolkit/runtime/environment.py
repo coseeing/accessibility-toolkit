@@ -4,8 +4,16 @@ from pathlib import Path
 import sys
 
 
-def _is_frozen() -> bool:
+def is_frozen() -> bool:
     return bool(getattr(sys, "frozen", False))
+
+
+def resource_path(relative_path: str) -> Path:
+    if is_frozen() and hasattr(sys, "_MEIPASS"):
+        base_path = Path(sys._MEIPASS)
+    else:
+        base_path = Path(__file__).resolve().parents[2]
+    return base_path / relative_path
 
 
 def _macos_app_support_dir(app_name: str) -> Path:
@@ -17,7 +25,7 @@ def _macos_logs_dir(app_name: str) -> Path:
 
 
 def default_log_path(app_name: str = "accessibility-toolkit") -> Path:
-    if _is_frozen():
+    if is_frozen():
         if sys.platform == "darwin":
             return _macos_logs_dir(app_name) / f"{app_name}.log"
         return Path(sys.executable).resolve().parent / f"{app_name}.log"
@@ -25,7 +33,7 @@ def default_log_path(app_name: str = "accessibility-toolkit") -> Path:
 
 
 def default_config_path(app_name: str = "accessibility-toolkit") -> Path:
-    if _is_frozen():
+    if is_frozen():
         if sys.platform == "darwin":
             return _macos_app_support_dir(app_name) / f"{app_name}.json"
         return Path(sys.executable).resolve().parent / f"{app_name}.json"
