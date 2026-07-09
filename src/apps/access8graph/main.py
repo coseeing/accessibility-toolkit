@@ -11,7 +11,7 @@ from accessibility_toolkit.application.output.speech import SpeechService
 from apps.access8graph.service import Access8GraphAppService
 from accessibility_toolkit.application_support.speech_runtime_settings import SpeechRuntimeSettingsCoordinator
 from accessibility_toolkit.application_support.speech_settings_facade import SpeechSettingsFacade
-from accessibility_toolkit.runtime.app_runtime import build_app_runtime_parts
+from accessibility_toolkit.runtime.runtime_parts import build_app_runtime_parts
 from accessibility_toolkit.runtime.platform import PlatformProvider
 from accessibility_toolkit.runtime.environment import configure_logging, default_config_path
 
