@@ -1,7 +1,7 @@
 import pytest
 
-from interop.key import HID, KeyEvent
-from adapters.windows.hid_map import key_event_from_windows
+from accessibility_toolkit.interop.key import HID, KeyEvent
+from accessibility_toolkit.adapters.windows.hid_map import key_event_from_windows
 from apps.nvda_remote.legacy_key_payload import key_event_to_legacy_remote_payload
 
 

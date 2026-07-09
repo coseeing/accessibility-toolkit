@@ -2,13 +2,13 @@ from pathlib import Path
 
 import pytest
 
-from application.input.results import AppKeyEventResult
+from accessibility_toolkit.application.input.results import AppKeyEventResult
 from apps.access8graph.events import GraphNavigationChanged
 from apps.access8graph.navigation.model import NavigationCommand
 from apps.access8graph.use_cases.command_dispatch import Access8GraphCommandDispatcher
 from apps.access8graph.use_cases.graph_selection import GraphSelectionUseCase
 from apps.access8graph.use_cases.navigation import Access8GraphNavigationSession
-from interop.key import HID, KeyEvent
+from accessibility_toolkit.interop.key import HID, KeyEvent
 
 
 def test_graph_selection_accepts_existing_graphml_file(tmp_path: Path) -> None:

@@ -1,4 +1,4 @@
-from application.events import ErrorRaised
+from accessibility_toolkit.application.events import ErrorRaised
 from apps.access8graph.events import GraphNavigationChanged
 from apps.key_echo.events import EchoStateChanged
 from apps.nvda_remote.events import (

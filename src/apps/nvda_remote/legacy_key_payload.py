@@ -1,4 +1,4 @@
-from interop.key import HID, KeyEvent
+from accessibility_toolkit.interop.key import HID, KeyEvent
 
 _USAGE_TO_LEGACY: dict[int, tuple[int, int, bool]] = {
     HID.A: (65, 30, False),

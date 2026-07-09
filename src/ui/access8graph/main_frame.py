@@ -2,7 +2,7 @@ from pathlib import Path
 
 import wx
 
-from application.events import ErrorRaised
+from accessibility_toolkit.application.events import ErrorRaised
 from apps.access8graph.events import GraphNavigationChanged
 
 

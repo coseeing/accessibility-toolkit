@@ -1,5 +1,5 @@
-from application.input.results import AppKeyEventResult
-from interop.key import HID, KeyEvent
+from accessibility_toolkit.application.input.results import AppKeyEventResult
+from accessibility_toolkit.interop.key import HID, KeyEvent
 from apps.key_echo.events import EchoStateChanged
 
 
@@ -49,7 +49,7 @@ class FakeSpeech:
 
 
 def test_key_echo_speech_settings_use_case_proxies_engine_and_voice_controls():
-    from apps.shared.speech_settings_facade import SpeechSettingsFacade
+    from accessibility_toolkit.application_support.speech_settings_facade import SpeechSettingsFacade
 
     speech = FakeSpeech()
     use_case = SpeechSettingsFacade(speech=speech)

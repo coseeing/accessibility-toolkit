@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Any, TypeAlias
 
-from application.events import AppEvent
+from accessibility_toolkit.application.events import AppEvent
 
 
 @dataclass(frozen=True, slots=True)

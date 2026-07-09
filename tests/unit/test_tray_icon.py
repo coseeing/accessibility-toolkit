@@ -6,7 +6,7 @@ import pytest
 
 
 UI_MODULES = (
-    "ui.shared.tray_icon",
+    "accessibility_toolkit_wx.tray.tray_icon",
 )
 
 
@@ -99,7 +99,7 @@ def install_fake_wx(monkeypatch):
 
 def test_tray_icon_builds_main_menu_items(monkeypatch):
     install_fake_wx(monkeypatch)
-    from ui.shared.tray_icon import ToolTrayIcon
+    from accessibility_toolkit_wx.tray.tray_icon import ToolTrayIcon
 
     seen = []
     tray = ToolTrayIcon(
@@ -115,7 +115,7 @@ def test_tray_icon_builds_main_menu_items(monkeypatch):
 
 def test_tray_icon_left_and_right_down_open_popup_menu(monkeypatch):
     fake_wx = install_fake_wx(monkeypatch)
-    from ui.shared.tray_icon import ToolTrayIcon
+    from accessibility_toolkit_wx.tray.tray_icon import ToolTrayIcon
 
     tray = ToolTrayIcon(
         on_open_main=lambda: None,

@@ -1,6 +1,6 @@
 import pytest
 
-import bootstrap.platform as _bp
+import accessibility_toolkit.runtime.platform as _bp
 
 
 def _reset_bootstrap_platform_lazy_globals() -> None:

@@ -4,29 +4,29 @@ import time
 
 import pytest
 
-from adapters.outputs.drivers.pyttsx3 import Pyttsx3SpeechOutput
-from adapters.config.json_speech_settings import JsonSpeechSettingsStore
-from application.output.speech import (
+from accessibility_toolkit.adapters.outputs.drivers.pyttsx3 import Pyttsx3SpeechOutput
+from accessibility_toolkit.adapters.config.json_speech_settings import JsonSpeechSettingsStore
+from accessibility_toolkit.application.output.speech import (
     SpeechEngineManager,
     SpeechEngineOption,
     SpeechNumericSetting,
 )
-from application.output.speech.settings import (
+from accessibility_toolkit.application.output.speech.settings import (
     clamp_percent,
     percent_to_range,
     range_to_percent,
 )
-from adapters.windows.nvda_controller import NvdaControllerSpeechOutput
-from interop.speech.speech_commands import (
+from accessibility_toolkit.adapters.windows.nvda_controller import NvdaControllerSpeechOutput
+from accessibility_toolkit.interop.speech.speech_commands import (
     BreakCommand,
     PitchCommand,
     RateCommand,
     SpeechCommand,
     VolumeCommand,
 )
-from interop.speech.speech_sequence import SpeechSequence
-from interop.protocol.routing.message_router import MessageRouter
-from interop.protocol.serializer import JSONSerializer
+from accessibility_toolkit.interop.speech.speech_sequence import SpeechSequence
+from accessibility_toolkit.interop.protocol.routing.message_router import MessageRouter
+from accessibility_toolkit.interop.protocol.serializer import JSONSerializer
 
 
 class FakeSpeechOutput:

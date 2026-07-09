@@ -1,10 +1,10 @@
-from interop.protocol.events import (
+from accessibility_toolkit.interop.protocol.events import (
     RemotePeerMessageReceived,
     RemoteSessionConnected,
     RemoteSessionDisconnected,
     RemoteSessionVersionMismatch,
 )
-from interop.protocol.session.remote_session import RemoteSession
+from accessibility_toolkit.interop.protocol.session.remote_session import RemoteSession
 
 
 class DummyTransport:

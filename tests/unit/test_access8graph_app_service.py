@@ -2,15 +2,15 @@ from pathlib import Path
 
 import pytest
 
-from adapters.inputs.captured_event import CapturedKeyEvent
-from application.events import ErrorRaised, SpeechEngineChanged
-from application.input.results import AppKeyEventResult, KeyboardPipelineResult
-from application.input import KeyboardInputService
-from application.output import Capabilities
+from accessibility_toolkit.adapters.inputs.captured_event import CapturedKeyEvent
+from accessibility_toolkit.application.events import ErrorRaised, SpeechEngineChanged
+from accessibility_toolkit.application.input.results import AppKeyEventResult, KeyboardPipelineResult
+from accessibility_toolkit.application.input import KeyboardInputService
+from accessibility_toolkit.application.output import Capabilities
 from apps.access8graph.events import GraphNavigationChanged
 from apps.access8graph.service import Access8GraphAppService
-from interop.key import HID, KeyEvent
-from interop.speech.speech_sequence import SpeechSequence
+from accessibility_toolkit.interop.key import HID, KeyEvent
+from accessibility_toolkit.interop.speech.speech_sequence import SpeechSequence
 
 
 FIXTURE = Path("Access8Graph/tests/test.graphml")

@@ -1,5 +1,5 @@
-from adapters.config.json_speech_settings import JsonSpeechSettingsStore
-from apps.shared.speech_runtime_settings import SpeechRuntimeSettingsCoordinator
+from accessibility_toolkit.adapters.config.json_speech_settings import JsonSpeechSettingsStore
+from accessibility_toolkit.application_support.speech_runtime_settings import SpeechRuntimeSettingsCoordinator
 
 
 class FakeSpeech:

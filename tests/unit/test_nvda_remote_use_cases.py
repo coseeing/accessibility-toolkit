@@ -1,9 +1,9 @@
 from apps.nvda_remote.state import ConnectionState, ControlState, RuntimeState
 from apps.nvda_remote.events import RemoteConnectionChanged, RemoteControlChanged, RemoteMessageReceived
-from interop.key import HID, KeyEvent
+from accessibility_toolkit.interop.key import HID, KeyEvent
 
-from adapters.inputs.base import KeyEventDecision
-from adapters.inputs.captured_event import CapturedKeyEvent
+from accessibility_toolkit.adapters.inputs.base import KeyEventDecision
+from accessibility_toolkit.adapters.inputs.captured_event import CapturedKeyEvent
 
 
 class FakeSpeech:
@@ -52,7 +52,7 @@ class FakeSpeech:
 
 
 def test_nvda_speech_settings_use_case_proxies_engine_and_voice_controls():
-    from apps.shared.speech_settings_facade import SpeechSettingsFacade
+    from accessibility_toolkit.application_support.speech_settings_facade import SpeechSettingsFacade
 
     speech = FakeSpeech()
     saved = []
@@ -257,7 +257,7 @@ def test_remote_connection_use_case_sets_connected_state_and_requests_hotkey_sta
 
 def test_remote_protocol_event_handler_maps_remote_peer_messages():
     from apps.nvda_remote.use_cases.protocol_events import RemoteProtocolEventHandler
-    from interop.protocol.events import RemotePeerMessageReceived, RemoteSessionConnected
+    from accessibility_toolkit.interop.protocol.events import RemotePeerMessageReceived, RemoteSessionConnected
 
     delivered = []
     handler = RemoteProtocolEventHandler(

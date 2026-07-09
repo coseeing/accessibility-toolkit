@@ -1,8 +1,8 @@
-from application.events import ModeChanged
-from application.input.results import AppKeyEventResult
-from interop.key import HID, KeyEvent
+from accessibility_toolkit.application.events import ModeChanged
+from accessibility_toolkit.application.input.results import AppKeyEventResult
+from accessibility_toolkit.interop.key import HID, KeyEvent
 
-from apps.shared.mode_manager import ModeManager
+from accessibility_toolkit.application_support.mode_manager import ModeManager
 
 
 class FakeActivation:

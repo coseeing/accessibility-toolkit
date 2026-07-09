@@ -1,8 +1,8 @@
 import logging
 from collections.abc import Callable
 
-from adapters.inputs.base import KeyEventDecision
-from adapters.inputs.captured_event import CapturedKeyEvent
+from accessibility_toolkit.adapters.inputs.base import KeyEventDecision
+from accessibility_toolkit.adapters.inputs.captured_event import CapturedKeyEvent
 from apps.nvda_remote.legacy_key_payload_bridge import legacy_payload_from_captured_event
 
 _logger = logging.getLogger(__name__)

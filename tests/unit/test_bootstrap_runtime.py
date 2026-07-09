@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from bootstrap.runtime import (
+from accessibility_toolkit.runtime.runtime import (
     configure_logging,
     default_config_path,
     default_log_path,

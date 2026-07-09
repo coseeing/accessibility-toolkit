@@ -1,15 +1,15 @@
-from application.events import AppEvent, ErrorRaised, SpeechEngineChanged
-from adapters.inputs.base import HotkeyCapture, InputCapture
-from adapters.inputs.captured_event import CapturedKeyEvent
-from application.input import (
+from accessibility_toolkit.application.events import AppEvent, ErrorRaised, SpeechEngineChanged
+from accessibility_toolkit.adapters.inputs.base import HotkeyCapture, InputCapture
+from accessibility_toolkit.adapters.inputs.captured_event import CapturedKeyEvent
+from accessibility_toolkit.application.input import (
     assemble_pipeline_result,
     InputActivationUseCase,
     KeyboardPipelineResult,
     should_pass_through_system_toggle,
 )
-from application.input import KeyEventHandler, KeyboardInputService
-from application.output import Capabilities
-from interop.key import HID
+from accessibility_toolkit.application.input import KeyEventHandler, KeyboardInputService
+from accessibility_toolkit.application.output import Capabilities
+from accessibility_toolkit.interop.key import HID
 
 from apps.key_echo.use_cases import (
     KeyEchoControlUseCase,

@@ -1,4 +1,4 @@
-from ui.shared.panel_controller import PanelController
+from accessibility_toolkit_wx.shell.panel_controller import PanelController
 
 
 class FakeFrame:

@@ -1,7 +1,7 @@
-from adapters.inputs.base import KeyEventDecision
-from adapters.inputs.captured_event import CapturedKeyEvent
-from application.input import KeyboardInputService
-from interop.key import HID, KeyEvent
+from accessibility_toolkit.adapters.inputs.base import KeyEventDecision
+from accessibility_toolkit.adapters.inputs.captured_event import CapturedKeyEvent
+from accessibility_toolkit.application.input import KeyboardInputService
+from accessibility_toolkit.interop.key import HID, KeyEvent
 
 
 class FakeCapture:

@@ -1,16 +1,16 @@
 import pytest
 
-from interop.key import HID, KeyEvent
-from interop.speech.speech_commands import (
+from accessibility_toolkit.interop.key import HID, KeyEvent
+from accessibility_toolkit.interop.speech.speech_commands import (
     BreakCommand,
     PitchCommand,
     RateCommand,
     SpeechCommand,
     VolumeCommand,
 )
-from interop.speech.speech_sequence import SpeechSequence
-from interop.protocol.messages import RemoteMessageType, address_to_host_port
-from interop.protocol.serializer import JSONSerializer
+from accessibility_toolkit.interop.speech.speech_sequence import SpeechSequence
+from accessibility_toolkit.interop.protocol.messages import RemoteMessageType, address_to_host_port
+from accessibility_toolkit.interop.protocol.serializer import JSONSerializer
 
 
 def test_protocol_helpers_and_serializer_round_trip():

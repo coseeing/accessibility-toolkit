@@ -1,6 +1,6 @@
 from apps.access8graph.output import Access8GraphFlowOutput
-from interop.speech.speech_commands import BreakCommand
-from interop.speech.speech_sequence import SpeechSequence
+from accessibility_toolkit.interop.speech.speech_commands import BreakCommand
+from accessibility_toolkit.interop.speech.speech_sequence import SpeechSequence
 
 
 class FakeSpeech:

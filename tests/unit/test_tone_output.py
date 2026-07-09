@@ -2,7 +2,7 @@ import logging
 import wave
 from io import BytesIO
 
-from adapters.outputs.tone import (
+from accessibility_toolkit.adapters.outputs.tone import (
     SAMPLE_RATE,
     MAX_TONE_HZ,
     MAX_TONE_LENGTH_MS,

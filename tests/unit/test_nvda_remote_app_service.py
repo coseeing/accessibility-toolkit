@@ -1,17 +1,17 @@
-from adapters.inputs.captured_event import CapturedKeyEvent
-from adapters.windows.native_key_context import WindowsNativeKeyContext
-from application.events import ErrorRaised, ModeChanged, SpeechEngineChanged
-from application.input.results import AppKeyEventResult, KeyboardPipelineResult
-from application.output import Capabilities
-from interop.key import HID, KeyEvent
-from interop.protocol.events import (
+from accessibility_toolkit.adapters.inputs.captured_event import CapturedKeyEvent
+from accessibility_toolkit.adapters.windows.native_key_context import WindowsNativeKeyContext
+from accessibility_toolkit.application.events import ErrorRaised, ModeChanged, SpeechEngineChanged
+from accessibility_toolkit.application.input.results import AppKeyEventResult, KeyboardPipelineResult
+from accessibility_toolkit.application.output import Capabilities
+from accessibility_toolkit.interop.key import HID, KeyEvent
+from accessibility_toolkit.interop.protocol.events import (
     RemotePeerMessageReceived,
     RemoteProtocolMessageInvalid,
     RemoteSessionConnected,
     RemoteSessionVersionMismatch,
 )
-from interop.protocol.messages import RemoteMessageType
-from interop.protocol.routing.message_router import MessageRouter
+from accessibility_toolkit.interop.protocol.messages import RemoteMessageType
+from accessibility_toolkit.interop.protocol.routing.message_router import MessageRouter
 
 from apps.nvda_remote.events import (
     RemoteConnectionChanged,

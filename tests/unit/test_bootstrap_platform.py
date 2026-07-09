@@ -3,9 +3,9 @@ import logging
 import sys
 from types import ModuleType
 
-import bootstrap.platform as _bp
+import accessibility_toolkit.runtime.platform as _bp
 
-from bootstrap.platform import (
+from accessibility_toolkit.runtime.platform import (
     create_input_capture,
     create_hotkey_capture,
     create_clipboard_service,
@@ -14,7 +14,7 @@ from bootstrap.platform import (
     default_speech_engine_options,
     PlatformProvider,
 )
-from interop.key import HID
+from accessibility_toolkit.interop.key import HID
 
 
 class TestDefaultSpeechEngineId:
@@ -33,7 +33,7 @@ class TestDefaultSpeechEngineId:
 
 class TestDefaultSpeechEngineOptions:
     def test_windows_includes_nvda_controller_and_pyttsx3(self, monkeypatch):
-        from application.output import Scheduler
+        from accessibility_toolkit.application.output import Scheduler
 
         monkeypatch.setattr(sys, "platform", "win32")
         scheduler = Scheduler()
@@ -48,7 +48,7 @@ class TestDefaultSpeechEngineOptions:
             scheduler.shutdown()
 
     def test_non_windows_includes_only_pyttsx3(self, monkeypatch):
-        from application.output import Scheduler
+        from accessibility_toolkit.application.output import Scheduler
 
         monkeypatch.setattr(sys, "platform", "darwin")
         scheduler = Scheduler()
@@ -184,38 +184,38 @@ class TestMacOSFactoriesWithColdGlobals:
 
     @staticmethod
     def _register_fake_macos_modules(monkeypatch):
-        fake_event_tap = ModuleType("adapters.macos.event_tap")
+        fake_event_tap = ModuleType("accessibility_toolkit.adapters.macos.event_tap")
         fake_event_tap.MacOSEventTapManager = type(
             "FakeEventTapManager", (), {"__init__": lambda self, permissions, backend: None}
         )
         fake_event_tap.QuartzEventTapBackend = type(
             "FakeQuartzBackend", (), {}
         )
-        monkeypatch.setitem(sys.modules, "adapters.macos.event_tap", fake_event_tap)
+        monkeypatch.setitem(sys.modules, "accessibility_toolkit.adapters.macos.event_tap", fake_event_tap)
         importlib.invalidate_caches()
 
-        fake_keyboard_hook = ModuleType("adapters.macos.keyboard_hook")
+        fake_keyboard_hook = ModuleType("accessibility_toolkit.adapters.macos.keyboard_hook")
         fake_keyboard_hook.MacOSKeyboardCapture = type(
             "FakeMacKeyboardCapture", (), {"__init__": lambda self, manager: None}
         )
         monkeypatch.setitem(
-            sys.modules, "adapters.macos.keyboard_hook", fake_keyboard_hook
+            sys.modules, "accessibility_toolkit.adapters.macos.keyboard_hook", fake_keyboard_hook
         )
 
-        fake_hotkey = ModuleType("adapters.macos.hotkey")
+        fake_hotkey = ModuleType("accessibility_toolkit.adapters.macos.hotkey")
         fake_hotkey.MacOSHotkeyCapture = type(
             "FakeMacHotkeyCapture", (), {"__init__": lambda self, manager, key_code=103: None}
         )
-        monkeypatch.setitem(sys.modules, "adapters.macos.hotkey", fake_hotkey)
+        monkeypatch.setitem(sys.modules, "accessibility_toolkit.adapters.macos.hotkey", fake_hotkey)
 
-        fake_permissions = ModuleType("adapters.macos.permissions")
+        fake_permissions = ModuleType("accessibility_toolkit.adapters.macos.permissions")
         fake_permissions.AccessibilityPermissions = type(
             "FakePermissions",
             (),
             {"load_default": classmethod(lambda cls: type("FakePerm", (), {})())},
         )
         monkeypatch.setitem(
-            sys.modules, "adapters.macos.permissions", fake_permissions
+            sys.modules, "accessibility_toolkit.adapters.macos.permissions", fake_permissions
         )
         importlib.invalidate_caches()
 
@@ -261,7 +261,7 @@ class TestMacOSFactoriesWithColdGlobals:
 
 class TestCreateToneOutput:
     def test_returns_default_tone_output(self):
-        from adapters.outputs.tone import DefaultToneOutput
+        from accessibility_toolkit.adapters.outputs.tone import DefaultToneOutput
 
         tone = create_tone_output()
 

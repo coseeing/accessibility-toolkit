@@ -1,4 +1,4 @@
-from apps.shared.speech_settings_facade import SpeechSettingsFacade
+from accessibility_toolkit.application_support.speech_settings_facade import SpeechSettingsFacade
 
 
 class FakeSpeech:

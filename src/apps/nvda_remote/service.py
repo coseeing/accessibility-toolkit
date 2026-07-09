@@ -1,29 +1,29 @@
 from collections.abc import Callable
 from typing import Any
 
-from adapters.inputs.base import HotkeyCapture, InputCapture, KeyEventDecision
-from adapters.inputs.captured_event import CapturedKeyEvent
-from application.events import (
+from accessibility_toolkit.adapters.inputs.base import HotkeyCapture, InputCapture, KeyEventDecision
+from accessibility_toolkit.adapters.inputs.captured_event import CapturedKeyEvent
+from accessibility_toolkit.application.events import (
     ErrorRaised,
     SpeechEngineChanged,
 )
-from application.input import (
+from accessibility_toolkit.application.input import (
     AppKeyEventResult,
     InputActivationUseCase,
     KeyboardPipelineResult,
     assemble_pipeline_result,
     should_pass_through_system_toggle,
 )
-from application.input import KeyEventHandler
-from application.output import Capabilities
-from application.output import ClipboardService
+from accessibility_toolkit.application.input import KeyEventHandler
+from accessibility_toolkit.application.output import Capabilities
+from accessibility_toolkit.application.output import ClipboardService
 from apps.nvda_remote.state import ConnectionState, ControlState, RuntimeState
-from interop.key import HID
-from interop.protocol.connection_info import ConnectionInfo
-from interop.protocol.messages import RemoteMessageType
-from interop.protocol.routing.message_router import MessageRouter
-from interop.protocol.session.remote_session import RemoteSession
-from interop.protocol.transport.base import Transport
+from accessibility_toolkit.interop.key import HID
+from accessibility_toolkit.interop.protocol.connection_info import ConnectionInfo
+from accessibility_toolkit.interop.protocol.messages import RemoteMessageType
+from accessibility_toolkit.interop.protocol.routing.message_router import MessageRouter
+from accessibility_toolkit.interop.protocol.session.remote_session import RemoteSession
+from accessibility_toolkit.interop.protocol.transport.base import Transport
 
 from apps.nvda_remote.use_cases.connection import RemoteConnectionUseCase
 from apps.nvda_remote.use_cases.protocol_events import RemoteProtocolEventHandler

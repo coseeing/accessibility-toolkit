@@ -1,10 +1,10 @@
 from collections.abc import Callable
 import logging
 
-from application.input.results import AppKeyEventResult
-from interop.key import HID
-from interop.key.key_event import KeyEvent
-from interop.speech.speech_sequence import SpeechSequence
+from accessibility_toolkit.application.input.results import AppKeyEventResult
+from accessibility_toolkit.interop.key import HID
+from accessibility_toolkit.interop.key.key_event import KeyEvent
+from accessibility_toolkit.interop.speech.speech_sequence import SpeechSequence
 
 _logger = logging.getLogger(__name__)
 

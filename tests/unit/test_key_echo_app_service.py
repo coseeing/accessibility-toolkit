@@ -1,15 +1,15 @@
 import pytest
 import types
 
-from adapters.inputs.captured_event import CapturedKeyEvent
-from adapters.windows.native_key_context import WindowsNativeKeyContext
-from application.input.results import AppKeyEventResult, KeyboardPipelineResult
-from application.events import ErrorRaised, ModeChanged, SpeechEngineChanged
-from application.input import KeyboardInputService
-from application.output import Capabilities
-from application.output.speech import SpeechService
-from interop.key import HID, KeyEvent
-from interop.speech.speech_sequence import SpeechSequence
+from accessibility_toolkit.adapters.inputs.captured_event import CapturedKeyEvent
+from accessibility_toolkit.adapters.windows.native_key_context import WindowsNativeKeyContext
+from accessibility_toolkit.application.input.results import AppKeyEventResult, KeyboardPipelineResult
+from accessibility_toolkit.application.events import ErrorRaised, ModeChanged, SpeechEngineChanged
+from accessibility_toolkit.application.input import KeyboardInputService
+from accessibility_toolkit.application.output import Capabilities
+from accessibility_toolkit.application.output.speech import SpeechService
+from accessibility_toolkit.interop.key import HID, KeyEvent
+from accessibility_toolkit.interop.speech.speech_sequence import SpeechSequence
 
 from apps.key_echo.events import EchoStateChanged
 from apps.key_echo.service import KeyEchoAppService

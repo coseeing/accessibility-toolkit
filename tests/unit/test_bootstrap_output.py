@@ -1,9 +1,9 @@
 import logging
 
-from application.output import Capabilities, QueuedService, Scheduler
-from application.output.speech import SpeechEngineOption, SpeechService
-import bootstrap.output as bootstrap_output
-from bootstrap.output import build_output_services
+from accessibility_toolkit.application.output import Capabilities, QueuedService, Scheduler
+from accessibility_toolkit.application.output.speech import SpeechEngineOption, SpeechService
+import accessibility_toolkit.runtime.output as bootstrap_output
+from accessibility_toolkit.runtime.output import build_output_services
 
 
 class FakeSpeechOutput:

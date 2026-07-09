@@ -5,13 +5,13 @@ import types
 
 import pytest
 
-import bootstrap.platform
-import bootstrap.runtime
-from application.events import ErrorRaised, SpeechEngineChanged
-from application.output.speech import SpeechEngineOption, SpeechNumericSetting
+import accessibility_toolkit.runtime.platform
+import accessibility_toolkit.runtime.runtime
+from accessibility_toolkit.application.events import ErrorRaised, SpeechEngineChanged
+from accessibility_toolkit.application.output.speech import SpeechEngineOption, SpeechNumericSetting
 from apps.key_echo.events import EchoStateChanged
 from apps.nvda_remote.events import RemoteConnectionChanged
-from interop.key import HID
+from accessibility_toolkit.interop.key import HID
 
 
 UI_MODULES = (
@@ -22,13 +22,13 @@ UI_MODULES = (
     "ui.nvda_remote.main_frame",
     "ui.echo.app",
     "ui.echo.main_frame",
-    "ui.shared.speech_controls",
-    "ui.shared.speech_settings_frame",
+    "accessibility_toolkit_wx.speech.speech_controls",
+    "accessibility_toolkit_wx.speech.speech_settings_frame",
     "apps.nvda_remote.main",
     "apps.key_echo.main",
-    "ui.shared.tool_app_shell",
-    "ui.shared.tray_icon",
-    "ui.shared.panel_controller",
+    "accessibility_toolkit_wx.shell.tool_app_shell",
+    "accessibility_toolkit_wx.tray.tray_icon",
+    "accessibility_toolkit_wx.shell.panel_controller",
 )
 
 
@@ -987,7 +987,7 @@ def test_nvda_remote_main_build_runtime_composes_app_service_and_gui(monkeypatch
         FakeConfigStore,
     )
     monkeypatch.setattr(nvda_remote_main, "RelayTransport", FakeTransport)
-    monkeypatch.setattr(bootstrap.platform.sys, "platform", "win32")
+    monkeypatch.setattr(accessibility_toolkit.runtime.platform.sys, "platform", "win32")
     input_capture = FakeKeyboardCapture()
     hotkey_capture = FakeHotkeyCapture()
     clipboard = FakeClipboard()
@@ -1494,12 +1494,12 @@ def test_build_runtime_uses_macos_input_and_hotkey_on_darwin(monkeypatch):
         FakeConfigStore,
     )
     monkeypatch.setattr(nvda_remote_main, "RelayTransport", FakeTransport)
-    monkeypatch.setattr(bootstrap.platform, "_MacOSEventTapManager", FakeManager)
-    monkeypatch.setattr(bootstrap.platform, "_MacOSEventTapBackend", lambda: fake_backend)
-    monkeypatch.setattr(bootstrap.platform, "_MacOSKeyboardCapture", FakeMacKeyboardCapture)
-    monkeypatch.setattr(bootstrap.platform, "_MacOSHotkeyCapture", FakeMacHotkeyCapture)
+    monkeypatch.setattr(accessibility_toolkit.runtime.platform, "_MacOSEventTapManager", FakeManager)
+    monkeypatch.setattr(accessibility_toolkit.runtime.platform, "_MacOSEventTapBackend", lambda: fake_backend)
+    monkeypatch.setattr(accessibility_toolkit.runtime.platform, "_MacOSKeyboardCapture", FakeMacKeyboardCapture)
+    monkeypatch.setattr(accessibility_toolkit.runtime.platform, "_MacOSHotkeyCapture", FakeMacHotkeyCapture)
     monkeypatch.setattr(
-        bootstrap.platform,
+        accessibility_toolkit.runtime.platform,
         "_AccessibilityPermissions",
         type(
             "FakePermissionsType",
@@ -1507,9 +1507,9 @@ def test_build_runtime_uses_macos_input_and_hotkey_on_darwin(monkeypatch):
             {"load_default": classmethod(lambda cls: fake_permissions)},
         ),
     )
-    monkeypatch.setattr(bootstrap.platform, "create_clipboard_service", lambda: FakeClipboard())
+    monkeypatch.setattr(accessibility_toolkit.runtime.platform, "create_clipboard_service", lambda: FakeClipboard())
     monkeypatch.setattr(
-        bootstrap.platform,
+        accessibility_toolkit.runtime.platform,
         "default_speech_engine_options",
         fake_bootstrap_speech_engine_options,
     )
@@ -1517,7 +1517,7 @@ def test_build_runtime_uses_macos_input_and_hotkey_on_darwin(monkeypatch):
     monkeypatch.setattr(nvda_remote_main, "NvdaRemoteAppService", FakeAppService)
     monkeypatch.setattr(nvda_remote_main, "NvdaRemoteApp", FakeApp)
     monkeypatch.setattr(nvda_remote_main, "default_config_path", lambda: "config.json")
-    monkeypatch.setattr(bootstrap.platform.sys, "platform", "darwin")
+    monkeypatch.setattr(accessibility_toolkit.runtime.platform.sys, "platform", "darwin")
 
     runtime = nvda_remote_main.build_runtime()
 
@@ -1639,12 +1639,12 @@ def test_build_runtime_uses_safe_clipboard_on_darwin(monkeypatch):
         FakeConfigStore,
     )
     monkeypatch.setattr(nvda_remote_main, "RelayTransport", FakeTransport)
-    monkeypatch.setattr(bootstrap.platform, "_MacOSEventTapManager", FakeManager)
-    monkeypatch.setattr(bootstrap.platform, "_MacOSEventTapBackend", lambda: object())
-    monkeypatch.setattr(bootstrap.platform, "_MacOSKeyboardCapture", FakeMacKeyboardCapture)
-    monkeypatch.setattr(bootstrap.platform, "_MacOSHotkeyCapture", FakeMacHotkeyCapture)
+    monkeypatch.setattr(accessibility_toolkit.runtime.platform, "_MacOSEventTapManager", FakeManager)
+    monkeypatch.setattr(accessibility_toolkit.runtime.platform, "_MacOSEventTapBackend", lambda: object())
+    monkeypatch.setattr(accessibility_toolkit.runtime.platform, "_MacOSKeyboardCapture", FakeMacKeyboardCapture)
+    monkeypatch.setattr(accessibility_toolkit.runtime.platform, "_MacOSHotkeyCapture", FakeMacHotkeyCapture)
     monkeypatch.setattr(
-        bootstrap.platform,
+        accessibility_toolkit.runtime.platform,
         "_AccessibilityPermissions",
         type(
             "FakePermissionsType",
@@ -1653,7 +1653,7 @@ def test_build_runtime_uses_safe_clipboard_on_darwin(monkeypatch):
         ),
     )
     monkeypatch.setattr(
-        bootstrap.platform,
+        accessibility_toolkit.runtime.platform,
         "default_speech_engine_options",
         fake_bootstrap_speech_engine_options,
     )
@@ -1661,7 +1661,7 @@ def test_build_runtime_uses_safe_clipboard_on_darwin(monkeypatch):
     monkeypatch.setattr(nvda_remote_main, "NvdaRemoteAppService", FakeAppService)
     monkeypatch.setattr(nvda_remote_main, "NvdaRemoteApp", FakeApp)
     monkeypatch.setattr(nvda_remote_main, "default_config_path", lambda: "config.json")
-    monkeypatch.setattr(bootstrap.platform.sys, "platform", "darwin")
+    monkeypatch.setattr(accessibility_toolkit.runtime.platform.sys, "platform", "darwin")
 
     runtime = nvda_remote_main.build_runtime()
 
@@ -1671,7 +1671,7 @@ def test_build_runtime_uses_safe_clipboard_on_darwin(monkeypatch):
 
 def test_unavailable_macos_permissions_exposes_input_monitoring_error(monkeypatch):
     install_fake_wx(monkeypatch)
-    permissions = bootstrap.platform._UnavailableMacOSPermissions()
+    permissions = accessibility_toolkit.runtime.platform._UnavailableMacOSPermissions()
 
     with pytest.raises(
         RuntimeError,
@@ -1791,7 +1791,7 @@ def test_nvda_remote_main_build_runtime_falls_back_for_unknown_engine(monkeypatc
         FakeConfigStore,
     )
     monkeypatch.setattr(nvda_remote_main, "RelayTransport", FakeTransport)
-    monkeypatch.setattr(bootstrap.platform.sys, "platform", "win32")
+    monkeypatch.setattr(accessibility_toolkit.runtime.platform.sys, "platform", "win32")
     scheduler = FakeScheduler()
     speech = FakeSpeechService(
         engine_options=("engine",),
@@ -1952,7 +1952,7 @@ def test_nvda_remote_main_build_runtime_enables_windows_native_payload_from_env(
         FakeConfigStore,
     )
     monkeypatch.setattr(nvda_remote_main, "RelayTransport", FakeTransport)
-    monkeypatch.setattr(bootstrap.platform.sys, "platform", "win32")
+    monkeypatch.setattr(accessibility_toolkit.runtime.platform.sys, "platform", "win32")
     scheduler = FakeScheduler()
     speech = FakeSpeechService()
     speaker = FakeQueuedService(speech=speech)
@@ -2021,7 +2021,7 @@ def test_nvda_remote_configure_logging_preserves_existing_handlers(monkeypatch):
         def setLevel(self, level):
             self.level = level
 
-    monkeypatch.setattr(bootstrap.runtime, "default_log_path", lambda _app_name=None: "nvda.log")
+    monkeypatch.setattr(accessibility_toolkit.runtime.runtime, "default_log_path", lambda _app_name=None: "nvda.log")
     monkeypatch.setattr(nvda_remote_main.logging, "FileHandler", FakeFileHandler)
     monkeypatch.setenv("ACCESSIBILITY_TOOLKIT_LOGGING", "1")
     monkeypatch.setattr(
@@ -2098,14 +2098,14 @@ def test_default_config_path_uses_app_support_for_frozen_macos(monkeypatch):
     install_fake_wx(monkeypatch)
     nvda_remote_main = importlib.import_module("apps.nvda_remote.main")
 
-    monkeypatch.setattr(bootstrap.runtime.sys, "frozen", True, raising=False)
-    monkeypatch.setattr(bootstrap.runtime.sys, "executable", "/Applications/NVDARemote.app/Contents/MacOS/NVDARemote")
-    monkeypatch.setattr(bootstrap.runtime.sys, "platform", "darwin")
-    monkeypatch.setattr(bootstrap.runtime.Path, "home", classmethod(lambda cls: cls("/Users/tester")))
+    monkeypatch.setattr(accessibility_toolkit.runtime.runtime.sys, "frozen", True, raising=False)
+    monkeypatch.setattr(accessibility_toolkit.runtime.runtime.sys, "executable", "/Applications/NVDARemote.app/Contents/MacOS/NVDARemote")
+    monkeypatch.setattr(accessibility_toolkit.runtime.runtime.sys, "platform", "darwin")
+    monkeypatch.setattr(accessibility_toolkit.runtime.runtime.Path, "home", classmethod(lambda cls: cls("/Users/tester")))
 
     assert (
         nvda_remote_main.default_config_path()
-        == bootstrap.runtime.Path("/Users/tester/Library/Application Support/accessibility-toolkit/accessibility-toolkit.json")
+        == accessibility_toolkit.runtime.runtime.Path("/Users/tester/Library/Application Support/accessibility-toolkit/accessibility-toolkit.json")
     )
 
 
@@ -2113,14 +2113,14 @@ def test_default_log_path_uses_library_logs_for_frozen_macos(monkeypatch):
     install_fake_wx(monkeypatch)
     nvda_remote_main = importlib.import_module("apps.nvda_remote.main")
 
-    monkeypatch.setattr(bootstrap.runtime.sys, "frozen", True, raising=False)
-    monkeypatch.setattr(bootstrap.runtime.sys, "executable", "/Applications/NVDARemote.app/Contents/MacOS/NVDARemote")
-    monkeypatch.setattr(bootstrap.runtime.sys, "platform", "darwin")
-    monkeypatch.setattr(bootstrap.runtime.Path, "home", classmethod(lambda cls: cls("/Users/tester")))
+    monkeypatch.setattr(accessibility_toolkit.runtime.runtime.sys, "frozen", True, raising=False)
+    monkeypatch.setattr(accessibility_toolkit.runtime.runtime.sys, "executable", "/Applications/NVDARemote.app/Contents/MacOS/NVDARemote")
+    monkeypatch.setattr(accessibility_toolkit.runtime.runtime.sys, "platform", "darwin")
+    monkeypatch.setattr(accessibility_toolkit.runtime.runtime.Path, "home", classmethod(lambda cls: cls("/Users/tester")))
 
     assert (
-        bootstrap.runtime.default_log_path()
-        == bootstrap.runtime.Path("/Users/tester/Library/Logs/accessibility-toolkit/accessibility-toolkit.log")
+        accessibility_toolkit.runtime.runtime.default_log_path()
+        == accessibility_toolkit.runtime.runtime.Path("/Users/tester/Library/Logs/accessibility-toolkit/accessibility-toolkit.log")
     )
 
 
@@ -2183,7 +2183,7 @@ def test_speech_settings_frame_reads_and_writes_controller_values(monkeypatch):
                 SpeechNumericSetting("volume", "Volume"),
             )
 
-    SpeechSettingsFrame = importlib.import_module("ui.shared.speech_settings_frame").SpeechSettingsFrame
+    SpeechSettingsFrame = importlib.import_module("accessibility_toolkit_wx.speech.speech_settings_frame").SpeechSettingsFrame
     controller = FakeController()
     frame = SpeechSettingsFrame(controller=controller)
 

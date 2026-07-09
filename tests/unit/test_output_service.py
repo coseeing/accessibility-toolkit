@@ -1,7 +1,7 @@
-from application.output import QueuedService
-from application.output import Scheduler
-from application.output.speech import SpeechEngineOption, SpeechService
-from interop.speech.speech_sequence import SpeechSequence
+from accessibility_toolkit.application.output import QueuedService
+from accessibility_toolkit.application.output import Scheduler
+from accessibility_toolkit.application.output.speech import SpeechEngineOption, SpeechService
+from accessibility_toolkit.interop.speech.speech_sequence import SpeechSequence
 
 
 class FakeSpeechOutput:
@@ -149,7 +149,7 @@ def test_queued_output_service_proxies_speech_calls() -> None:
 
 
 def test_application_output_speech_exports_engine_types() -> None:
-    from application.output import (
+    from accessibility_toolkit.application.output import (
         Capabilities,
         EventCallbacks,
         Mode,
@@ -157,13 +157,13 @@ def test_application_output_speech_exports_engine_types() -> None:
         ScheduledFuture,
         Scheduler,
     )
-    from application.output import ClipboardService
-    from application.output.speech import (
+    from accessibility_toolkit.application.output import ClipboardService
+    from accessibility_toolkit.application.output.speech import (
         SpeechEngineManager,
         SpeechEngineOption,
         SpeechService,
     )
-    from application.output import (
+    from accessibility_toolkit.application.output import (
         SpeechLifecyclePort,
         SpeechOutputPort,
         SpeechServicePort,
@@ -187,7 +187,7 @@ def test_application_output_speech_exports_engine_types() -> None:
 
 
 def test_application_output_exports_clipboard_service_protocol():
-    from application.output import ClipboardService
+    from accessibility_toolkit.application.output import ClipboardService
 
     assert ClipboardService is not None
 
@@ -229,7 +229,7 @@ def test_queued_output_service_proxies_supported_numeric_settings() -> None:
 
 import threading
 
-from application.output import Mode
+from accessibility_toolkit.application.output import Mode
 
 
 def test_output_mode_enum_values() -> None:

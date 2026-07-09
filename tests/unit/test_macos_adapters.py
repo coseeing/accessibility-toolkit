@@ -2,17 +2,17 @@ import logging
 
 import pytest
 
-from adapters.inputs.captured_event import CapturedKeyEvent
-from adapters.macos.event_tap import (
+from accessibility_toolkit.adapters.inputs.captured_event import CapturedKeyEvent
+from accessibility_toolkit.adapters.macos.event_tap import (
     MacOSEventTapManager,
     QuartzEventTapBackend,
     RawMacKeyEvent,
 )
-from adapters.macos.hid_map import KEYCODE_TO_USAGE
-from adapters.macos.keymap import key_event_from_macos
-from adapters.macos.permissions import AccessibilityPermissions
-from application.input.results import AppKeyEventResult, KeyboardPipelineResult
-from interop.key import HID, KeyEvent
+from accessibility_toolkit.adapters.macos.hid_map import KEYCODE_TO_USAGE
+from accessibility_toolkit.adapters.macos.keymap import key_event_from_macos
+from accessibility_toolkit.adapters.macos.permissions import AccessibilityPermissions
+from accessibility_toolkit.application.input.results import AppKeyEventResult, KeyboardPipelineResult
+from accessibility_toolkit.interop.key import HID, KeyEvent
 
 
 def test_accessibility_permissions_returns_false_without_prompt():
@@ -221,8 +221,8 @@ def test_event_tap_manager_threaded_start_does_not_run_loop_inline(monkeypatch):
         created_threads.append(thread)
         return thread
 
-    monkeypatch.setattr("adapters.macos.event_tap.threading.Thread", fake_thread)
-    monkeypatch.setattr("adapters.macos.event_tap.threading.Event", FakeEvent)
+    monkeypatch.setattr("accessibility_toolkit.adapters.macos.event_tap.threading.Thread", fake_thread)
+    monkeypatch.setattr("accessibility_toolkit.adapters.macos.event_tap.threading.Event", FakeEvent)
     manager = MacOSEventTapManager(
         permissions=FakePermissions(),
         backend=backend,
@@ -252,8 +252,8 @@ def test_event_tap_manager_threaded_stop_joins_before_releasing_resources(monkey
         created_threads.append(thread)
         return thread
 
-    monkeypatch.setattr("adapters.macos.event_tap.threading.Thread", fake_thread)
-    monkeypatch.setattr("adapters.macos.event_tap.threading.Event", FakeEvent)
+    monkeypatch.setattr("accessibility_toolkit.adapters.macos.event_tap.threading.Thread", fake_thread)
+    monkeypatch.setattr("accessibility_toolkit.adapters.macos.event_tap.threading.Event", FakeEvent)
     manager = MacOSEventTapManager(
         permissions=FakePermissions(),
         backend=backend,
@@ -353,7 +353,7 @@ class FakeManager:
 
 
 def test_macos_keyboard_capture_binds_listener_and_translates_event():
-    from adapters.macos.keyboard_hook import MacOSKeyboardCapture
+    from accessibility_toolkit.adapters.macos.keyboard_hook import MacOSKeyboardCapture
 
     manager = FakeManager()
     capture = MacOSKeyboardCapture(manager=manager)
@@ -368,7 +368,7 @@ def test_macos_keyboard_capture_binds_listener_and_translates_event():
 
 
 def test_macos_keyboard_capture_proxies_lifecycle():
-    from adapters.macos.keyboard_hook import MacOSKeyboardCapture
+    from accessibility_toolkit.adapters.macos.keyboard_hook import MacOSKeyboardCapture
 
     manager = FakeManager()
     capture = MacOSKeyboardCapture(manager=manager)
@@ -382,8 +382,8 @@ def test_macos_keyboard_capture_proxies_lifecycle():
 
 
 def test_macos_keyboard_capture_running_tracks_own_registration_not_manager_state():
-    from adapters.macos.hotkey import MacOSHotkeyCapture
-    from adapters.macos.keyboard_hook import MacOSKeyboardCapture
+    from accessibility_toolkit.adapters.macos.hotkey import MacOSHotkeyCapture
+    from accessibility_toolkit.adapters.macos.keyboard_hook import MacOSKeyboardCapture
 
     manager = FakeManager()
     keyboard = MacOSKeyboardCapture(manager=manager)
@@ -398,7 +398,7 @@ def test_macos_keyboard_capture_running_tracks_own_registration_not_manager_stat
 
 
 def test_macos_keyboard_capture_clears_listener_when_start_fails():
-    from adapters.macos.keyboard_hook import MacOSKeyboardCapture
+    from accessibility_toolkit.adapters.macos.keyboard_hook import MacOSKeyboardCapture
 
     manager = FakeManager()
     manager.start_error = RuntimeError("boom")
@@ -412,7 +412,7 @@ def test_macos_keyboard_capture_clears_listener_when_start_fails():
 
 
 def test_macos_hook_suppresses_when_send_to_system_is_false():
-    from adapters.macos.keyboard_hook import MacOSKeyboardCapture
+    from accessibility_toolkit.adapters.macos.keyboard_hook import MacOSKeyboardCapture
 
     manager = FakeManager()
     capture = MacOSKeyboardCapture(manager=manager)
@@ -427,7 +427,7 @@ def test_macos_hook_suppresses_when_send_to_system_is_false():
 
 
 def test_macos_hook_passes_through_when_send_to_system_is_true():
-    from adapters.macos.keyboard_hook import MacOSKeyboardCapture
+    from accessibility_toolkit.adapters.macos.keyboard_hook import MacOSKeyboardCapture
 
     manager = FakeManager()
     capture = MacOSKeyboardCapture(manager=manager)
@@ -442,7 +442,7 @@ def test_macos_hook_passes_through_when_send_to_system_is_true():
 
 
 def test_macos_hotkey_capture_triggers_f11_once_on_keydown():
-    from adapters.macos.hotkey import MacOSHotkeyCapture
+    from accessibility_toolkit.adapters.macos.hotkey import MacOSHotkeyCapture
 
     backend = FakeQuartzBackend()
     manager = MacOSEventTapManager(
@@ -469,7 +469,7 @@ def test_macos_hotkey_capture_triggers_f11_once_on_keydown():
 
 
 def test_macos_hotkey_capture_ignores_non_f11_keys():
-    from adapters.macos.hotkey import MacOSHotkeyCapture
+    from accessibility_toolkit.adapters.macos.hotkey import MacOSHotkeyCapture
 
     backend = FakeQuartzBackend()
     manager = MacOSEventTapManager(
@@ -491,7 +491,7 @@ def test_macos_hotkey_capture_ignores_non_f11_keys():
 
 
 def test_macos_hotkey_capture_clears_handler_when_start_fails():
-    from adapters.macos.hotkey import MacOSHotkeyCapture
+    from accessibility_toolkit.adapters.macos.hotkey import MacOSHotkeyCapture
 
     manager = FakeManager()
     manager.start_error = RuntimeError("boom")
@@ -505,8 +505,8 @@ def test_macos_hotkey_capture_clears_handler_when_start_fails():
 
 
 def test_macos_hotkey_capture_stop_preserves_active_keyboard_capture():
-    from adapters.macos.hotkey import MacOSHotkeyCapture
-    from adapters.macos.keyboard_hook import MacOSKeyboardCapture
+    from accessibility_toolkit.adapters.macos.hotkey import MacOSHotkeyCapture
+    from accessibility_toolkit.adapters.macos.keyboard_hook import MacOSKeyboardCapture
 
     backend = FakeQuartzBackend()
     manager = MacOSEventTapManager(
@@ -534,8 +534,8 @@ def test_macos_hotkey_capture_stop_preserves_active_keyboard_capture():
 
 
 def test_macos_hotkey_capture_running_tracks_own_registration_not_manager_state():
-    from adapters.macos.hotkey import MacOSHotkeyCapture
-    from adapters.macos.keyboard_hook import MacOSKeyboardCapture
+    from accessibility_toolkit.adapters.macos.hotkey import MacOSHotkeyCapture
+    from accessibility_toolkit.adapters.macos.keyboard_hook import MacOSKeyboardCapture
 
     manager = FakeManager()
     keyboard = MacOSKeyboardCapture(manager=manager)
@@ -555,8 +555,8 @@ def test_macos_hotkey_capture_running_tracks_own_registration_not_manager_state(
 
 
 def test_macos_hotkey_capture_logs_shared_manager_handoff(caplog):
-    from adapters.macos.hotkey import MacOSHotkeyCapture
-    from adapters.macos.keyboard_hook import MacOSKeyboardCapture
+    from accessibility_toolkit.adapters.macos.hotkey import MacOSHotkeyCapture
+    from accessibility_toolkit.adapters.macos.keyboard_hook import MacOSKeyboardCapture
 
     backend = FakeQuartzBackend()
     manager = MacOSEventTapManager(
@@ -588,7 +588,7 @@ def test_macos_hotkey_capture_logs_shared_manager_handoff(caplog):
 
 
 def test_macos_keyboard_capture_logs_start_and_stop_completion(caplog):
-    from adapters.macos.keyboard_hook import MacOSKeyboardCapture
+    from accessibility_toolkit.adapters.macos.keyboard_hook import MacOSKeyboardCapture
 
     manager = FakeManager()
     capture = MacOSKeyboardCapture(manager=manager)

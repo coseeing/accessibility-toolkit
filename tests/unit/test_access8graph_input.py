@@ -2,7 +2,7 @@ import pytest
 
 from apps.access8graph.input import Access8GraphKeyTranslator
 from apps.access8graph.navigation.model import NavigationCommand
-from interop.key import HID, KeyEvent
+from accessibility_toolkit.interop.key import HID, KeyEvent
 
 
 @pytest.mark.parametrize(

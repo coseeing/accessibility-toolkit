@@ -1,6 +1,6 @@
 from apps.access8graph.navigation.model import NavigationCommand
-from interop.key import HID
-from interop.key.key_event import KeyEvent
+from accessibility_toolkit.interop.key import HID
+from accessibility_toolkit.interop.key.key_event import KeyEvent
 
 
 class Access8GraphKeyTranslator:

@@ -1,5 +1,5 @@
-from adapters.inputs.captured_event import CapturedKeyEvent
-from adapters.windows.native_key_context import WindowsNativeKeyContext
+from accessibility_toolkit.adapters.inputs.captured_event import CapturedKeyEvent
+from accessibility_toolkit.adapters.windows.native_key_context import WindowsNativeKeyContext
 
 from apps.nvda_remote.legacy_key_payload import key_event_to_legacy_remote_payload
 

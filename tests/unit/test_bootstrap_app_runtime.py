@@ -1,9 +1,9 @@
-from adapters.config.json_speech_settings import JsonSpeechSettingsStore
-from application.output import Scheduler
-from application.output.speech import SpeechEngineOption
-from apps.shared.speech_runtime_settings import SpeechRuntimeSettingsCoordinator
-from bootstrap.app_runtime import build_app_runtime_parts
-from interop.key import HID
+from accessibility_toolkit.adapters.config.json_speech_settings import JsonSpeechSettingsStore
+from accessibility_toolkit.application.output import Scheduler
+from accessibility_toolkit.application.output.speech import SpeechEngineOption
+from accessibility_toolkit.application_support.speech_runtime_settings import SpeechRuntimeSettingsCoordinator
+from accessibility_toolkit.runtime.app_runtime import build_app_runtime_parts
+from accessibility_toolkit.interop.key import HID
 
 
 class FakeCapture:

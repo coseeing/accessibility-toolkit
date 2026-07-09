@@ -1,4 +1,4 @@
-from application.events import (
+from accessibility_toolkit.application.events import (
     AppEvent,
     ClipboardAvailabilityChanged,
     ErrorRaised,
