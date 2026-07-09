@@ -34,4 +34,4 @@ Result:
 
 - `16fa796` `refactor: split toolkit namespaces into publishable packages`
 - `905b320` `docs: record toolkit migration completion`
-- `refactor: remove legacy toolkit compatibility shims`
+- `ca7d9bb` `refactor: remove legacy toolkit compatibility shims`
