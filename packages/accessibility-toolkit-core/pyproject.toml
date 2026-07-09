@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "accessibility-toolkit-core"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+  "pyttsx3",
+  "pyobjc-framework-ApplicationServices; sys_platform == 'darwin'",
+  "pyobjc-framework-Quartz; sys_platform == 'darwin'",
+]
+
+[tool.setuptools]
+package-dir = {"" = "../../src"}
+
+[tool.setuptools.packages.find]
+where = ["../../src"]
+include = ["accessibility_toolkit*"]
+
+[tool.setuptools.package-data]
+"accessibility_toolkit.adapters.windows" = ["vendor/nvda/x64/*.dll"]

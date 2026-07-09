@@ -1,8 +1,1 @@
-from dataclasses import dataclass
-
-
-@dataclass(frozen=True)
-class WindowsNativeKeyContext:
-    vk_code: int
-    scan_code: int
-    extended: bool
+from accessibility_toolkit.adapters.windows.native_key_context import *

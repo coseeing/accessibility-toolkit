@@ -9,8 +9,8 @@ from application.output import Scheduler
 from application.output import QueuedService
 from application.output.speech import SpeechService
 from apps.access8graph.service import Access8GraphAppService
-from apps.shared.speech_runtime_settings import SpeechRuntimeSettingsCoordinator
-from apps.shared.speech_settings_facade import SpeechSettingsFacade
+from accessibility_toolkit.application_support.speech_runtime_settings import SpeechRuntimeSettingsCoordinator
+from accessibility_toolkit.application_support.speech_settings_facade import SpeechSettingsFacade
 from bootstrap.app_runtime import build_app_runtime_parts
 from bootstrap.platform import PlatformProvider
 from bootstrap.runtime import configure_logging, default_config_path

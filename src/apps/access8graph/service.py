@@ -22,7 +22,7 @@ from apps.access8graph.use_cases import (
     GraphSelectionUseCase,
     MrtFlowFactory,
 )
-from apps.shared.mode_manager import ModeManager
+from accessibility_toolkit.application_support.mode_manager import ModeManager
 
 
 class Access8GraphNavigationMode:

@@ -1,1 +1,1 @@
-"""Windows-specific adapters."""
+from accessibility_toolkit.adapters.windows import *

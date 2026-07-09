@@ -1,1 +1,1 @@
-"""Shared interoperability types and protocol support."""
+from accessibility_toolkit.interop import *

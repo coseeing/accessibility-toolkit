@@ -1,0 +1,53 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Protocol
+from accessibility_toolkit.interop.speech.speech_sequence import SpeechSequence
+
+if TYPE_CHECKING:
+    from accessibility_toolkit.application.output.speech.settings import SpeechNumericSetting
+
+
+class SpeechOutput(Protocol):
+    def speak(self, sequence: SpeechSequence) -> None: ...
+
+    def cancel(self) -> None: ...
+
+    def pause(self, is_paused: bool) -> None: ...
+
+    def list_voices(self) -> tuple[tuple[str, str], ...]: ...
+
+    def get_voice(self) -> str | None: ...
+
+    def set_voice(self, voice_id: str) -> None: ...
+
+    def get_rate(self) -> int | None: ...
+
+    def set_rate(self, value: int) -> None: ...
+
+    def get_pitch(self) -> int | None: ...
+
+    def set_pitch(self, value: int) -> None: ...
+
+    def get_volume(self) -> int | None: ...
+
+    def set_volume(self, value: int) -> None: ...
+
+    def get_supported_numeric_settings(self) -> tuple["SpeechNumericSetting", ...]: ...
+
+
+class ToneOutput(Protocol):
+    def beep(
+        self,
+        hz: int,
+        length: int,
+        left: int = 50,
+        right: int = 50,
+    ) -> None: ...
+
+
+class WaveOutput(Protocol):
+    def play(self, path: str) -> None: ...
+
+
+class BrailleOutput(Protocol):
+    def display(self, text: str) -> None: ...

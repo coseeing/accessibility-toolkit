@@ -1,0 +1,189 @@
+import logging
+
+from accessibility_toolkit.interop.key import HID, KeyEvent
+
+
+_logger = logging.getLogger(__name__)
+
+_SCAN_TO_USAGE: dict[tuple[int, bool], int] = {
+    (1, False): HID.ESCAPE,
+    (2, False): HID.DIGIT_1,
+    (3, False): HID.DIGIT_2,
+    (4, False): HID.DIGIT_3,
+    (5, False): HID.DIGIT_4,
+    (6, False): HID.DIGIT_5,
+    (7, False): HID.DIGIT_6,
+    (8, False): HID.DIGIT_7,
+    (9, False): HID.DIGIT_8,
+    (10, False): HID.DIGIT_9,
+    (11, False): HID.DIGIT_0,
+    (12, False): HID.MINUS,
+    (13, False): HID.EQUALS,
+    (14, False): HID.BACKSPACE,
+    (15, False): HID.TAB,
+    (16, False): HID.Q,
+    (17, False): HID.W,
+    (18, False): HID.E,
+    (19, False): HID.R,
+    (20, False): HID.T,
+    (21, False): HID.Y,
+    (22, False): HID.U,
+    (23, False): HID.I,
+    (24, False): HID.O,
+    (25, False): HID.P,
+    (26, False): HID.LEFT_BRACKET,
+    (27, False): HID.RIGHT_BRACKET,
+    (28, False): HID.ENTER,
+    (28, True): HID.KEYPAD_ENTER,
+    (29, False): HID.LEFT_CONTROL,
+    (29, True): HID.RIGHT_CONTROL,
+    (30, False): HID.A,
+    (31, False): HID.S,
+    (32, False): HID.D,
+    (33, False): HID.F,
+    (34, False): HID.G,
+    (35, False): HID.H,
+    (36, False): HID.J,
+    (37, False): HID.K,
+    (38, False): HID.L,
+    (39, False): HID.SEMICOLON,
+    (40, False): HID.QUOTE,
+    (41, False): HID.GRAVE,
+    (42, False): HID.LEFT_SHIFT,
+    (42, True): HID.LEFT_SHIFT,
+    (43, False): HID.BACKSLASH,
+    (44, False): HID.Z,
+    (45, False): HID.X,
+    (46, False): HID.C,
+    (47, False): HID.V,
+    (48, False): HID.B,
+    (49, False): HID.N,
+    (50, False): HID.M,
+    (51, False): HID.COMMA,
+    (52, False): HID.PERIOD,
+    (53, False): HID.SLASH,
+    (53, True): HID.KEYPAD_DIVIDE,
+    (54, False): HID.RIGHT_SHIFT,
+    (54, True): HID.RIGHT_SHIFT,
+    (55, False): HID.KEYPAD_MULTIPLY,
+    (56, False): HID.LEFT_ALT,
+    (56, True): HID.RIGHT_ALT,
+    (57, False): HID.SPACE,
+    (58, False): HID.CAPS_LOCK,
+    (59, False): HID.F1,
+    (60, False): HID.F2,
+    (61, False): HID.F3,
+    (62, False): HID.F4,
+    (63, False): HID.F5,
+    (64, False): HID.F6,
+    (65, False): HID.F7,
+    (66, False): HID.F8,
+    (67, False): HID.F9,
+    (68, False): HID.F10,
+    (71, False): HID.KEYPAD_7,
+    (71, True): HID.HOME,
+    (72, False): HID.KEYPAD_8,
+    (72, True): HID.UP,
+    (73, False): HID.KEYPAD_9,
+    (73, True): HID.PAGE_UP,
+    (74, False): HID.KEYPAD_SUBTRACT,
+    (75, False): HID.KEYPAD_4,
+    (75, True): HID.LEFT,
+    (76, False): HID.KEYPAD_5,
+    (77, False): HID.KEYPAD_6,
+    (77, True): HID.RIGHT,
+    (78, False): HID.KEYPAD_ADD,
+    (79, False): HID.KEYPAD_1,
+    (79, True): HID.END,
+    (80, False): HID.KEYPAD_2,
+    (80, True): HID.DOWN,
+    (81, False): HID.KEYPAD_3,
+    (81, True): HID.PAGE_DOWN,
+    (82, False): HID.KEYPAD_0,
+    (82, True): HID.INSERT,
+    (83, False): HID.KEYPAD_DECIMAL,
+    (83, True): HID.DELETE,
+    (86, False): HID.NON_US_BACKSLASH,
+    (89, False): HID.KEYPAD_EQUALS,
+    (87, False): HID.F11,
+    (88, False): HID.F12,
+    (55, True): HID.PRINT_SCREEN,
+    (69, False): HID.PAUSE,
+    (69, True): HID.NUM_LOCK,
+    (70, False): HID.SCROLL_LOCK,
+    (91, True): HID.LEFT_META,
+    (92, True): HID.RIGHT_META,
+    (93, True): HID.APPLICATION,
+    (115, False): HID.INTERNATIONAL1,
+    (121, False): HID.INTERNATIONAL4,
+    (123, False): HID.INTERNATIONAL5,
+    (125, False): HID.NON_US_HASH,
+}
+
+_VK_TO_USAGE_KEYPAD_NAV: dict[int, int] = {
+    0x21: HID.PAGE_UP,
+    0x22: HID.PAGE_DOWN,
+    0x23: HID.END,
+    0x24: HID.HOME,
+    0x25: HID.LEFT,
+    0x26: HID.UP,
+    0x27: HID.RIGHT,
+    0x28: HID.DOWN,
+    0x2D: HID.INSERT,
+    0x2E: HID.DELETE,
+    0x60: HID.KEYPAD_0,
+    0x61: HID.KEYPAD_1,
+    0x62: HID.KEYPAD_2,
+    0x63: HID.KEYPAD_3,
+    0x64: HID.KEYPAD_4,
+    0x65: HID.KEYPAD_5,
+    0x66: HID.KEYPAD_6,
+    0x67: HID.KEYPAD_7,
+    0x68: HID.KEYPAD_8,
+    0x69: HID.KEYPAD_9,
+    0x6A: HID.KEYPAD_MULTIPLY,
+    0x6B: HID.KEYPAD_ADD,
+    0x6D: HID.KEYPAD_SUBTRACT,
+    0x6E: HID.KEYPAD_DECIMAL,
+    0x6F: HID.KEYPAD_DIVIDE,
+    0x90: HID.NUM_LOCK,
+}
+
+
+def key_event_from_windows(*, vk_code: int, scan_code: int, extended: bool, pressed: bool) -> KeyEvent | None:
+    resolution = "unresolved"
+    usage = _SCAN_TO_USAGE.get((scan_code, extended))
+    if usage is not None:
+        resolution = "scan"
+    if usage is None and extended and scan_code > 0xFF:
+        usage = _SCAN_TO_USAGE.get((scan_code & 0xFF, extended))
+        if usage is not None:
+            resolution = "masked_scan"
+    if usage is None:
+        usage = _VK_TO_USAGE_KEYPAD_NAV.get(vk_code)
+        if usage is not None:
+            resolution = "vk_keypad_nav"
+    if usage is None and vk_code == 0xF2:
+        usage = HID.INTERNATIONAL3
+        resolution = "vk_international3"
+    if usage is None:
+        _logger.debug(
+            "Windows HID map failed vk=0x%02X scan=%d scan_low=0x%02X extended=%s pressed=%s",
+            vk_code,
+            scan_code,
+            scan_code & 0xFF,
+            extended,
+            pressed,
+        )
+        return None
+    _logger.debug(
+        "Windows HID map resolved via %s vk=0x%02X scan=%d scan_low=0x%02X extended=%s pressed=%s usage=0x%02X",
+        resolution,
+        vk_code,
+        scan_code,
+        scan_code & 0xFF,
+        extended,
+        pressed,
+        usage,
+    )
+    return KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=usage, pressed=pressed)

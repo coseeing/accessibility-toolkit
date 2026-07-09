@@ -1,4 +1,1 @@
-__all__ = [
-    "keymap",
-    "permissions",
-]
+from accessibility_toolkit.adapters.macos import *

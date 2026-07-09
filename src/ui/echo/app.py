@@ -1,8 +1,8 @@
 import wx
 
 from ui.echo.main_frame import EchoMainFrame
-from ui.shared.speech_settings_frame import SpeechSettingsFrame
-from ui.shared.tool_app_shell import ToolAppShell
+from accessibility_toolkit_wx.shell.tool_app_shell import ToolAppShell
+from accessibility_toolkit_wx.speech.speech_settings_frame import SpeechSettingsFrame
 
 
 class EchoApp(wx.App):

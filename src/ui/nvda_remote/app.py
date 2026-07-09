@@ -1,8 +1,8 @@
 import wx
 
 from ui.nvda_remote.main_frame import MainFrame
-from ui.shared.speech_settings_frame import SpeechSettingsFrame
-from ui.shared.tool_app_shell import ToolAppShell
+from accessibility_toolkit_wx.shell.tool_app_shell import ToolAppShell
+from accessibility_toolkit_wx.speech.speech_settings_frame import SpeechSettingsFrame
 
 
 class NvdaRemoteApp(wx.App):

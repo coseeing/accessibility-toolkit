@@ -16,7 +16,7 @@ from apps.key_echo.use_cases import (
     KeyEchoInputUseCase,
 )
 from apps.key_echo.events import EchoStateChanged
-from apps.shared.mode_manager import ModeManager
+from accessibility_toolkit.application_support.mode_manager import ModeManager
 
 
 class EchoKeysMode:
