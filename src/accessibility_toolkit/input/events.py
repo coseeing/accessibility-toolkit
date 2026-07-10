@@ -13,3 +13,10 @@ class KeyEvent:
             "usage": self.usage,
             "pressed": self.pressed,
         }
+
+
+@dataclass(frozen=True)
+class CapturedKeyEvent:
+    key_event: KeyEvent
+    native_context: object | None = None
+    num_lock_on: bool | None = None

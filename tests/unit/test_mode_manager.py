@@ -1,6 +1,6 @@
 from accessibility_toolkit.events import ModeChanged
-from accessibility_toolkit.application.input.results import AppKeyEventResult
-from accessibility_toolkit.interop.key import HID, KeyEvent
+from accessibility_toolkit.input import AppKeyEventResult
+from accessibility_toolkit.input import HID, KeyEvent
 
 from accessibility_toolkit.application_support.mode_manager import ModeManager
 

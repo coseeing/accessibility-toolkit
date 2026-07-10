@@ -1,8 +1,8 @@
 from typing import Protocol
 
-from accessibility_toolkit.adapters.inputs.base import InputCapture
-from accessibility_toolkit.adapters.inputs.captured_event import CapturedKeyEvent
-from accessibility_toolkit.application.input.results import KeyboardPipelineResult
+from accessibility_toolkit.input.capture import InputCapture
+from accessibility_toolkit.input.events import CapturedKeyEvent
+from accessibility_toolkit.input.results import KeyboardPipelineResult
 
 
 class KeyEventHandler(Protocol):

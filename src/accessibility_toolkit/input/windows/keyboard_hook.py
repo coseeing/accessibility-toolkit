@@ -5,11 +5,11 @@ import sys
 from ctypes import wintypes
 from typing import Any
 
-from accessibility_toolkit.adapters.inputs.captured_event import CapturedKeyEvent
-from accessibility_toolkit.adapters.windows.hid_map import key_event_from_windows
-from accessibility_toolkit.adapters.windows.native_key_context import WindowsNativeKeyContext
-from accessibility_toolkit.application.input.results import AppKeyEventResult, KeyboardPipelineResult
-from accessibility_toolkit.interop.key.key_event import KeyEvent
+from accessibility_toolkit.input.events import CapturedKeyEvent
+from accessibility_toolkit.input.windows.hid_map import key_event_from_windows
+from accessibility_toolkit.input.windows.native_key_context import WindowsNativeKeyContext
+from accessibility_toolkit.input import AppKeyEventResult, KeyboardPipelineResult
+from accessibility_toolkit.input.events import KeyEvent
 
 
 WH_KEYBOARD_LL = 13

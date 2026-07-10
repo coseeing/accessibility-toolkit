@@ -2,9 +2,9 @@ from dataclasses import dataclass
 import logging
 from typing import Any
 
-from accessibility_toolkit.adapters.inputs.base import HotkeyCapture, InputCapture
+from accessibility_toolkit.input.capture import HotkeyCapture, InputCapture
 from accessibility_toolkit.adapters.config.json_speech_settings import JsonSpeechSettingsStore
-from accessibility_toolkit.application.input import KeyboardInputService
+from accessibility_toolkit.input import KeyboardInputService
 from accessibility_toolkit.application.output import QueuedService
 from accessibility_toolkit.application.output.speech import SpeechService
 from accessibility_toolkit.scheduling import Scheduler

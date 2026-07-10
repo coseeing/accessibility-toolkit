@@ -1,6 +1,6 @@
 import logging
 
-from accessibility_toolkit.interop.key import HID, KeyEvent
+from accessibility_toolkit.input import HID, KeyEvent
 
 
 _logger = logging.getLogger(__name__)

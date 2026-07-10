@@ -1,7 +1,7 @@
 from collections.abc import Callable
 import logging
 
-from accessibility_toolkit.adapters.inputs.base import HotkeyCapture, InputCapture
+from accessibility_toolkit.input.capture import HotkeyCapture, InputCapture
 
 _logger = logging.getLogger(__name__)
 

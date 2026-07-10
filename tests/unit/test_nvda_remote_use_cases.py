@@ -1,9 +1,9 @@
 from apps.nvda_remote.state import ConnectionState, ControlState, RuntimeState
 from apps.nvda_remote.events import RemoteConnectionChanged, RemoteControlChanged, RemoteMessageReceived
-from accessibility_toolkit.interop.key import HID, KeyEvent
+from accessibility_toolkit.input import HID, KeyEvent
 
-from accessibility_toolkit.adapters.inputs.base import KeyEventDecision
-from accessibility_toolkit.adapters.inputs.captured_event import CapturedKeyEvent
+from accessibility_toolkit.input.capture import KeyEventDecision
+from accessibility_toolkit.input.events import CapturedKeyEvent
 
 
 class FakeSpeech:

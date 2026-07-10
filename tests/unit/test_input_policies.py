@@ -1,7 +1,7 @@
-from accessibility_toolkit.application.input.results import AppKeyEventResult
-from accessibility_toolkit.interop.key import HID, KeyEvent
+from accessibility_toolkit.input import AppKeyEventResult
+from accessibility_toolkit.input import HID, KeyEvent
 
-from accessibility_toolkit.application.input.active_key_policy import ActiveKeyEventPolicy
+from accessibility_toolkit.input import ActiveKeyEventPolicy
 
 
 def test_active_key_policy_uses_exit_key_before_normal_handler():

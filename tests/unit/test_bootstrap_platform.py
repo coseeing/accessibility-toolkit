@@ -14,7 +14,7 @@ from accessibility_toolkit.runtime.platform import (
     default_speech_engine_options,
     PlatformProvider,
 )
-from accessibility_toolkit.interop.key import HID
+from accessibility_toolkit.input import HID
 
 
 class TestDefaultSpeechEngineId:
@@ -184,38 +184,38 @@ class TestMacOSFactoriesWithColdGlobals:
 
     @staticmethod
     def _register_fake_macos_modules(monkeypatch):
-        fake_event_tap = ModuleType("accessibility_toolkit.adapters.macos.event_tap")
+        fake_event_tap = ModuleType("accessibility_toolkit.input.macos.event_tap")
         fake_event_tap.MacOSEventTapManager = type(
             "FakeEventTapManager", (), {"__init__": lambda self, permissions, backend: None}
         )
         fake_event_tap.QuartzEventTapBackend = type(
             "FakeQuartzBackend", (), {}
         )
-        monkeypatch.setitem(sys.modules, "accessibility_toolkit.adapters.macos.event_tap", fake_event_tap)
+        monkeypatch.setitem(sys.modules, "accessibility_toolkit.input.macos.event_tap", fake_event_tap)
         importlib.invalidate_caches()
 
-        fake_keyboard_hook = ModuleType("accessibility_toolkit.adapters.macos.keyboard_hook")
+        fake_keyboard_hook = ModuleType("accessibility_toolkit.input.macos.keyboard_hook")
         fake_keyboard_hook.MacOSKeyboardCapture = type(
             "FakeMacKeyboardCapture", (), {"__init__": lambda self, manager: None}
         )
         monkeypatch.setitem(
-            sys.modules, "accessibility_toolkit.adapters.macos.keyboard_hook", fake_keyboard_hook
+            sys.modules, "accessibility_toolkit.input.macos.keyboard_hook", fake_keyboard_hook
         )
 
-        fake_hotkey = ModuleType("accessibility_toolkit.adapters.macos.hotkey")
+        fake_hotkey = ModuleType("accessibility_toolkit.input.macos.hotkey")
         fake_hotkey.MacOSHotkeyCapture = type(
             "FakeMacHotkeyCapture", (), {"__init__": lambda self, manager, key_code=103: None}
         )
-        monkeypatch.setitem(sys.modules, "accessibility_toolkit.adapters.macos.hotkey", fake_hotkey)
+        monkeypatch.setitem(sys.modules, "accessibility_toolkit.input.macos.hotkey", fake_hotkey)
 
-        fake_permissions = ModuleType("accessibility_toolkit.adapters.macos.permissions")
+        fake_permissions = ModuleType("accessibility_toolkit.input.macos.permissions")
         fake_permissions.AccessibilityPermissions = type(
             "FakePermissions",
             (),
             {"load_default": classmethod(lambda cls: type("FakePerm", (), {})())},
         )
         monkeypatch.setitem(
-            sys.modules, "accessibility_toolkit.adapters.macos.permissions", fake_permissions
+            sys.modules, "accessibility_toolkit.input.macos.permissions", fake_permissions
         )
         importlib.invalidate_caches()
 

@@ -1,4 +1,4 @@
-from accessibility_toolkit.interop.key import HID
+from accessibility_toolkit.input import HID
 
 KEYCODE_TO_USAGE: dict[int, int] = {
     0: HID.A,

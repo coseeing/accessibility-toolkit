@@ -1,9 +1,9 @@
 from collections.abc import Callable
 import logging
 
-from accessibility_toolkit.application.input.results import AppKeyEventResult
-from accessibility_toolkit.interop.key import HID
-from accessibility_toolkit.interop.key.key_event import KeyEvent
+from accessibility_toolkit.input import AppKeyEventResult
+from accessibility_toolkit.input import HID
+from accessibility_toolkit.input.events import KeyEvent
 from accessibility_toolkit.interop.speech.speech_sequence import SpeechSequence
 
 _logger = logging.getLogger(__name__)

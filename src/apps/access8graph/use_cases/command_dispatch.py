@@ -1,7 +1,7 @@
 from typing import Protocol
 
 from apps.access8graph.navigation.model import NavigationCommand, TransitionResult
-from accessibility_toolkit.application.input.results import AppKeyEventResult
+from accessibility_toolkit.input import AppKeyEventResult
 
 
 class NavigationFlow(Protocol):

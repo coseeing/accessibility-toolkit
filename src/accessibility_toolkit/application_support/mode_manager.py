@@ -2,8 +2,8 @@ from collections.abc import Callable
 from typing import Any
 
 from accessibility_toolkit.events import ModeChanged
-from accessibility_toolkit.application.input.results import AppKeyEventResult
-from accessibility_toolkit.interop.key.key_event import KeyEvent
+from accessibility_toolkit.input import AppKeyEventResult
+from accessibility_toolkit.input.events import KeyEvent
 
 
 class ModeManager:

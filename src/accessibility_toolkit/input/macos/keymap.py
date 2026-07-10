@@ -1,5 +1,5 @@
-from accessibility_toolkit.interop.key import HID, KeyEvent
-from accessibility_toolkit.adapters.macos.hid_map import KEYCODE_TO_USAGE
+from accessibility_toolkit.input import HID, KeyEvent
+from accessibility_toolkit.input.macos.hid_map import KEYCODE_TO_USAGE
 
 
 def key_event_from_macos(*, key_code: int, pressed: bool, is_repeat: bool) -> KeyEvent | None:

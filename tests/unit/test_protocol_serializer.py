@@ -1,6 +1,6 @@
 import pytest
 
-from accessibility_toolkit.interop.key import HID, KeyEvent
+from accessibility_toolkit.input import HID, KeyEvent
 from accessibility_toolkit.interop.speech.speech_commands import (
     BreakCommand,
     PitchCommand,

@@ -2,7 +2,7 @@ from collections.abc import Callable
 import logging
 from typing import Any
 
-from accessibility_toolkit.adapters.macos.event_tap import RawMacKeyEvent
+from accessibility_toolkit.input.macos.event_tap import RawMacKeyEvent
 
 _logger = logging.getLogger(__name__)
 

@@ -4,8 +4,8 @@ import threading
 from ctypes import wintypes
 from typing import Any
 
-from accessibility_toolkit.application.input.results import AppKeyEventResult, KeyboardPipelineResult
-from accessibility_toolkit.adapters.windows.keyboard_hook import WindowsKeyboardCapture
+from accessibility_toolkit.input import AppKeyEventResult, KeyboardPipelineResult
+from accessibility_toolkit.input.windows.keyboard_hook import WindowsKeyboardCapture
 
 
 WM_HOTKEY = 0x0312

@@ -2,11 +2,11 @@ from collections.abc import Callable
 import logging
 from typing import Any
 
-from accessibility_toolkit.adapters.inputs.captured_event import CapturedKeyEvent
-from accessibility_toolkit.adapters.macos.event_tap import RawMacKeyEvent
-from accessibility_toolkit.adapters.macos.keymap import key_event_from_macos
-from accessibility_toolkit.application.input.results import AppKeyEventResult, KeyboardPipelineResult
-from accessibility_toolkit.interop.key.key_event import KeyEvent
+from accessibility_toolkit.input.events import CapturedKeyEvent
+from accessibility_toolkit.input.macos.event_tap import RawMacKeyEvent
+from accessibility_toolkit.input.macos.keymap import key_event_from_macos
+from accessibility_toolkit.input import AppKeyEventResult, KeyboardPipelineResult
+from accessibility_toolkit.input.events import KeyEvent
 
 _logger = logging.getLogger(__name__)
 

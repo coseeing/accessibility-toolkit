@@ -1,4 +1,4 @@
-from accessibility_toolkit.application.input.results import AppKeyEventResult, KeyboardPipelineResult
+from accessibility_toolkit.input.results import AppKeyEventResult, KeyboardPipelineResult
 
 
 def assemble_pipeline_result(

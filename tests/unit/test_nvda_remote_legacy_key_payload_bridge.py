@@ -1,6 +1,6 @@
-from accessibility_toolkit.adapters.inputs.captured_event import CapturedKeyEvent
-from accessibility_toolkit.adapters.windows.native_key_context import WindowsNativeKeyContext
-from accessibility_toolkit.interop.key import HID, KeyEvent
+from accessibility_toolkit.input.events import CapturedKeyEvent
+from accessibility_toolkit.input.windows.native_key_context import WindowsNativeKeyContext
+from accessibility_toolkit.input import HID, KeyEvent
 
 from apps.nvda_remote.legacy_key_payload_bridge import legacy_payload_from_captured_event
 

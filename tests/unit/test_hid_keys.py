@@ -1,4 +1,4 @@
-from accessibility_toolkit.interop.key import HID, KeyEvent
+from accessibility_toolkit.input import HID, KeyEvent
 
 
 def test_key_event_uses_hid_fields():

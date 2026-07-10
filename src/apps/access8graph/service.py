@@ -1,16 +1,16 @@
-from accessibility_toolkit.adapters.inputs.base import HotkeyCapture, InputCapture
-from accessibility_toolkit.adapters.inputs.captured_event import CapturedKeyEvent
+from accessibility_toolkit.input.capture import HotkeyCapture, InputCapture
+from accessibility_toolkit.input.events import CapturedKeyEvent
 from accessibility_toolkit.events import AppEvent, ErrorRaised, SpeechEngineChanged
-from accessibility_toolkit.application.input import (
+from accessibility_toolkit.input import (
     assemble_pipeline_result,
     InputActivationUseCase,
     KeyboardPipelineResult,
     should_pass_through_system_toggle,
 )
-from accessibility_toolkit.application.input.results import AppKeyEventResult
-from accessibility_toolkit.application.input import KeyEventHandler, KeyboardInputService
+from accessibility_toolkit.input import AppKeyEventResult
+from accessibility_toolkit.input import KeyEventHandler, KeyboardInputService
 from accessibility_toolkit.application.output import Capabilities
-from accessibility_toolkit.interop.key import HID
+from accessibility_toolkit.input import HID
 from accessibility_toolkit.interop.speech.speech_sequence import SpeechSequence
 
 from apps.access8graph.events import GraphNavigationChanged

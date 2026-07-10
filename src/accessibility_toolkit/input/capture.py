@@ -4,10 +4,10 @@ from collections.abc import Callable
 from enum import StrEnum
 from typing import TYPE_CHECKING, Protocol
 
-from accessibility_toolkit.adapters.inputs.captured_event import CapturedKeyEvent
+from accessibility_toolkit.input.events import CapturedKeyEvent
 
 if TYPE_CHECKING:
-    from accessibility_toolkit.application.input.results import KeyboardPipelineResult
+    from accessibility_toolkit.input.results import KeyboardPipelineResult
 
 
 class KeyEventDecision(StrEnum):

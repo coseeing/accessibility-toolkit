@@ -1,24 +1,24 @@
 from collections.abc import Callable
 from typing import Any
 
-from accessibility_toolkit.adapters.inputs.base import HotkeyCapture, InputCapture, KeyEventDecision
-from accessibility_toolkit.adapters.inputs.captured_event import CapturedKeyEvent
+from accessibility_toolkit.input.capture import HotkeyCapture, InputCapture, KeyEventDecision
+from accessibility_toolkit.input.events import CapturedKeyEvent
 from accessibility_toolkit.events import (
     ErrorRaised,
     SpeechEngineChanged,
 )
-from accessibility_toolkit.application.input import (
+from accessibility_toolkit.input import (
     AppKeyEventResult,
     InputActivationUseCase,
     KeyboardPipelineResult,
     assemble_pipeline_result,
     should_pass_through_system_toggle,
 )
-from accessibility_toolkit.application.input import KeyEventHandler
+from accessibility_toolkit.input import KeyEventHandler
 from accessibility_toolkit.application.output import Capabilities
 from accessibility_toolkit.application.output import ClipboardService
 from apps.nvda_remote.state import ConnectionState, ControlState, RuntimeState
-from accessibility_toolkit.interop.key import HID
+from accessibility_toolkit.input import HID
 from accessibility_toolkit.interop.protocol.connection_info import ConnectionInfo
 from accessibility_toolkit.interop.protocol.messages import RemoteMessageType
 from accessibility_toolkit.interop.protocol.routing.message_router import MessageRouter

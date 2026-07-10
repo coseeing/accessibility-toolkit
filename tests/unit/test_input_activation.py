@@ -1,6 +1,6 @@
 import logging
 
-from accessibility_toolkit.application.input.activation import InputActivationUseCase
+from accessibility_toolkit.input import InputActivationUseCase
 
 
 class FakeCapture:

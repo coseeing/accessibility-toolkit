@@ -4,7 +4,7 @@ import logging
 import threading
 from typing import Any
 
-from accessibility_toolkit.application.input.results import AppKeyEventResult, KeyboardPipelineResult
+from accessibility_toolkit.input import AppKeyEventResult, KeyboardPipelineResult
 
 _logger = logging.getLogger(__name__)
 

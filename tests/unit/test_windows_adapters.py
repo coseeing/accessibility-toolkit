@@ -6,15 +6,15 @@ from pathlib import Path
 import pytest
 
 from accessibility_toolkit.adapters.windows.clipboard import WindowsClipboardService
-from accessibility_toolkit.adapters.windows.keyboard_hook import WindowsKeyboardCapture
+from accessibility_toolkit.input.windows.keyboard_hook import WindowsKeyboardCapture
 from accessibility_toolkit.adapters.windows.nvda_controller import (
     VENDORED_X64_DLL,
     NvdaControllerSpeechOutput,
 )
-from accessibility_toolkit.interop.key import HID, KeyEvent
-from accessibility_toolkit.adapters.inputs.captured_event import CapturedKeyEvent
-from accessibility_toolkit.adapters.windows.native_key_context import WindowsNativeKeyContext
-from accessibility_toolkit.application.input.results import AppKeyEventResult, KeyboardPipelineResult
+from accessibility_toolkit.input import HID, KeyEvent
+from accessibility_toolkit.input import CapturedKeyEvent
+from accessibility_toolkit.input.windows.native_key_context import WindowsNativeKeyContext
+from accessibility_toolkit.input import AppKeyEventResult, KeyboardPipelineResult
 
 
 WM_KEYDOWN = 0x0100
@@ -540,7 +540,7 @@ class FakeHotkeyKernel32:
 
 
 def test_windows_hotkey_capture_starts_and_registers():
-    from accessibility_toolkit.adapters.windows.hotkey import WindowsHotkeyCapture
+    from accessibility_toolkit.input.windows.hotkey import WindowsHotkeyCapture
 
     user32 = FakeHotkeyUser32(register_result=True)
     kernel32 = FakeHotkeyKernel32()
@@ -562,7 +562,7 @@ def test_windows_hotkey_capture_starts_and_registers():
 
 
 def test_windows_hotkey_capture_raises_on_register_failure():
-    from accessibility_toolkit.adapters.windows.hotkey import WindowsHotkeyCapture
+    from accessibility_toolkit.input.windows.hotkey import WindowsHotkeyCapture
 
     user32 = FakeHotkeyUser32(register_result=False)
     kernel32 = FakeHotkeyKernel32()
@@ -580,7 +580,7 @@ def test_windows_hotkey_capture_raises_on_register_failure():
 
 
 def test_windows_hotkey_capture_starts_does_not_double_start():
-    from accessibility_toolkit.adapters.windows.hotkey import WindowsHotkeyCapture
+    from accessibility_toolkit.input.windows.hotkey import WindowsHotkeyCapture
 
     user32 = FakeHotkeyUser32(register_result=True)
     kernel32 = FakeHotkeyKernel32()
@@ -598,7 +598,7 @@ def test_windows_hotkey_capture_starts_does_not_double_start():
 
 
 def test_windows_hotkey_capture_stop_does_not_double_stop():
-    from accessibility_toolkit.adapters.windows.hotkey import WindowsHotkeyCapture
+    from accessibility_toolkit.input.windows.hotkey import WindowsHotkeyCapture
 
     user32 = FakeHotkeyUser32(register_result=True)
     kernel32 = FakeHotkeyKernel32()
@@ -905,7 +905,7 @@ def test_windows_hook_passes_through_when_send_to_system_is_true():
 
 
 def test_windows_key_event_from_windows_maps_international3_via_vkcode_fallback():
-    from accessibility_toolkit.adapters.windows.hid_map import key_event_from_windows
+    from accessibility_toolkit.input.windows.hid_map import key_event_from_windows
     assert key_event_from_windows(
         vk_code=0xF2,
         scan_code=0,
@@ -919,7 +919,7 @@ def test_windows_key_event_from_windows_maps_international3_via_vkcode_fallback(
 
 
 def test_key_event_from_windows_falls_back_to_vk_when_scan_unknown():
-    from accessibility_toolkit.adapters.windows.hid_map import key_event_from_windows
+    from accessibility_toolkit.input.windows.hid_map import key_event_from_windows
 
     # Scan code unrecognised (hardware-specific) → VK fallback
     event = key_event_from_windows(vk_code=0x23, scan_code=99999, extended=True, pressed=True)
@@ -959,7 +959,7 @@ def test_key_event_from_windows_falls_back_to_vk_when_scan_unknown():
     ],
 )
 def test_key_event_from_windows_uses_vk_fallback_for_keypad_and_navigation_group(vk_code, expected_usage):
-    from accessibility_toolkit.adapters.windows.hid_map import key_event_from_windows
+    from accessibility_toolkit.input.windows.hid_map import key_event_from_windows
 
     event = key_event_from_windows(
         vk_code=vk_code,
@@ -972,7 +972,7 @@ def test_key_event_from_windows_uses_vk_fallback_for_keypad_and_navigation_group
 
 
 def test_key_event_from_windows_prefers_standard_scan_code_over_vk_fallback():
-    from accessibility_toolkit.adapters.windows.hid_map import key_event_from_windows
+    from accessibility_toolkit.input.windows.hid_map import key_event_from_windows
 
     event = key_event_from_windows(vk_code=0x23, scan_code=79, extended=True, pressed=True)
 
@@ -1000,7 +1000,7 @@ def test_key_event_from_windows_preserves_keypad_origin_for_numlock_off_navigati
     extended,
     expected_usage,
 ):
-    from accessibility_toolkit.adapters.windows.hid_map import key_event_from_windows
+    from accessibility_toolkit.input.windows.hid_map import key_event_from_windows
 
     event = key_event_from_windows(
         vk_code=vk_code,

@@ -1,15 +1,14 @@
-import importlib
 import logging
 import sys
 from dataclasses import dataclass
 from typing import Any
 
-from accessibility_toolkit.adapters.inputs.base import HotkeyCapture, InputCapture
+from accessibility_toolkit.input.capture import HotkeyCapture, InputCapture
 from accessibility_toolkit.adapters.outputs.drivers.pyttsx3 import Pyttsx3SpeechOutput
 from accessibility_toolkit.adapters.outputs.tone import DefaultToneOutput
 from accessibility_toolkit.application.output import ClipboardService
 from accessibility_toolkit.application.output.speech import SpeechEngineOption
-from accessibility_toolkit.interop.key import HID
+from accessibility_toolkit.input import HID
 from accessibility_toolkit.scheduling import Scheduler
 
 _logger = logging.getLogger(__name__)
@@ -100,7 +99,7 @@ class _UnavailableMacOSPermissions:
 def _get_windows_keyboard_capture_class() -> Any:
     global _WindowsKeyboardCapture
     if _WindowsKeyboardCapture is None:
-        from accessibility_toolkit.adapters.windows.keyboard_hook import WindowsKeyboardCapture as Capture
+        from accessibility_toolkit.input.windows.keyboard_hook import WindowsKeyboardCapture as Capture
         _WindowsKeyboardCapture = Capture
     return _WindowsKeyboardCapture
 
@@ -108,7 +107,7 @@ def _get_windows_keyboard_capture_class() -> Any:
 def _get_windows_hotkey_capture_class() -> Any:
     global _WindowsHotkeyCapture
     if _WindowsHotkeyCapture is None:
-        from accessibility_toolkit.adapters.windows.hotkey import WindowsHotkeyCapture as Capture
+        from accessibility_toolkit.input.windows.hotkey import WindowsHotkeyCapture as Capture
         _WindowsHotkeyCapture = Capture
     return _WindowsHotkeyCapture
 
@@ -134,11 +133,9 @@ def _get_nvda_controller_speech_output_class() -> Any:
 def _get_macos_permissions_type() -> Any:
     global _AccessibilityPermissions
     if _AccessibilityPermissions is None:
-        module = _import_compat_module(
-            "accessibility_toolkit.adapters.macos.permissions",
-            "adapters.macos.permissions",
-        )
-        _AccessibilityPermissions = module.AccessibilityPermissions
+        from accessibility_toolkit.input.macos.permissions import AccessibilityPermissions
+
+        _AccessibilityPermissions = AccessibilityPermissions
     return _AccessibilityPermissions
 
 
@@ -169,24 +166,18 @@ def _load_macos_input_components() -> None:
     ):
         return
     try:
-        event_tap = _import_compat_module(
-            "accessibility_toolkit.adapters.macos.event_tap",
-            "adapters.macos.event_tap",
+        from accessibility_toolkit.input.macos.event_tap import (
+            MacOSEventTapManager,
+            QuartzEventTapBackend,
         )
-        hotkey = _import_compat_module(
-            "accessibility_toolkit.adapters.macos.hotkey",
-            "adapters.macos.hotkey",
-        )
-        keyboard_hook = _import_compat_module(
-            "accessibility_toolkit.adapters.macos.keyboard_hook",
-            "adapters.macos.keyboard_hook",
-        )
+        from accessibility_toolkit.input.macos.hotkey import MacOSHotkeyCapture
+        from accessibility_toolkit.input.macos.keyboard_hook import MacOSKeyboardCapture
     except ImportError as error:
         raise RuntimeError("macOS input capture dependencies are unavailable") from error
-    _MacOSEventTapManager = event_tap.MacOSEventTapManager
-    _MacOSEventTapBackend = event_tap.QuartzEventTapBackend
-    _MacOSKeyboardCapture = keyboard_hook.MacOSKeyboardCapture
-    _MacOSHotkeyCapture = hotkey.MacOSHotkeyCapture
+    _MacOSEventTapManager = MacOSEventTapManager
+    _MacOSEventTapBackend = QuartzEventTapBackend
+    _MacOSKeyboardCapture = MacOSKeyboardCapture
+    _MacOSHotkeyCapture = MacOSHotkeyCapture
 
 
 def _ensure_macos_event_tap_manager() -> Any:
@@ -229,15 +220,6 @@ def create_clipboard_service() -> ClipboardService:
     if sys.platform == "win32":
         return _get_windows_clipboard_service_class()()
     return _UnsupportedClipboardService()
-
-
-def _import_compat_module(new_name: str, old_name: str) -> Any:
-    if old_name in sys.modules:
-        return sys.modules[old_name]
-    try:
-        return importlib.import_module(new_name)
-    except ImportError:
-        return importlib.import_module(old_name)
 
 
 def create_tone_output() -> DefaultToneOutput:

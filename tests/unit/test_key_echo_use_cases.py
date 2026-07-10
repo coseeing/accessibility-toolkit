@@ -1,5 +1,5 @@
-from accessibility_toolkit.application.input.results import AppKeyEventResult
-from accessibility_toolkit.interop.key import HID, KeyEvent
+from accessibility_toolkit.input import AppKeyEventResult
+from accessibility_toolkit.input import HID, KeyEvent
 from apps.key_echo.events import EchoStateChanged
 
 
