@@ -333,21 +333,25 @@ Architectural result:
 
 ## 8. Current Source Mapping
 
-The architecture maps to the repository roughly like this:
+The architecture maps to 7 functional packages under `src/accessibility_toolkit/`:
 
-- `src/adapters/`
-  - platform-specific implementations
-- `src/application/`
-  - shared input, output, keyboard, and speech behavior
-- `src/bootstrap/`
-  - shared runtime/bootstrap wiring
-- `src/interop/`
-  - shared protocol, transport, key, and speech models
-- `src/apps/`
-  - app-specific composition
-- `src/apps/shared/`
-  - reusable interface, mode, and controller helpers
-- `src/ui/`
-  - wxPython UI
+- `input/`
+  - keyboard input service, HID key models, platform capture adapters, and the keyboard event handling pipeline
+- `output/` and `output/speech/`
+  - output scheduling, queued output service, speech sequence playback, tone/wave output, braille, and clipboard
+- `scheduling/`
+  - domain-neutral scheduler shared by input, output, and runtime components
+- `interaction/`
+  - mode lifecycle management, `ModeManager`, and `InputActivationUseCase`
+- `events/`
+  - cross-functional lifecycle events consumed by input, output, interaction, and runtime
+- `remote/`
+  - relay protocol wire models and transport session
+- `runtime/`
+  - app composition helpers, platform resolution, and bootstrap wiring
 
-The key principle is not the folder names themselves. The key principle is that shared runtime behavior stays shared, and domain behavior stays with the app that owns it.
+`src/apps/` contains app-specific composition and `src/ui/` contains wxPython shells and app-specific panels.
+
+Dependencies flow bottom-up: `scheduling` and `events` are foundations with no internal dependencies; `input` and `interaction` consume `events`; `remote` consumes stable output/speech wire models; and `runtime` performs composition across all packages.
+
+The key principle is not the package names themselves. The key principle is that shared runtime behavior stays shared, and domain behavior stays with the app that owns it.

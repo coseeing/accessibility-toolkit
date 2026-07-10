@@ -1,6 +1,14 @@
 # Toolkit 套件遷移實作 Checklist
 
-## 目的
+> **狀態：已完成並被取代**
+>
+> 此 checklist 已被功能導向套件重組所取代。舊的技術層套件（`application`、`interop`、`adapters`、`bootstrap`、`apps/shared`）已重組為 `accessibility_toolkit` 下的 7 個功能導向套件：`input`、`output`/`output.speech`、`scheduling`、`interaction`、`events`、`remote` 與 `runtime`。
+>
+> 請參閱新結構的設計與實作文件：
+> - `docs/superpowers/specs/2026-07-10-functional-package-reorganization-design.md`
+> - `docs/superpowers/plans/2026-07-10-functional-package-reorganization-implementation.md`
+
+## 目的（歷史記錄）
 
 這份 checklist 將 `toolkit-package-migration-plan.md` 拆成可逐步執行的實作工作。目標是在不改變既有 app 行為的前提下，將共用功能整理成可獨立發佈的套件：
 

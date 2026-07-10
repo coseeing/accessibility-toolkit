@@ -333,21 +333,25 @@ app 使用到的 toolkit 職責：
 
 ## 8. 目前原始碼對應
 
-架構與原始碼的對應大致如下：
+架構對應到 `src/accessibility_toolkit/` 下的 7 個功能導向套件：
 
-- `src/adapters/`
-  - 平台專屬實作
-- `src/application/`
-  - 共用輸入、輸出、鍵盤與語音行為
-- `src/bootstrap/`
-  - 共享 runtime / bootstrap wiring
-- `src/interop/`
-  - 共享協定、transport、key 與 speech 模型
-- `src/apps/`
-  - app 專屬組裝
-- `src/apps/shared/`
-  - 可重用的介面、mode 與 controller helper
-- `src/ui/`
-  - wxPython UI
+- `input/`
+  - 鍵盤輸入服務、HID 按鍵模型、平台 capture adapter，以及鍵盤事件處理管線
+- `output/` 與 `output/speech/`
+  - 輸出排程、佇列輸出服務、語音序列播放、tone/wave 輸出、braille 與剪貼簿
+- `scheduling/`
+  - 領域中立的排程器，供 input、output 與 runtime 元件共用
+- `interaction/`
+  - 模式生命週期管理、`ModeManager` 與 `InputActivationUseCase`
+- `events/`
+  - 跨模組生命週期事件，供 input、output、interaction 與 runtime 使用
+- `remote/`
+  - relay 協定 wire 模型與 transport session
+- `runtime/`
+  - app 組裝輔助、平台解析與 bootstrap wiring
 
-真正重要的不是資料夾名稱本身，而是這個原則：共享 runtime 行為留在共享層，domain 行為留在擁有它的 app。
+`src/apps/` 包含 app 專屬組裝，`src/ui/` 包含 wxPython 殼層與 app 專屬面板。
+
+相依方向由下往上：`scheduling` 與 `events` 是無內部依賴的基礎層；`input` 與 `interaction` 使用 `events`；`remote` 使用穩定的 output/speech wire 模型；`runtime` 則進行跨套件的組裝。
+
+真正重要的不是套件名稱本身，而是這個原則：共享 runtime 行為留在共享層，domain 行為留在擁有它的 app。

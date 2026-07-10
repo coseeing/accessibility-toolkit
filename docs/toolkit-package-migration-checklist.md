@@ -1,8 +1,16 @@
 # Toolkit Package Migration Implementation Checklist
 
-## Purpose
+> **STATUS: COMPLETED AND SUPERSEDED**
+>
+> This checklist has been superseded by the functional-package reorganization. The old technical-layer packages (`application`, `interop`, `adapters`, `bootstrap`, `apps/shared`) have been reorganized into 7 functional packages under `accessibility_toolkit`: `input`, `output`/`output.speech`, `scheduling`, `interaction`, `events`, `remote`, and `runtime`.
+>
+> See the design and implementation documents for the new structure:
+> - `docs/superpowers/specs/2026-07-10-functional-package-reorganization-design.md`
+> - `docs/superpowers/plans/2026-07-10-functional-package-reorganization-implementation.md`
 
-This checklist breaks `toolkit-package-migration-plan.md` into executable implementation steps. The goal is to organize shared functionality into independently publishable packages without changing existing app behavior:
+## Purpose (historical)
+
+This checklist broke `toolkit-package-migration-plan.md` into executable implementation steps. The goal was to organize shared functionality into independently publishable packages without changing existing app behavior:
 
 - `accessibility-toolkit-core`
 - `accessibility-toolkit-wx`

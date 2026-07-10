@@ -313,17 +313,35 @@ xattr -dr com.apple.quarantine /path/to/access8graph.app
 
 ## 專案結構
 
+toolkit 將共用功能整理為 `accessibility_toolkit` 下的 7 個功能導向套件：
+
 ```text
 src/
-  apps/          app 專屬 orchestration 與 entrypoint
-  application/   共用輸入、輸出、鍵盤與語音服務
-  interop/       共用 key、speech、protocol 與 transport 模型
-  adapters/      平台專屬實作
-  bootstrap/     共用 runtime / bootstrap wiring
-  ui/            wxPython 殼層與 app 專屬面板
+  accessibility_toolkit/
+    input/         鍵盤輸入、HID、capture、管線
+    output/        輸出排程與佇列服務
+      speech/      語音序列、backend 與語音模型
+    scheduling/    領域中立的排程器
+    interaction/   模式生命週期與啟用控制
+    events/        跨模組生命週期事件
+    remote/        relay 協定與 session
+    runtime/       app 組裝、平台解析、bootstrap wiring
+  apps/            app 專屬 orchestration 與 entrypoint
+  ui/              wxPython 殼層與 app 專屬面板
 tests/
   unit/
   integration/
+```
+
+相依方向由下往上：`scheduling` 與 `events` 是基礎層，`input` 與 `interaction` 使用 `events`，`remote` 使用穩定的 output/speech wire 模型，`runtime` 負責 app 組裝。
+
+```python
+from accessibility_toolkit.input import KeyEvent, KeyboardInputService
+from accessibility_toolkit.output import QueuedService
+from accessibility_toolkit.output.speech import SpeechSequence, SpeechService
+from accessibility_toolkit.scheduling import Scheduler
+from accessibility_toolkit.interaction import ModeManager
+from accessibility_toolkit.remote import RemoteSession
 ```
 
 ## 文件

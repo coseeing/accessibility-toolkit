@@ -315,17 +315,35 @@ xattr -dr com.apple.quarantine /path/to/access8graph.app
 
 ## Project Layout
 
+The toolkit organizes shared capabilities into 7 functional packages under `accessibility_toolkit`:
+
 ```text
 src/
-  apps/          app-specific orchestration and entrypoints
-  application/   shared input, output, keyboard, and speech services
-  interop/       shared key, speech, protocol, and transport models
-  adapters/      platform-specific implementations
-  bootstrap/     shared runtime/bootstrap wiring
-  ui/            wxPython shells and app-specific panels
+  accessibility_toolkit/
+    input/         keyboard input, HID, capture, pipeline
+    output/        output scheduling and queued services
+      speech/      speech sequence, backend, and speech models
+    scheduling/    domain-neutral scheduler
+    interaction/   mode lifecycle and activation
+    events/        cross-functional lifecycle events
+    remote/        relay protocol and session
+    runtime/       app composition, platform resolution, bootstrap wiring
+  apps/            app-specific orchestration and entrypoints
+  ui/              wxPython shells and app-specific panels
 tests/
   unit/
   integration/
+```
+
+Dependencies flow bottom-up: `scheduling` and `events` are foundations, `input` and `interaction` consume `events`, `remote` consumes stable output/speech wire models, and `runtime` performs app composition.
+
+```python
+from accessibility_toolkit.input import KeyEvent, KeyboardInputService
+from accessibility_toolkit.output import QueuedService
+from accessibility_toolkit.output.speech import SpeechSequence, SpeechService
+from accessibility_toolkit.scheduling import Scheduler
+from accessibility_toolkit.interaction import ModeManager
+from accessibility_toolkit.remote import RemoteSession
 ```
 
 ## Documentation
