@@ -2,7 +2,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Protocol
 
-from accessibility_toolkit.application.events import ErrorRaised
+from accessibility_toolkit.events import ErrorRaised
 from apps.access8graph.events import GraphNavigationChanged
 from apps.access8graph.graphml import (
     Graph,

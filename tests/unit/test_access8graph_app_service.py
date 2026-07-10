@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 from accessibility_toolkit.adapters.inputs.captured_event import CapturedKeyEvent
-from accessibility_toolkit.application.events import ErrorRaised, SpeechEngineChanged
+from accessibility_toolkit.events import ErrorRaised, SpeechEngineChanged
 from accessibility_toolkit.application.input.results import AppKeyEventResult, KeyboardPipelineResult
 from accessibility_toolkit.application.input import KeyboardInputService
 from accessibility_toolkit.application.output import Capabilities

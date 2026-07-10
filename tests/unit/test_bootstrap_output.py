@@ -1,7 +1,8 @@
 import logging
 
-from accessibility_toolkit.application.output import Capabilities, QueuedService, Scheduler
+from accessibility_toolkit.application.output import Capabilities, QueuedService
 from accessibility_toolkit.application.output.speech import SpeechEngineOption, SpeechService
+from accessibility_toolkit.scheduling import Scheduler
 import accessibility_toolkit.runtime.output as bootstrap_output
 from accessibility_toolkit.runtime.output import build_output_services
 

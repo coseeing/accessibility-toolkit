@@ -3,7 +3,6 @@ import threading
 import time
 from typing import Any
 
-from accessibility_toolkit.application.output import Scheduler
 from accessibility_toolkit.application.output.speech.settings import (
     SpeechNumericSetting,
     clamp_percent,
@@ -16,6 +15,7 @@ from accessibility_toolkit.interop.speech.speech_commands import (
     VolumeCommand,
 )
 from accessibility_toolkit.interop.speech.speech_sequence import SpeechSequence
+from accessibility_toolkit.scheduling import Scheduler
 
 
 logger = logging.getLogger(__name__)

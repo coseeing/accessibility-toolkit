@@ -3,7 +3,7 @@ from typing import Any
 
 from accessibility_toolkit.adapters.inputs.base import HotkeyCapture, InputCapture, KeyEventDecision
 from accessibility_toolkit.adapters.inputs.captured_event import CapturedKeyEvent
-from accessibility_toolkit.application.events import (
+from accessibility_toolkit.events import (
     ErrorRaised,
     SpeechEngineChanged,
 )

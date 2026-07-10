@@ -4,10 +4,10 @@ import os
 from accessibility_toolkit.adapters.inputs.base import HotkeyCapture, InputCapture
 from accessibility_toolkit.adapters.config.json_speech_settings import JsonSpeechSettingsStore
 from accessibility_toolkit.application.input import KeyboardInputService
-from accessibility_toolkit.application.output import Scheduler
 from accessibility_toolkit.application.output import QueuedService
 from accessibility_toolkit.application.output import ClipboardService
 from accessibility_toolkit.application.output.speech import SpeechService
+from accessibility_toolkit.scheduling import Scheduler
 from apps.nvda_remote.service import NvdaRemoteAppService
 from accessibility_toolkit.application_support.speech_runtime_settings import SpeechRuntimeSettingsCoordinator
 from accessibility_toolkit.application_support.speech_settings_facade import SpeechSettingsFacade

@@ -2,7 +2,7 @@ import ssl
 
 import wx
 
-from accessibility_toolkit.application.events import ErrorRaised
+from accessibility_toolkit.events import ErrorRaised
 
 
 class MainFrame(wx.Frame):

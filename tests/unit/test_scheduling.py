@@ -4,7 +4,7 @@ from concurrent.futures import CancelledError
 
 import pytest
 
-from accessibility_toolkit.application.output import (
+from accessibility_toolkit.scheduling import (
     CancellationToken,
     EventCallbacks,
     ScheduledFuture,

@@ -7,10 +7,10 @@ from typing import Any
 from accessibility_toolkit.adapters.inputs.base import HotkeyCapture, InputCapture
 from accessibility_toolkit.adapters.outputs.drivers.pyttsx3 import Pyttsx3SpeechOutput
 from accessibility_toolkit.adapters.outputs.tone import DefaultToneOutput
-from accessibility_toolkit.application.output import Scheduler
 from accessibility_toolkit.application.output import ClipboardService
 from accessibility_toolkit.application.output.speech import SpeechEngineOption
 from accessibility_toolkit.interop.key import HID
+from accessibility_toolkit.scheduling import Scheduler
 
 _logger = logging.getLogger(__name__)
 

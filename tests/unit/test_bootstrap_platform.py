@@ -33,7 +33,7 @@ class TestDefaultSpeechEngineId:
 
 class TestDefaultSpeechEngineOptions:
     def test_windows_includes_nvda_controller_and_pyttsx3(self, monkeypatch):
-        from accessibility_toolkit.application.output import Scheduler
+        from accessibility_toolkit.scheduling import Scheduler
 
         monkeypatch.setattr(sys, "platform", "win32")
         scheduler = Scheduler()
@@ -48,7 +48,7 @@ class TestDefaultSpeechEngineOptions:
             scheduler.shutdown()
 
     def test_non_windows_includes_only_pyttsx3(self, monkeypatch):
-        from accessibility_toolkit.application.output import Scheduler
+        from accessibility_toolkit.scheduling import Scheduler
 
         monkeypatch.setattr(sys, "platform", "darwin")
         scheduler = Scheduler()

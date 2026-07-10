@@ -1,7 +1,7 @@
 from accessibility_toolkit.application.output import QueuedService
-from accessibility_toolkit.application.output import Scheduler
 from accessibility_toolkit.application.output.speech import SpeechEngineOption, SpeechService
 from accessibility_toolkit.interop.speech.speech_sequence import SpeechSequence
+from accessibility_toolkit.scheduling import Scheduler
 
 
 class FakeSpeechOutput:
@@ -151,11 +151,8 @@ def test_queued_output_service_proxies_speech_calls() -> None:
 def test_application_output_speech_exports_engine_types() -> None:
     from accessibility_toolkit.application.output import (
         Capabilities,
-        EventCallbacks,
         Mode,
         QueuedService,
-        ScheduledFuture,
-        Scheduler,
     )
     from accessibility_toolkit.application.output import ClipboardService
     from accessibility_toolkit.application.output.speech import (
@@ -169,6 +166,7 @@ def test_application_output_speech_exports_engine_types() -> None:
         SpeechServicePort,
         SpeechSettingsPort,
     )
+    from accessibility_toolkit.scheduling import EventCallbacks, ScheduledFuture, Scheduler
 
     assert Capabilities is not None
     assert EventCallbacks is not None

@@ -1,4 +1,4 @@
-from accessibility_toolkit.application.events import ModeChanged
+from accessibility_toolkit.events import ModeChanged
 from accessibility_toolkit.application.input.results import AppKeyEventResult
 from accessibility_toolkit.interop.key import HID, KeyEvent
 

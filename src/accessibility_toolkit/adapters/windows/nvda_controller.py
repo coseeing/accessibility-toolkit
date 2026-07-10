@@ -4,7 +4,6 @@ import logging
 import sys
 from typing import Any
 
-from accessibility_toolkit.application.output import Scheduler
 from accessibility_toolkit.application.output.speech.settings import SpeechNumericSetting, clamp_percent
 from accessibility_toolkit.interop.speech.speech_commands import (
     BreakCommand,
@@ -14,6 +13,7 @@ from accessibility_toolkit.interop.speech.speech_commands import (
 )
 from accessibility_toolkit.interop.speech.speech_sequence import SpeechSequence
 from accessibility_toolkit.runtime.environment import resource_path
+from accessibility_toolkit.scheduling import Scheduler
 
 
 VENDORED_X64_DLL = (

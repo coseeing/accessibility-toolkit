@@ -1,6 +1,6 @@
 from accessibility_toolkit.adapters.inputs.base import HotkeyCapture, InputCapture
 from accessibility_toolkit.adapters.inputs.captured_event import CapturedKeyEvent
-from accessibility_toolkit.application.events import AppEvent, ErrorRaised, SpeechEngineChanged
+from accessibility_toolkit.events import AppEvent, ErrorRaised, SpeechEngineChanged
 from accessibility_toolkit.application.input import (
     assemble_pipeline_result,
     InputActivationUseCase,

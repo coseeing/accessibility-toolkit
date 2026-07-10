@@ -6,7 +6,7 @@ from accessibility_toolkit.application.output.speech.settings import SpeechNumer
 from accessibility_toolkit.interop.speech.speech_sequence import SpeechSequence
 
 if TYPE_CHECKING:
-    from accessibility_toolkit.application.output.scheduler import Scheduler
+    from accessibility_toolkit.scheduling import Scheduler
 
 
 class SpeechService:
