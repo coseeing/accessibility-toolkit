@@ -4,14 +4,14 @@ from accessibility_toolkit.events import ErrorRaised, ModeChanged, SpeechEngineC
 from accessibility_toolkit.input import AppKeyEventResult, KeyboardPipelineResult
 from accessibility_toolkit.output import Capabilities
 from accessibility_toolkit.input import HID, KeyEvent
-from accessibility_toolkit.interop.protocol.events import (
+from accessibility_toolkit.remote.events import (
     RemotePeerMessageReceived,
     RemoteProtocolMessageInvalid,
     RemoteSessionConnected,
     RemoteSessionVersionMismatch,
 )
-from accessibility_toolkit.interop.protocol.messages import RemoteMessageType
-from accessibility_toolkit.interop.protocol.routing.message_router import MessageRouter
+from accessibility_toolkit.remote.messages import RemoteMessageType
+from accessibility_toolkit.remote.routing.message_router import MessageRouter
 
 from apps.nvda_remote.events import (
     RemoteConnectionChanged,

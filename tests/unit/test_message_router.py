@@ -1,7 +1,7 @@
 from accessibility_toolkit.output.speech import BreakCommand, SpeechSequence
-from accessibility_toolkit.interop.protocol.messages import RemoteMessageType
-from accessibility_toolkit.interop.protocol.routing.message_router import MessageRouter
-from accessibility_toolkit.interop.protocol.events import (
+from accessibility_toolkit.remote.messages import RemoteMessageType
+from accessibility_toolkit.remote.routing.message_router import MessageRouter
+from accessibility_toolkit.remote.events import (
     RemotePeerMessageReceived,
     RemoteProtocolMessageInvalid,
 )

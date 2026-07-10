@@ -257,7 +257,7 @@ def test_remote_connection_use_case_sets_connected_state_and_requests_hotkey_sta
 
 def test_remote_protocol_event_handler_maps_remote_peer_messages():
     from apps.nvda_remote.use_cases.protocol_events import RemoteProtocolEventHandler
-    from accessibility_toolkit.interop.protocol.events import RemotePeerMessageReceived, RemoteSessionConnected
+    from accessibility_toolkit.remote.events import RemotePeerMessageReceived, RemoteSessionConnected
 
     delivered = []
     handler = RemoteProtocolEventHandler(

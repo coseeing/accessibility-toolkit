@@ -1,5 +1,5 @@
 from apps.nvda_remote.events import RemoteConnectionChanged, RemoteMessageReceived
-from accessibility_toolkit.interop.protocol.events import (
+from accessibility_toolkit.remote.events import (
     RemotePeerMessageReceived,
     RemoteSessionConnected,
     RemoteSessionDisconnected,

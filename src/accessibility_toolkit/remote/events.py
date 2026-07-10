@@ -33,3 +33,7 @@ class RemoteProtocolMessageIgnored:
 class RemoteProtocolMessageInvalid:
     reason: str
     payload: dict[str, Any]
+
+
+RemotePeerEvent = RemotePeerMessageReceived | RemoteProtocolMessageInvalid | RemoteProtocolMessageIgnored
+RemoteProtocolError = RemoteProtocolMessageInvalid

@@ -9,8 +9,8 @@ from accessibility_toolkit.output.speech import (
     SpeechSequence,
     VolumeCommand,
 )
-from accessibility_toolkit.interop.protocol.messages import RemoteMessageType, address_to_host_port
-from accessibility_toolkit.interop.protocol.serializer import JSONSerializer
+from accessibility_toolkit.remote.messages import RemoteMessageType, address_to_host_port
+from accessibility_toolkit.remote.serializer import JSONSerializer
 
 
 def test_protocol_helpers_and_serializer_round_trip():

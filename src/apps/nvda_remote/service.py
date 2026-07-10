@@ -18,11 +18,11 @@ from accessibility_toolkit.input import KeyEventHandler
 from accessibility_toolkit.output import Capabilities, ClipboardService
 from apps.nvda_remote.state import ConnectionState, ControlState, RuntimeState
 from accessibility_toolkit.input import HID
-from accessibility_toolkit.interop.protocol.connection_info import ConnectionInfo
-from accessibility_toolkit.interop.protocol.messages import RemoteMessageType
-from accessibility_toolkit.interop.protocol.routing.message_router import MessageRouter
-from accessibility_toolkit.interop.protocol.session.remote_session import RemoteSession
-from accessibility_toolkit.interop.protocol.transport.base import Transport
+from accessibility_toolkit.remote.connection import ConnectionInfo
+from accessibility_toolkit.remote.messages import RemoteMessageType
+from accessibility_toolkit.remote.routing.message_router import MessageRouter
+from accessibility_toolkit.remote.session.remote_session import RemoteSession
+from accessibility_toolkit.remote.transport.base import Transport
 
 from apps.nvda_remote.use_cases.connection import RemoteConnectionUseCase
 from apps.nvda_remote.use_cases.protocol_events import RemoteProtocolEventHandler

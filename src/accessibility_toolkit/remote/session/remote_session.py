@@ -2,15 +2,15 @@ from collections.abc import Callable
 from enum import Enum
 from typing import Any
 
-from accessibility_toolkit.interop.protocol.connection_info import ConnectionInfo
-from accessibility_toolkit.interop.protocol.events import (
+from accessibility_toolkit.remote.connection import ConnectionInfo
+from accessibility_toolkit.remote.events import (
     RemotePeerMessageReceived,
     RemoteSessionConnected,
     RemoteSessionDisconnected,
     RemoteSessionVersionMismatch,
 )
-from accessibility_toolkit.interop.protocol.messages import RemoteMessageType
-from accessibility_toolkit.interop.protocol.transport.base import Transport
+from accessibility_toolkit.remote.messages import RemoteMessageType
+from accessibility_toolkit.remote.transport.base import Transport
 
 
 class RemoteSession:

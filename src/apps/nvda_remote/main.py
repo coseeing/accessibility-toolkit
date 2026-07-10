@@ -15,8 +15,8 @@ from apps.nvda_remote.service import NvdaRemoteAppService
 from accessibility_toolkit.runtime.runtime_parts import build_app_runtime_parts
 from accessibility_toolkit.runtime.platform import PlatformProvider
 from accessibility_toolkit.runtime.environment import configure_logging, default_config_path
-from accessibility_toolkit.interop.protocol.serializer import JSONSerializer
-from accessibility_toolkit.interop.protocol.transport.relay import RelayTransport
+from accessibility_toolkit.remote.serializer import JSONSerializer
+from accessibility_toolkit.remote.transport.relay import RelayTransport
 from ui.nvda_remote.app import NvdaRemoteApp
 
 

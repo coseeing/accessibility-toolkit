@@ -25,8 +25,8 @@ from accessibility_toolkit.output.speech import (
     VolumeCommand,
 )
 from accessibility_toolkit.output.speech import SpeechSequence
-from accessibility_toolkit.interop.protocol.routing.message_router import MessageRouter
-from accessibility_toolkit.interop.protocol.serializer import JSONSerializer
+from accessibility_toolkit.remote.routing.message_router import MessageRouter
+from accessibility_toolkit.remote.serializer import JSONSerializer
 
 
 class FakeSpeechOutput:

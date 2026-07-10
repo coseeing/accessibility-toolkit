@@ -3,8 +3,8 @@ from collections.abc import Callable
 from typing import Any
 
 from accessibility_toolkit.output.speech import SpeechSequence
-from accessibility_toolkit.interop.protocol.messages import RemoteMessageType
-from accessibility_toolkit.interop.protocol.events import (
+from accessibility_toolkit.remote.messages import RemoteMessageType
+from accessibility_toolkit.remote.events import (
     RemotePeerMessageReceived,
     RemoteProtocolMessageInvalid,
 )
