@@ -1,5 +1,7 @@
 import importlib
 import sys
+import tomllib
+from pathlib import Path
 
 import pytest
 
@@ -34,3 +36,19 @@ def test_feature_import_does_not_load_runtime(name):
     sys.modules.pop("accessibility_toolkit.runtime", None)
     importlib.import_module(f"accessibility_toolkit.{name}")
     assert "accessibility_toolkit.runtime" not in sys.modules
+
+
+def test_core_package_discovery_excludes_wx():
+    core_toml = Path(__file__).parents[2] / "packages" / "accessibility-toolkit-core" / "pyproject.toml"
+    data = tomllib.loads(core_toml.read_text())
+    include = data["tool"]["setuptools"]["packages"]["find"]["include"]
+    assert "accessibility_toolkit_wx" not in include
+    assert "accessibility_toolkit" in include
+
+
+def test_package_data_uses_output_speech_windows_path():
+    core_toml = Path(__file__).parents[2] / "packages" / "accessibility-toolkit-core" / "pyproject.toml"
+    data = tomllib.loads(core_toml.read_text())
+    pd = data["tool"]["setuptools"]["package-data"]
+    assert "accessibility_toolkit.output.speech.windows" in pd
+    assert "adapters.windows" not in str(data)

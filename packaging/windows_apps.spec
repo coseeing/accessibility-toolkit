@@ -12,7 +12,7 @@ ROOT = Path(SPECPATH).resolve().parent
 SRC = ROOT / "src"
 APP_TARGET = os.environ.get("APP_TARGET", "all").strip().lower()
 PYTTSX3_IMPORTS = collect_submodules("pyttsx3")
-NVDA_DLL = SRC / "adapters" / "windows" / "vendor" / "nvda" / "x64" / "nvdaControllerClient.dll"
+NVDA_DLL = SRC / "accessibility_toolkit" / "output" / "speech" / "windows" / "vendor" / "nvda" / "x64" / "nvdaControllerClient.dll"
 
 
 APPS = {
@@ -20,28 +20,28 @@ APPS = {
         "name": "access8graph",
         "entry": SRC / "apps" / "access8graph" / "main.py",
         "hiddenimports": [
-            "adapters.windows.keyboard_hook",
-            "adapters.windows.hotkey",
-            "adapters.windows.nvda_controller",
+            "accessibility_toolkit.input.windows.keyboard_hook",
+            "accessibility_toolkit.input.windows.hotkey",
+            "accessibility_toolkit.output.speech.windows.nvda_controller",
         ],
     },
     "key_echo": {
         "name": "key-echo-demo",
         "entry": SRC / "apps" / "key_echo" / "main.py",
         "hiddenimports": [
-            "adapters.windows.keyboard_hook",
-            "adapters.windows.hotkey",
-            "adapters.windows.nvda_controller",
+            "accessibility_toolkit.input.windows.keyboard_hook",
+            "accessibility_toolkit.input.windows.hotkey",
+            "accessibility_toolkit.output.speech.windows.nvda_controller",
         ],
     },
     "nvda_remote": {
         "name": "nvda_remote",
         "entry": SRC / "apps" / "nvda_remote" / "main.py",
         "hiddenimports": [
-            "adapters.windows.keyboard_hook",
-            "adapters.windows.hotkey",
-            "adapters.windows.clipboard",
-            "adapters.windows.nvda_controller",
+            "accessibility_toolkit.input.windows.keyboard_hook",
+            "accessibility_toolkit.input.windows.hotkey",
+            "accessibility_toolkit.output.windows.clipboard",
+            "accessibility_toolkit.output.speech.windows.nvda_controller",
         ],
     },
 }
@@ -69,7 +69,7 @@ def build_app(target: str, settings: dict[str, object]):
     analysis = Analysis(
         [entry],
         pathex=[str(SRC)],
-        binaries=[(str(NVDA_DLL), "adapters/windows/vendor/nvda/x64")],
+        binaries=[(str(NVDA_DLL), "accessibility_toolkit/output/speech/windows/vendor/nvda/x64")],
         datas=[],
         hiddenimports=hiddenimports,
         hookspath=[],

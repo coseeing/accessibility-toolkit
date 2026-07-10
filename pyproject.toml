@@ -21,7 +21,7 @@ package-dir = {"" = "src"}
 where = ["src"]
 
 [tool.setuptools.package-data]
-"adapters.windows" = ["vendor/nvda/x64/*.dll"]
+"accessibility_toolkit.output.speech.windows" = ["vendor/nvda/x64/*.dll"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src", "."]

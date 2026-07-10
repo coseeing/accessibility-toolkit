@@ -17,7 +17,7 @@ package-dir = {"" = "../../src"}
 
 [tool.setuptools.packages.find]
 where = ["../../src"]
-include = ["accessibility_toolkit*"]
+include = ["accessibility_toolkit", "accessibility_toolkit.*"]
 
 [tool.setuptools.package-data]
-"accessibility_toolkit.adapters.windows" = ["vendor/nvda/x64/*.dll"]
+"accessibility_toolkit.output.speech.windows" = ["vendor/nvda/x64/*.dll"]
