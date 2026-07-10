@@ -354,4 +354,4 @@ The architecture maps to 7 functional packages under `src/accessibility_toolkit/
 
 Dependencies flow bottom-up: `scheduling` and `events` are foundations with no internal dependencies; `input` and `interaction` consume `events`; `remote` consumes stable output/speech wire models; and `runtime` performs composition across all packages.
 
-The key principle is not the package names themselves. The key principle is that shared runtime behavior stays shared, and domain behavior stays with the app that owns it.
+The key principle is not the package names themselves but that shared runtime behavior stays shared, and domain behavior stays with the app that owns it.

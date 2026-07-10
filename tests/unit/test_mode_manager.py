@@ -2,7 +2,7 @@ from accessibility_toolkit.events import ModeChanged
 from accessibility_toolkit.input import AppKeyEventResult
 from accessibility_toolkit.input import HID, KeyEvent
 
-from accessibility_toolkit.interaction import ActivationMode, ModeManager
+from accessibility_toolkit.interaction import ModeManager
 
 
 class FakeActivation:
