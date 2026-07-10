@@ -1,9 +1,20 @@
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Protocol
 
 from accessibility_toolkit.events import ModeChanged
 from accessibility_toolkit.input import AppKeyEventResult
 from accessibility_toolkit.input.events import KeyEvent
+
+
+class ActivationMode(Protocol):
+    mode_id: str
+    enter_usage: int
+    exit_usage: int
+
+    def can_enter(self) -> bool: ...
+    def enter(self) -> bool: ...
+    def exit(self) -> bool: ...
+    def handle_key_event(self, event: KeyEvent) -> AppKeyEventResult: ...
 
 
 class ModeManager:

@@ -35,7 +35,7 @@ from apps.nvda_remote.events import (
     NvdaRemoteEvent,
     RemoteTransportDisconnected,
 )
-from accessibility_toolkit.application_support.mode_manager import ModeManager
+from accessibility_toolkit.interaction import ModeManager
 
 
 class RemoteControlMode:
