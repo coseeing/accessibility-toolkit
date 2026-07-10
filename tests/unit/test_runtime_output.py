@@ -3,7 +3,7 @@ import logging
 from accessibility_toolkit.output import Capabilities, QueuedService
 from accessibility_toolkit.output.speech import SpeechEngineOption, SpeechService
 from accessibility_toolkit.scheduling import Scheduler
-import accessibility_toolkit.runtime.output as bootstrap_output
+import accessibility_toolkit.runtime.output as runtime_output
 from accessibility_toolkit.runtime.output import build_output_services
 
 
@@ -113,7 +113,7 @@ def test_build_output_services_shuts_down_scheduler_when_options_factory_raises(
         def shutdown(self):
             self.shutdown_calls += 1
 
-    monkeypatch.setattr(bootstrap_output, "Scheduler", FakeScheduler)
+    monkeypatch.setattr(runtime_output, "Scheduler", FakeScheduler)
 
     def raise_options(scheduler):
         assert isinstance(scheduler, FakeScheduler)
@@ -145,7 +145,7 @@ def test_build_output_services_shuts_down_scheduler_when_fallback_callback_raise
         def shutdown(self):
             self.shutdown_calls += 1
 
-    monkeypatch.setattr(bootstrap_output, "Scheduler", FakeScheduler)
+    monkeypatch.setattr(runtime_output, "Scheduler", FakeScheduler)
 
     def raise_fallback(engine_id):
         assert engine_id == "fallback"
