@@ -1,13 +1,14 @@
 import ctypes
+import subprocess
 import sys
 import types
 from pathlib import Path
 
 import pytest
 
-from accessibility_toolkit.adapters.windows.clipboard import WindowsClipboardService
+from accessibility_toolkit.output.windows.clipboard import WindowsClipboardService
 from accessibility_toolkit.input.windows.keyboard_hook import WindowsKeyboardCapture
-from accessibility_toolkit.adapters.windows.nvda_controller import (
+from accessibility_toolkit.output.speech.windows.nvda_controller import (
     VENDORED_X64_DLL,
     NvdaControllerSpeechOutput,
 )
@@ -444,11 +445,11 @@ def test_nvda_controller_load_default_uses_loader_and_marks_available():
         loaded.append(name)
         return dll
 
-    from accessibility_toolkit.adapters.windows import nvda_controller as module
+    from accessibility_toolkit.output.speech.windows import nvda_controller as module
 
     output = None
     monkeypatch = pytest.MonkeyPatch()
-    monkeypatch.setattr(module, "resource_path", lambda relative_path: vendored_path)
+    monkeypatch.setattr(module, "VENDORED_X64_DLL", vendored_path)
     try:
         output = NvdaControllerSpeechOutput.load_default(loader=fake_loader, is_windows=True)
     finally:
@@ -468,10 +469,10 @@ def test_nvda_controller_load_default_does_not_fallback_when_vendored_path_fails
         loaded.append(name)
         raise OSError("missing")
 
-    from accessibility_toolkit.adapters.windows import nvda_controller as module
+    from accessibility_toolkit.output.speech.windows import nvda_controller as module
 
     monkeypatch = pytest.MonkeyPatch()
-    monkeypatch.setattr(module, "resource_path", lambda relative_path: vendored_path)
+    monkeypatch.setattr(module, "VENDORED_X64_DLL", vendored_path)
     try:
         output = NvdaControllerSpeechOutput.load_default(loader=fail, is_windows=True)
     finally:
@@ -481,6 +482,28 @@ def test_nvda_controller_load_default_does_not_fallback_when_vendored_path_fails
     assert output.available is False
     assert output.controller is None
     assert output.loaded_from is None
+
+
+def test_nvda_controller_isolated_import_does_not_load_runtime():
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            (
+                "import sys; "
+                "import accessibility_toolkit.output.speech.windows.nvda_controller; "
+                "assert not any(name == 'accessibility_toolkit.runtime' or "
+                "name.startswith('accessibility_toolkit.runtime.') "
+                "for name in sys.modules)"
+            ),
+        ],
+        check=False,
+        capture_output=True,
+        cwd=Path(__file__).resolve().parents[2] / "src",
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
 
 
 def test_main_uses_nvda_controller_loader(monkeypatch):

@@ -2,23 +2,26 @@ import ctypes
 import html
 import logging
 import sys
+from pathlib import Path
 from typing import Any
 
-from accessibility_toolkit.application.output.speech.settings import SpeechNumericSetting, clamp_percent
-from accessibility_toolkit.interop.speech.speech_commands import (
+from accessibility_toolkit.output.speech.commands import (
     BreakCommand,
     PitchCommand,
     RateCommand,
     VolumeCommand,
 )
-from accessibility_toolkit.interop.speech.speech_sequence import SpeechSequence
-from accessibility_toolkit.runtime.environment import resource_path
+from accessibility_toolkit.output.speech.sequence import SpeechSequence
+from accessibility_toolkit.output.speech.settings import SpeechNumericSetting, clamp_percent
 from accessibility_toolkit.scheduling import Scheduler
 
 
 VENDORED_X64_DLL = (
-    "accessibility_toolkit/adapters/windows/vendor/nvda/x64/"
-    "nvdaControllerClient.dll"
+    Path(__file__).resolve().parent
+    / "vendor"
+    / "nvda"
+    / "x64"
+    / "nvdaControllerClient.dll"
 )
 logger = logging.getLogger(__name__)
 SPEAK_SSML_FUNCTION = "nvdaController_speakSsml"
@@ -60,7 +63,7 @@ class NvdaControllerSpeechOutput:
             return cls(controller=None, scheduler=scheduler)
         if loader is None:
             loader = ctypes.WinDLL
-        candidate = str(resource_path(VENDORED_X64_DLL))
+        candidate = str(VENDORED_X64_DLL)
         try:
             controller = loader(candidate)
             if not cls._supports_ssml(controller):

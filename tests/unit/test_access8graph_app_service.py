@@ -6,11 +6,11 @@ from accessibility_toolkit.input.events import CapturedKeyEvent
 from accessibility_toolkit.events import ErrorRaised, SpeechEngineChanged
 from accessibility_toolkit.input import AppKeyEventResult, KeyboardPipelineResult
 from accessibility_toolkit.input import KeyboardInputService
-from accessibility_toolkit.application.output import Capabilities
+from accessibility_toolkit.output import Capabilities
 from apps.access8graph.events import GraphNavigationChanged
 from apps.access8graph.service import Access8GraphAppService
 from accessibility_toolkit.input import HID, KeyEvent
-from accessibility_toolkit.interop.speech.speech_sequence import SpeechSequence
+from accessibility_toolkit.output.speech import SpeechSequence
 
 
 FIXTURE = Path("Access8Graph/tests/test.graphml")

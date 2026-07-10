@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Callable
 
-from accessibility_toolkit.adapters.outputs.interfaces import SpeechOutput
+from accessibility_toolkit.output.interfaces import SpeechOutput
 
 
 @dataclass(frozen=True)

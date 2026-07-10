@@ -1,7 +1,7 @@
 import logging
 from dataclasses import dataclass
 
-from accessibility_toolkit.interop.speech.speech_commands import (
+from accessibility_toolkit.output.speech.commands import (
     SpeechCommand,
     restore_speech_command,
 )

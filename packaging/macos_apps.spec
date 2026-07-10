@@ -23,10 +23,10 @@ APPS = {
         "entry": SRC / "apps" / "access8graph" / "main.py",
         "bundle_identifier": "org.coseeing.access8graph",
         "hiddenimports": [
-            "adapters.macos.permissions",
-            "adapters.macos.event_tap",
-            "adapters.macos.keyboard_hook",
-            "adapters.macos.hotkey",
+            "accessibility_toolkit.input.macos.permissions",
+            "accessibility_toolkit.input.macos.event_tap",
+            "accessibility_toolkit.input.macos.keyboard_hook",
+            "accessibility_toolkit.input.macos.hotkey",
         ],
     },
     "key_echo": {
@@ -34,10 +34,10 @@ APPS = {
         "entry": SRC / "apps" / "key_echo" / "main.py",
         "bundle_identifier": "org.coseeing.key-echo-demo",
         "hiddenimports": [
-            "adapters.macos.permissions",
-            "adapters.macos.event_tap",
-            "adapters.macos.keyboard_hook",
-            "adapters.macos.hotkey",
+            "accessibility_toolkit.input.macos.permissions",
+            "accessibility_toolkit.input.macos.event_tap",
+            "accessibility_toolkit.input.macos.keyboard_hook",
+            "accessibility_toolkit.input.macos.hotkey",
         ],
     },
     "nvda_remote": {
@@ -45,10 +45,10 @@ APPS = {
         "entry": SRC / "apps" / "nvda_remote" / "main.py",
         "bundle_identifier": "org.coseeing.accessibility-toolkit",
         "hiddenimports": [
-            "adapters.macos.permissions",
-            "adapters.macos.event_tap",
-            "adapters.macos.keyboard_hook",
-            "adapters.macos.hotkey",
+            "accessibility_toolkit.input.macos.permissions",
+            "accessibility_toolkit.input.macos.event_tap",
+            "accessibility_toolkit.input.macos.keyboard_hook",
+            "accessibility_toolkit.input.macos.hotkey",
         ],
     },
 }

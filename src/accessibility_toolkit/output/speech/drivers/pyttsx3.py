@@ -3,18 +3,18 @@ import threading
 import time
 from typing import Any
 
-from accessibility_toolkit.application.output.speech.settings import (
+from accessibility_toolkit.output.speech.settings import (
     SpeechNumericSetting,
     clamp_percent,
     percent_to_range,
 )
-from accessibility_toolkit.interop.speech.speech_commands import (
+from accessibility_toolkit.output.speech.commands import (
     BreakCommand,
     PitchCommand,
     RateCommand,
     VolumeCommand,
 )
-from accessibility_toolkit.interop.speech.speech_sequence import SpeechSequence
+from accessibility_toolkit.output.speech.sequence import SpeechSequence
 from accessibility_toolkit.scheduling import Scheduler
 
 

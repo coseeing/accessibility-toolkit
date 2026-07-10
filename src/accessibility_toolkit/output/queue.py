@@ -1,8 +1,8 @@
 import logging
 from enum import Enum
 
-from accessibility_toolkit.application.output.speech.service import SpeechService
-from accessibility_toolkit.interop.speech.speech_sequence import SpeechSequence
+from accessibility_toolkit.output.speech.service import SpeechService
+from accessibility_toolkit.output.speech.sequence import SpeechSequence
 from accessibility_toolkit.scheduling import Scheduler
 
 _logger = logging.getLogger(__name__)

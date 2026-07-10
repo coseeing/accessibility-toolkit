@@ -1,4 +1,4 @@
-from accessibility_toolkit.adapters.outputs.interfaces import BrailleOutput
+from accessibility_toolkit.output.interfaces import BrailleOutput
 
 
 class NullBrailleOutput:

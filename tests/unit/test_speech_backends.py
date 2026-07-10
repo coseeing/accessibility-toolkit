@@ -4,27 +4,27 @@ import time
 
 import pytest
 
-from accessibility_toolkit.adapters.outputs.drivers.pyttsx3 import Pyttsx3SpeechOutput
-from accessibility_toolkit.adapters.config.json_speech_settings import JsonSpeechSettingsStore
-from accessibility_toolkit.application.output.speech import (
+from accessibility_toolkit.output.speech.drivers.pyttsx3 import Pyttsx3SpeechOutput
+from accessibility_toolkit.output.speech.json_settings_store import JsonSpeechSettingsStore
+from accessibility_toolkit.output.speech import (
     SpeechEngineManager,
     SpeechEngineOption,
     SpeechNumericSetting,
 )
-from accessibility_toolkit.application.output.speech.settings import (
+from accessibility_toolkit.output.speech.settings import (
     clamp_percent,
     percent_to_range,
     range_to_percent,
 )
-from accessibility_toolkit.adapters.windows.nvda_controller import NvdaControllerSpeechOutput
-from accessibility_toolkit.interop.speech.speech_commands import (
+from accessibility_toolkit.output.speech.windows.nvda_controller import NvdaControllerSpeechOutput
+from accessibility_toolkit.output.speech import (
     BreakCommand,
     PitchCommand,
     RateCommand,
     SpeechCommand,
     VolumeCommand,
 )
-from accessibility_toolkit.interop.speech.speech_sequence import SpeechSequence
+from accessibility_toolkit.output.speech import SpeechSequence
 from accessibility_toolkit.interop.protocol.routing.message_router import MessageRouter
 from accessibility_toolkit.interop.protocol.serializer import JSONSerializer
 

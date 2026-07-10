@@ -1,6 +1,8 @@
 import importlib
 import logging
+import subprocess
 import sys
+from pathlib import Path
 from types import ModuleType
 
 import accessibility_toolkit.runtime.platform as _bp
@@ -30,6 +32,31 @@ class TestDefaultSpeechEngineId:
         monkeypatch.setattr(sys, "platform", "linux")
         assert default_speech_engine_id() == "Pyttsx3"
 
+
+def test_isolated_import_keeps_output_implementations_lazy():
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            (
+                "import sys; "
+                "import accessibility_toolkit.runtime.platform; "
+                "forbidden = {"
+                "'accessibility_toolkit.output.tone', "
+                "'accessibility_toolkit.output.speech.drivers.pyttsx3', "
+                "'accessibility_toolkit.output.speech.windows.nvda_controller', "
+                "'accessibility_toolkit.output.windows.clipboard'}; "
+                "loaded = forbidden.intersection(sys.modules); "
+                "assert not loaded, sorted(loaded)"
+            ),
+        ],
+        check=False,
+        capture_output=True,
+        cwd=Path(__file__).resolve().parents[2] / "src",
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
 
 class TestDefaultSpeechEngineOptions:
     def test_windows_includes_nvda_controller_and_pyttsx3(self, monkeypatch):
@@ -261,7 +288,7 @@ class TestMacOSFactoriesWithColdGlobals:
 
 class TestCreateToneOutput:
     def test_returns_default_tone_output(self):
-        from accessibility_toolkit.adapters.outputs.tone import DefaultToneOutput
+        from accessibility_toolkit.output.tone import DefaultToneOutput
 
         tone = create_tone_output()
 

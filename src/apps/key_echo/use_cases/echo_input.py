@@ -4,7 +4,7 @@ import logging
 from accessibility_toolkit.input import AppKeyEventResult
 from accessibility_toolkit.input import HID
 from accessibility_toolkit.input.events import KeyEvent
-from accessibility_toolkit.interop.speech.speech_sequence import SpeechSequence
+from accessibility_toolkit.output.speech import SpeechSequence
 
 _logger = logging.getLogger(__name__)
 

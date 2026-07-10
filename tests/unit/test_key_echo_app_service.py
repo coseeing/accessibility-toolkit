@@ -6,10 +6,9 @@ from accessibility_toolkit.input.windows.native_key_context import WindowsNative
 from accessibility_toolkit.input import AppKeyEventResult, KeyboardPipelineResult
 from accessibility_toolkit.events import ErrorRaised, ModeChanged, SpeechEngineChanged
 from accessibility_toolkit.input import KeyboardInputService
-from accessibility_toolkit.application.output import Capabilities
-from accessibility_toolkit.application.output.speech import SpeechService
+from accessibility_toolkit.output import Capabilities
+from accessibility_toolkit.output.speech import SpeechSequence, SpeechService
 from accessibility_toolkit.input import HID, KeyEvent
-from accessibility_toolkit.interop.speech.speech_sequence import SpeechSequence
 
 from apps.key_echo.events import EchoStateChanged
 from apps.key_echo.service import KeyEchoAppService

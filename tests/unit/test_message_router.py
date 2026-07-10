@@ -1,5 +1,4 @@
-from accessibility_toolkit.interop.speech.speech_commands import BreakCommand
-from accessibility_toolkit.interop.speech.speech_sequence import SpeechSequence
+from accessibility_toolkit.output.speech import BreakCommand, SpeechSequence
 from accessibility_toolkit.interop.protocol.messages import RemoteMessageType
 from accessibility_toolkit.interop.protocol.routing.message_router import MessageRouter
 from accessibility_toolkit.interop.protocol.events import (

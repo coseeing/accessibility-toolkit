@@ -9,9 +9,9 @@ from accessibility_toolkit.input import (
 )
 from accessibility_toolkit.input import AppKeyEventResult
 from accessibility_toolkit.input import KeyEventHandler, KeyboardInputService
-from accessibility_toolkit.application.output import Capabilities
+from accessibility_toolkit.output import Capabilities
 from accessibility_toolkit.input import HID
-from accessibility_toolkit.interop.speech.speech_sequence import SpeechSequence
+from accessibility_toolkit.output.speech import SpeechSequence
 
 from apps.access8graph.events import GraphNavigationChanged
 from apps.access8graph.input import Access8GraphKeyTranslator

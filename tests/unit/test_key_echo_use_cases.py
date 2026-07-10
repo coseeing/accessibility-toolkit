@@ -49,7 +49,7 @@ class FakeSpeech:
 
 
 def test_key_echo_speech_settings_use_case_proxies_engine_and_voice_controls():
-    from accessibility_toolkit.application_support.speech_settings_facade import SpeechSettingsFacade
+    from accessibility_toolkit.output.speech import SpeechSettingsFacade
 
     speech = FakeSpeech()
     use_case = SpeechSettingsFacade(speech=speech)

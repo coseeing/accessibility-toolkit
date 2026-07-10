@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from accessibility_toolkit.application.output.speech.settings import clamp_percent
+from accessibility_toolkit.output.speech.settings import clamp_percent
 
 
 class JsonSpeechSettingsStore:

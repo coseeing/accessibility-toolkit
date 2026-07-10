@@ -3,9 +3,15 @@ from typing import Callable
 
 import pytest
 
-from accessibility_toolkit.adapters.config.json_speech_settings import JsonSpeechSettingsStore
-from accessibility_toolkit.application.output.speech import SpeechEngineOption, SpeechService, SpeechNumericSetting
-from accessibility_toolkit.interop.speech.speech_sequence import SpeechSequence
+from accessibility_toolkit.output.speech import (
+    SpeechEngineOption,
+    SpeechNumericSetting,
+    SpeechSequence,
+    SpeechService,
+)
+from accessibility_toolkit.output.speech.json_settings_store import (
+    JsonSpeechSettingsStore,
+)
 
 
 class RecordingSpeechOutput:

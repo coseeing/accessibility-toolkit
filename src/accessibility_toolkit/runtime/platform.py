@@ -4,16 +4,16 @@ from dataclasses import dataclass
 from typing import Any
 
 from accessibility_toolkit.input.capture import HotkeyCapture, InputCapture
-from accessibility_toolkit.adapters.outputs.drivers.pyttsx3 import Pyttsx3SpeechOutput
-from accessibility_toolkit.adapters.outputs.tone import DefaultToneOutput
-from accessibility_toolkit.application.output import ClipboardService
-from accessibility_toolkit.application.output.speech import SpeechEngineOption
 from accessibility_toolkit.input import HID
+from accessibility_toolkit.output import ClipboardService, ToneOutput
+from accessibility_toolkit.output.speech import SpeechEngineOption
 from accessibility_toolkit.scheduling import Scheduler
 
 _logger = logging.getLogger(__name__)
 
 # --- lazy import cache variables ---
+_DefaultToneOutput: Any = None
+_Pyttsx3SpeechOutput: Any = None
 _WindowsKeyboardCapture: Any = None
 _WindowsHotkeyCapture: Any = None
 _WindowsClipboardService: Any = None
@@ -39,7 +39,7 @@ class PlatformServices:
     input_capture: InputCapture
     hotkey_capture: HotkeyCapture
     clipboard: ClipboardService
-    tone_output: DefaultToneOutput
+    tone_output: ToneOutput
 
 
 # --- null / fallback implementations ---
@@ -94,6 +94,28 @@ class _UnavailableMacOSPermissions:
         raise RuntimeError("macOS input monitoring permission wiring is unavailable")
 
 
+# --- output implementation lazy helpers ---
+
+def _get_default_tone_output_class() -> Any:
+    global _DefaultToneOutput
+    if _DefaultToneOutput is None:
+        from accessibility_toolkit.output.tone import DefaultToneOutput as Output
+
+        _DefaultToneOutput = Output
+    return _DefaultToneOutput
+
+
+def _get_pyttsx3_speech_output_class() -> Any:
+    global _Pyttsx3SpeechOutput
+    if _Pyttsx3SpeechOutput is None:
+        from accessibility_toolkit.output.speech.drivers.pyttsx3 import (
+            Pyttsx3SpeechOutput as Output,
+        )
+
+        _Pyttsx3SpeechOutput = Output
+    return _Pyttsx3SpeechOutput
+
+
 # --- Windows lazy helpers ---
 
 def _get_windows_keyboard_capture_class() -> Any:
@@ -115,7 +137,9 @@ def _get_windows_hotkey_capture_class() -> Any:
 def _get_windows_clipboard_service_class() -> Any:
     global _WindowsClipboardService
     if _WindowsClipboardService is None:
-        from accessibility_toolkit.adapters.windows.clipboard import WindowsClipboardService as Service
+        from accessibility_toolkit.output.windows.clipboard import (
+            WindowsClipboardService as Service,
+        )
         _WindowsClipboardService = Service
     return _WindowsClipboardService
 
@@ -123,7 +147,9 @@ def _get_windows_clipboard_service_class() -> Any:
 def _get_nvda_controller_speech_output_class() -> Any:
     global _NvdaControllerSpeechOutput
     if _NvdaControllerSpeechOutput is None:
-        from accessibility_toolkit.adapters.windows.nvda_controller import NvdaControllerSpeechOutput as Output
+        from accessibility_toolkit.output.speech.windows.nvda_controller import (
+            NvdaControllerSpeechOutput as Output,
+        )
         _NvdaControllerSpeechOutput = Output
     return _NvdaControllerSpeechOutput
 
@@ -222,8 +248,8 @@ def create_clipboard_service() -> ClipboardService:
     return _UnsupportedClipboardService()
 
 
-def create_tone_output() -> DefaultToneOutput:
-    return DefaultToneOutput.load_default()
+def create_tone_output() -> ToneOutput:
+    return _get_default_tone_output_class().load_default()
 
 
 def default_speech_engine_options(
@@ -233,7 +259,9 @@ def default_speech_engine_options(
         SpeechEngineOption(
             engine_id="Pyttsx3",
             label="Pyttsx3",
-            factory=lambda: Pyttsx3SpeechOutput.load_default(scheduler=scheduler),
+            factory=lambda: _get_pyttsx3_speech_output_class().load_default(
+                scheduler=scheduler
+            ),
         ),
     ]
     if sys.platform == "win32":

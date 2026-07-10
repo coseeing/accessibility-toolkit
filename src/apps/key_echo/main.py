@@ -3,14 +3,16 @@ import logging
 from typing import Any
 
 from accessibility_toolkit.input.capture import HotkeyCapture, InputCapture
-from accessibility_toolkit.adapters.config.json_speech_settings import JsonSpeechSettingsStore
 from accessibility_toolkit.input import KeyboardInputService
-from accessibility_toolkit.application.output import QueuedService
-from accessibility_toolkit.application.output.speech import SpeechService
+from accessibility_toolkit.output import QueuedService
+from accessibility_toolkit.output.speech import (
+    SpeechRuntimeSettingsCoordinator,
+    SpeechService,
+    SpeechSettingsFacade,
+)
+from accessibility_toolkit.output.speech.json_settings_store import JsonSpeechSettingsStore
 from accessibility_toolkit.scheduling import Scheduler
 from apps.key_echo.service import KeyEchoAppService
-from accessibility_toolkit.application_support.speech_runtime_settings import SpeechRuntimeSettingsCoordinator
-from accessibility_toolkit.application_support.speech_settings_facade import SpeechSettingsFacade
 from accessibility_toolkit.runtime.runtime_parts import build_app_runtime_parts
 from accessibility_toolkit.runtime.environment import configure_logging, default_config_path
 

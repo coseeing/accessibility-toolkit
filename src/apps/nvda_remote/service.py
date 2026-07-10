@@ -15,8 +15,7 @@ from accessibility_toolkit.input import (
     should_pass_through_system_toggle,
 )
 from accessibility_toolkit.input import KeyEventHandler
-from accessibility_toolkit.application.output import Capabilities
-from accessibility_toolkit.application.output import ClipboardService
+from accessibility_toolkit.output import Capabilities, ClipboardService
 from apps.nvda_remote.state import ConnectionState, ControlState, RuntimeState
 from accessibility_toolkit.input import HID
 from accessibility_toolkit.interop.protocol.connection_info import ConnectionInfo

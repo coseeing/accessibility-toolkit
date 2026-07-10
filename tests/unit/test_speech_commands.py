@@ -1,4 +1,4 @@
-from accessibility_toolkit.interop.speech.speech_commands import (
+from accessibility_toolkit.output.speech import (
     BreakCommand,
     IndexCommand,
     PitchCommand,
@@ -7,7 +7,7 @@ from accessibility_toolkit.interop.speech.speech_commands import (
     VolumeCommand,
     restore_speech_command,
 )
-from accessibility_toolkit.interop.speech.speech_sequence import SpeechSequence
+from accessibility_toolkit.output.speech import SpeechSequence
 
 
 def test_speech_sequence_restores_text_and_supported_commands():

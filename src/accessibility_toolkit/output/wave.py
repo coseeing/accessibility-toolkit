@@ -1,5 +1,5 @@
 import logging
-from accessibility_toolkit.adapters.outputs.interfaces import WaveOutput
+from accessibility_toolkit.output.interfaces import WaveOutput
 
 
 class LoggingWaveOutput:

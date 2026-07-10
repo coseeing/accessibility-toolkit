@@ -2,628 +2,385 @@
 
 ## 1. Review Scope
 
-This document compares the current `src/` code against the following material
-and recommends the direction for the next refactor phase:
+This document reviews the current `src/` tree after the work recorded in:
 
 - `docs/refactor/refactor4.md`
 - `docs/superpowers/specs/`
 - `docs/superpowers/plans/`
-- `docs/superpowers/specs/2026-06-26-access8graph-facade-and-shared-speech-settings-design.md`
-- `docs/superpowers/plans/2026-06-26-access8graph-facade-and-shared-speech-settings-implementation.md`
+- `docs/superpowers/history/`
 
-The review uses three complementary perspectives:
+The main purpose of this v5 update is to answer a different question than the
+previous version:
 
-- Design Patterns: determine whether the existing patterns actually reduce
-  coupling and which patterns fit the next phase
-- SOLID: examine responsibilities, extension points, interface size, and
-  dependency direction
-- Incremental delivery: even though the core will be fully rewritten, control
-  risk through independently verifiable milestones
+> Now that the Access8Graph transition-engine rewrite has landed, what should
+> the next refactor phase be?
 
-This document contains refactor design and recommendations only. It does not
-include implementation.
+This document prioritizes **short, independently deliverable slices** first.
+Large architecture themes are listed only after the short-term queue.
 
-## 2. Completion Status of `refactor4.md`
+## 2. What Changed Since the Earlier v5 Direction
 
-Most major recommendations from `refactor4.md` have been completed:
+The earlier v5 recommendation centered on two items:
 
-1. The Access8Graph flow lifecycle has been extracted into:
-   - `GraphSelectionUseCase`
-   - `Access8GraphNavigationSession`
-   - `MrtFlowFactory`
-2. Access8Graph command dispatch has been extracted into:
-   - `Access8GraphKeyTranslator`
-   - `Access8GraphCommandDispatcher`
-3. Speech settings now have independent components:
-   - `SpeechSettingsFacade`
-   - `SpeechRuntimeSettingsCoordinator`
-4. `application.output.Manager` has been removed.
-5. The contents of `application.keyboard` are being moved into
-   `application.input`, which improves package cohesion.
+1. low-risk package-boundary cleanup
+2. replacing the legacy Access8Graph state hierarchy with a declarative
+   transition engine
 
-The next phase should therefore no longer focus on thinning the Access8Graph
-app service or removing the output manager. The highest-leverage problem has
-moved inward to the Access8Graph navigation core and several remaining unclear
-package boundaries.
+That recommendation has now largely been executed.
+
+Observed current state:
+
+- `apps/access8graph/navigation/engine.py` provides the new transition engine
+- `apps/access8graph/navigation/model.py` defines typed commands, states, and
+  transition values
+- `apps/access8graph/navigation/tables/` and
+  `apps/access8graph/navigation/actions/` split most transition content by
+  navigation concern
+- `application.output.ports` already contains narrower speech protocols
+- wx shell classes are already under `ui/shared`
+- NVDA Remote-only runtime state already lives under `apps/nvda_remote/state.py`
+
+Therefore, the next phase should **not** reopen the old state-machine rewrite
+or repeat already-finished package moves. The highest-leverage work has moved
+to the remaining concentration points that the rewrite exposed.
 
 ## 3. Main Conclusion
 
-The next phase should use a two-stage strategy:
+The next refactor phase should focus on **shrinking the new concentration
+points without changing behavior**.
 
-1. Complete low-risk package-boundary and compatibility cleanup.
-2. Fully rewrite the Access8Graph navigation flow, replacing the current State
-   class hierarchy with an extensible declarative transition table.
+The most important observation is this:
 
-Access8Graph should not begin with a mechanical file split. The problem with
-`src/apps/access8graph/flow.py` is not merely its 955 lines. Its 20 states can
-all directly manipulate the complete `MrtFlow`, navigator dictionary, message
-queue, and view. Moving those classes into separate files would leave the God
-Context, dynamic dispatch, and implicit transitions intact.
+- the legacy Access8Graph flow was removed successfully
+- but some responsibilities were re-concentrated into new modules such as
+  `navigation/actions/common.py`, `use_cases/navigation.py`,
+  `application/output/service.py`, and the app-service composition code
 
-The approved target is:
+So the next phase is no longer “replace the architecture.”
+It is:
 
-> Declarative transition table + injected action handlers
+> consolidate the new boundaries by extracting smaller assembly, view-model,
+> and dependency surfaces around the code that already works
 
-Once the new architecture reaches behavioral parity, the production path
-should switch atomically. The old and new flows must not remain in parallel,
-and no compatibility adapter should be retained.
+## 4. Recommended Next Slices
 
-## 4. Design Patterns Review
+The following slices are ordered by:
 
-### 4.1 Access8Graph State Pattern
+1. independent deliverability
+2. low regression risk
+3. architectural leverage for later work
 
-`MrtFlow` currently uses the State Pattern, but it has these problems:
+### Slice 1. Split Access8Graph navigation assembly from runtime behavior
 
-- transitions are scattered across state methods as
-  `self.flow.state = ...`
-- commands are dispatched dynamically through `getattr(self.state, key)()`
-- each state can read and write the entire flow and navigator
-- view construction, navigation mutation, messages, and speech policy share
-  one execution path
-- the transition graph cannot be validated without executing the program
-- adding a command or state requires changes to the translator, state classes,
-  and implicit transitions
+#### Why this should be first
 
-Assessment:
+`src/apps/access8graph/use_cases/navigation.py` currently mixes:
 
-- The problem is not a lack of the State Pattern. The current object-oriented
-  State Pattern lacks a narrow context and an explicit transition model.
-- The next step should be a Table-Driven State Machine, not splitting the
-  current state classes into separate files.
+- GraphML graph/model creation
+- navigator construction
+- transition rule assembly
+- registry assembly
+- output adaptation
+- flow startup
+- navigation-session lifecycle
 
-Recommended patterns:
+The transition engine itself is already separated, but the composition of that
+engine is still concentrated in one place.
 
-- **Table-Driven State Machine**: centrally describe source, command, guard,
-  action, and target
-- **Command**: replace command dictionaries with a typed `NavigationCommand`
-- **Strategy / Ports**: inject guard and action handlers
-- **Presenter**: separate speech, cancellation, and beep policy from transition
-  execution
-- **Factory**: let `MrtFlowFactory` assemble the transition engine, context,
-  and handlers
+#### Recommended change
 
-### 4.2 Access8Graph Command Boundary
+Extract a small assembly boundary, for example:
 
-The translator and dispatcher now form a useful boundary, but the translator
-returns:
+- `apps/access8graph/navigation/runtime.py`
+- `apps/access8graph/navigation/assembly.py`
+- or `apps/access8graph/navigation/factory.py`
 
-```python
-{"key": "down", "repeat": 0, "pressing": 0}
-```
+Target responsibilities:
 
-`repeat` and `pressing` do not currently form a stable domain contract, while
-`key` remains an arbitrary string used to drive `getattr`.
+- one unit builds Graph/model/navigators
+- one unit builds rule/guard/action/entry/exit registries
+- one unit adapts output and assembles `TransitionNavigationFlow`
+- `Access8GraphNavigationSession` keeps only session lifecycle
 
-Recommendations:
+#### Why now
 
-- the translator returns `NavigationCommand | None`
-- commands use an enum or frozen dataclass
-- the dispatcher depends only on a `NavigationFlow` protocol
-- the flow accepts typed commands and returns `TransitionResult`
-- no dictionary compatibility path is retained
+- behavior is already protected by parity and transition tests
+- this is a structural cleanup, not a behavioral redesign
+- it reduces the size and change surface of the current composition root
 
-### 4.3 Facade
+#### Main risk
 
-The three app services reasonably act as UI-facing Facades, although they
-still assemble some use cases and concrete collaborators directly. This is not
-the highest priority for the next phase because bootstrap already centralizes
-most runtime wiring.
+- accidental startup-order differences
+- accidental change to when `flow.start()` is invoked
 
-Recommendations:
+### Slice 2. Extract navigation view models from `actions/common.py`
 
-- keep each app service as a facade; do not continue splitting it solely based
-  on class size
-- move assembly responsibility only when a collaborator is independently
-  replaceable or has a clear reuse case
-- app-service consumers should depend on narrow protocols rather than receive
-  capabilities they do not need through `Capabilities`
+#### Why this is now high value
 
-### 4.4 Adapter / Port
+`src/apps/access8graph/navigation/actions/common.py` is currently the new
+largest Access8Graph concentration point at over 1100 lines. It contains:
 
-`SpeechEngineConfigStore` resides in `application.config`, but directly performs
-JSON and filesystem I/O. `SpeechRuntimeSettingsCoordinator` also depends on
-this concrete class.
+- `ListViewModel`
+- `RunViewModel`
+- shared action IDs
+- shared guard IDs
+- base actions
+- guard logic
+- entry/exit effects
+- snapshot factory wiring
 
-Recommendations:
+This is no longer a good “common” module. It is effectively a second
+application core hidden behind a utility name.
 
-- define a `SpeechSettingsStore` protocol in the application layer
-- move the JSON implementation into an adapter such as
-  `adapters/config/json_speech_settings.py`
-- make the coordinator depend only on the protocol
-- preserve the existing JSON schema and fault-tolerance behavior
+#### Recommended change
 
-This follows Dependency Inversion more closely than merely moving `config.py`
-under `application/output/speech`.
+Split at least these responsibilities:
 
-### 4.5 UI Shell
+- `navigation/view_models.py`
+- `navigation/ids.py` or family-local ID modules
+- keep shared guards/actions in a smaller `actions/common.py`
 
-The following files are under `apps/shared` but belong directly to the wx UI:
+At minimum, remove the view-model classes from the action registry module.
 
-- `tool_app_shell.py`
-- `tray_icon.py`
-- `panel_controller.py`
+#### Why now
 
-They should move to `ui/shared`. This is an ownership correction and does not
-require another abstraction layer.
+- low risk if behavior is preserved
+- improves readability immediately
+- makes later family-specific extraction easier without touching engine logic
 
-## 5. SOLID Review
+#### Main risk
 
-| Principle | Current State | Main Problem | Recommendation |
-|---|---|---|---|
-| SRP | App services are more focused than in v4 | `MrtFlow` and its states jointly handle transitions, navigation mutation, views, messages, and output | Split responsibilities among engine, context, action handlers, and presenter |
-| OCP | Adding a state or command requires edits across implicit logic | `getattr` dispatch and state methods make the transition graph unverifiable | Register rules and handlers through a declarative table |
-| LSP | No obvious subtype-substitution defect exists | `State` subclasses have different implicit requirements for `view` and navigator shape | Remove the hierarchy and use rules with explicit handler contracts |
-| ISP | `SpeechServiceProtocol` has 17 methods | Consumers that only need speak/cancel also depend on settings and lifecycle APIs | Split protocols by output, settings, and lifecycle use |
-| DIP | The coordinator depends on a JSON store; some app code depends on broad `Capabilities` | Application policy knows concrete persistence and consumers can access unnecessary output capabilities | Introduce a store port and use narrow output protocols in use-case constructors |
+- import churn only
 
-### 5.1 Highest-Priority SRP Problems
+### Slice 3. Narrow app-service dependency surfaces instead of passing broad `Capabilities`
 
-Highest-priority files:
+#### Problem
 
-- `apps/access8graph/flow.py`
-- `apps/access8graph/graphml/mrt_navigator.py`
-- `apps/access8graph/graphml/model.py`
+`Capabilities` is better than ad hoc globals, but it is still a broad carrier
+object:
 
-Only `flow.py` should be part of the next core rewrite. Although the GraphML
-model and navigator are also large, rewriting them at the same time would make
-transition parity difficult to assess. They should be handled separately after
-the flow stabilizes.
+- `Access8GraphAppService` only needs part of speech plus optional tone
+- `NvdaRemoteAppService` needs speech, tone, and clipboard-related behavior
+- use cases underneath still receive more capability than they actually use
 
-### 5.2 Highest-Priority ISP Problems
+This weakens the benefit already gained from `SpeechOutputPort`,
+`SpeechSettingsPort`, and `SpeechLifecyclePort`.
 
-`Capabilities.speech` is currently typed as the complete
-`SpeechServiceProtocol`. It can be progressively split into:
+#### Recommended change
 
-- `SpeechOutputPort`: `speak`, `cancel`, and `pause`
-- `SpeechSettingsPort`: engine, voice, rate, pitch, and volume
-- `SpeechLifecyclePort`: `shutdown`
+Move to app-specific constructor dependencies:
 
-A concrete `SpeechService` or `QueuedService` may implement multiple protocols,
-but each consumer declares only the interface it uses. Structural typing makes
-additional wrapper layers unnecessary.
+- inject narrow ports into use cases directly
+- keep `Capabilities` only at bootstrap/composition boundaries if still useful
+- avoid passing a broad capability bag into deeper app layers
 
-### 5.3 Package Cohesion
+Example direction:
 
-Recommended changes:
+- `Access8GraphFlowOutput` depends on `SpeechOutputPort` and `ToneOutput | None`
+- app services receive explicit collaborators instead of one multi-purpose bag
 
-- `RuntimeState`, `ConnectionState`, and `ControlState` from
-  `application.state` are used only by NVDA Remote and should move to
-  `apps/nvda_remote/state.py`
-- remove these speech compatibility shims:
-  - `apps/shared/speech_settings_controller.py`
-  - `apps/key_echo/use_cases/speech_settings.py`
-  - `apps/nvda_remote/use_cases/speech_settings.py`
-- move the UI shell classes to `ui/shared`
-- retain `application.events` for now because it has real cross-app use; do not
-  split it solely for directory tidiness
+#### Why now
 
-## 6. Target Access8Graph Architecture
+- the protocol split already exists
+- this is mostly dependency cleanup, not feature work
+- it will make speech/output changes safer later
 
-### 6.1 Core Components
+#### Main risk
 
-#### `NavigationCommand`
+- constructor churn across app entrypoints and tests
 
-- a typed enum or frozen dataclass
-- represents domain commands such as `UP`, `DOWN`, `LEFT`, `RIGHT`, `CONFIRM`,
-  and `HELP`
-- the keyboard translator is the only HID-to-command conversion boundary
+### Slice 4. Extract mode objects out of app-service modules
 
-#### `NavigationStateId`
+#### Problem
 
-- defines stable state identities
-- replaces scattered strings such as `"direction_run"`
-- gives the transition table, context, and tests one shared set of IDs
+Both:
 
-#### `TransitionRule`
+- `apps/access8graph/service.py`
+- `apps/nvda_remote/service.py`
 
-Each rule contains at least:
+still define mode classes inline with the app service:
 
-- source state
-- command
-- optional guard ID
-- action ID
-- target state, or a bounded set of targets explicitly selected by the action
-  result
+- `Access8GraphNavigationMode`
+- `RemoteControlMode`
 
-Rules describe collaboration only. They do not directly perform navigator or
-output I/O.
+This is workable, but it keeps mode-policy behavior physically attached to the
+facade/controller module and makes the service files longer than they need to
+be.
 
-#### `TransitionEngine`
+#### Recommended change
 
-Responsibilities:
+Move these classes to dedicated modules, for example:
 
-1. Find a rule from the current state and command.
-2. Evaluate its guard.
-3. Invoke the injected action handler.
-4. Commit the target state only after the action succeeds.
-5. Return an explicit `TransitionResult`.
+- `apps/access8graph/modes.py`
+- `apps/nvda_remote/modes.py`
 
-The engine must not:
+or under the corresponding `use_cases/` package if that matches repo style.
 
-- create wx/UI objects
-- speak or beep directly
-- depend on HID key codes
-- locate actions through `getattr`
+#### Why now
 
-#### `NavigationContext`
+- behavior is already explicit and testable
+- extraction is mechanical
+- it makes app services easier to review as facades rather than mixed facades
+  plus mode implementations
 
-The context stores only the session data required by the state machine, such
-as:
+#### Main risk
 
-- current state
-- background/return state
-- selected navigation mode
-- pending messages
-- selection/session data
+- low; import changes and focused test updates
 
-The context must not expose the complete `MrtFlow` to every action.
+### Slice 5. Refactor `QueuedService` into a narrower decorator role
 
-#### `ActionHandlers`
+#### Problem
 
-Responsibilities:
+`src/application/output/service.py` currently behaves like a decorator/proxy
+around `SpeechService`, but it also re-exposes the full speech settings and
+lifecycle API:
 
-- execute navigator queries or mutations
-- build view models
-- update context
-- return action results and presentation data
+- output sequencing concern
+- engine/voice/settings concern
+- shutdown concern
 
-Handlers are injected into the engine through a registry. The table references
-stable action IDs rather than storing bound methods, making it independently
-validatable and testable.
+in one class.
 
-#### `FlowPresenter`
+This works functionally, but it is still an SRP and ISP pressure point.
 
-Responsibilities:
+#### Recommended change
 
-- convert transition/action results into speech items
-- decide when to cancel speech
-- decide whether a failure should beep
-- call a narrow `FlowOutput` port
+Refactor toward:
 
-### 6.2 Data Flow
+- one explicit output-queueing/decorator concern
+- one speech settings/lifecycle concern
 
-```text
-CapturedKeyEvent
-    -> Access8GraphKeyTranslator
-    -> NavigationCommand
-    -> Access8GraphCommandDispatcher
-    -> TransitionEngine
-       -> guard registry
-       -> action handler registry
-       -> NavigationContext
-    -> TransitionResult
-    -> FlowPresenter
-    -> speech / beep output
-```
+Possible shape:
 
-### 6.3 Transition Table Grouping
+- `QueuedSpeechOutput`
+- `SpeechSettingsPort` still served by the underlying speech service
+- composition points decide which object is passed to which consumer
 
-After the complete cutover, tables may be grouped by navigation-mode family:
+#### Why now
 
-- common/list/help transitions
-- mode-selection transitions
-- direction-exploration transitions
-- undirected-exploration transitions
-- route-planning transitions
-- transfer/explore transitions
+- the protocol split is already in place
+- this is a contained internal refactor with strong unit-test coverage
 
-Grouping exists only for ownership and readability. Once loaded, the groups
-still form one fully validatable transition graph.
+#### Main risk
 
-## 7. Error Handling
+- accidental behavior change in sequential/parallel routing
 
-### 7.1 Expected Rejections
+### Slice 6. Replace local one-off adapters with named reusable adapters
 
-The following conditions should produce typed results rather than exceptions:
+#### Problem
 
-- the current state has no matching command
-- a guard fails
-- an action determines that movement or selection is currently unavailable
+`apps/access8graph/use_cases/navigation.py` currently defines a local
+`_OutputAdapter` class. This is a sign that the boundary is real, but the
+abstraction has not been given first-class ownership.
 
-`TransitionResult` should distinguish:
+#### Recommended change
 
-- handled and transitioned
-- handled without transition
-- rejected
-- unhandled
+Promote these adapter boundaries into named modules when they survive beyond a
+single assembly file.
 
-The presenter then decides whether to beep or speak for each result.
+Examples:
 
-### 7.2 Action Failure
+- `navigation/output_adapter.py`
+- or fold the behavior into `Access8GraphFlowOutput` if that is the real stable
+  boundary
 
-- the engine commits the target state only after the action succeeds
-- an action should compute its result before updating context whenever possible
-- if a navigator mutation cannot be rolled back, the handler must explicitly
-  define its failure semantics and have corresponding tests
+#### Why now
 
-### 7.3 Unexpected Exceptions
+- very low risk
+- improves naming clarity
+- reduces “hidden architecture” inside assembly modules
 
-The table and engine must not silently consume unexpected exceptions. They
-should propagate to the existing app-service boundary, which:
+## 5. Deferred High-Value Themes
 
-- emits `ErrorRaised`
-- stops navigation
-- preserves the current error-speech behavior
+These are important, but they are not the best immediate slices.
 
-## 8. Transition Table Validation
+### Theme A. Reorganize Access8Graph navigation by domain family, not helper type
 
-The table should be validated during tests and runtime assembly:
+The current engine/table/action split is already much better than the legacy
+state hierarchy. But the next larger architectural improvement would be to make
+each navigation family more self-contained:
 
-- the same source + command pair must not have ambiguous duplicate rules
-- every source and target state must exist
-- every guard ID and action ID must be registered
-- the initial state must be valid
-- every non-terminal state must be reachable from the initial state
-- help/menu states must have explicit return paths
-- navigation modes must have the required exit/escape behavior
-- dynamic targets must remain within the target set declared by the action
-  contract
-
-Validation failures should stop startup or CI immediately rather than remain
-undetected until a user presses a key.
-
-## 9. Recommended Milestones
-
-### Milestone 1: Low-Risk Boundary and Compatibility Cleanup
-
-Scope:
-
-- complete the move from `application.keyboard` to `application.input`
-- remove the `SpeechSettingsController` compatibility shim
-- remove the Key Echo and NVDA Remote speech-settings alias modules
-- move NVDA Remote runtime state into the app package
-- move `ToolAppShell`, `ToolTrayIcon`, and `PanelController` to `ui/shared`
-- introduce a `SpeechSettingsStore` port and JSON adapter
-- split `SpeechServiceProtocol` into narrow protocols based on consumer needs
-
-Completion criteria:
-
-- the import graph ensures the application layer does not depend on concrete
-  JSON persistence
-- `apps/shared` no longer contains wx shell/tray code
-- speech settings have only one canonical facade name
-- all existing unit and integration tests pass
-
-### Milestone 2: Baseline Existing Flow Behavior
-
-Scope:
-
-- complete `MrtFlow` characterization tests
-- create a state/command transition matrix
-- record speech items, beeps, views, and navigator side effects
-- explicitly cover help, return/background state, single-option automatic
-  entry, transfers, and error paths
-
-Completion criteria:
-
-- every current state has tests for entry, primary commands, rejected commands,
-  and exit
-- tests explicitly document all existing implicit behavior
-- this milestone does not change production flow behavior
-
-### Milestone 3: Build the New Transition Engine
-
-Scope:
-
-- add typed commands and state IDs
-- add transition rules, engine, context, and results
-- add guard/action registries
-- add the presenter
-- build the complete declarative transition table
-- validate the new engine against the scenarios from Milestone 2
-
-Completion criteria:
-
-- the new engine reaches behavioral parity with the old flow in tests
-- all table validation passes
-- the production path still uses only the old flow, avoiding partial mixing
-
-### Milestone 4: Atomic Cutover and Removal of the Old Architecture
-
-Scope:
-
-- make `MrtFlowFactory` build the new flow
-- move the command dispatcher to the typed command/result contract
-- switch the production path to the transition engine
-- delete `State`, `ListState`, `RunState`, and all their subclasses
-- remove dynamic `getattr` dispatch and command dictionaries
-- do not add a compatibility adapter
-
-Completion criteria:
-
-- key-event-to-speech/beep integration tests pass
-- UI, hotkey start/stop, and error-shutdown behavior remains unchanged
-- the repository contains no runtime reference to the old flow-state hierarchy
-
-### Milestone 5: Module Consolidation and Integrity Protection
-
-Scope:
-
-- split transition tables and action modules by mode family
-- retain a single graph-validation process
-- add negative tests for unreachable states, duplicates, and unknown handlers
-- update architecture documentation and module-ownership guidance
-
-Completion criteria:
-
-- each table/action module has one navigation concern
-- adding a state or command does not require changing the engine
-- new rules can be added by registering a table entry and handler
-- the full test suite passes
-
-## 10. Testing Strategy
-
-### 10.1 Characterization Tests
-
-Lock down current behavior before the rewrite. Do not confuse whether current
-behavior is desirable with whether the rewrite is compatible. If an existing
-bug is found, record it and make a separate decision rather than fixing it
-incidentally during parity work.
-
-### 10.2 Engine Unit Tests
-
-Cover at least:
-
-- rule matching
-- guard success/failure
-- action success/rejection/exception
-- state commit timing
-- ambiguous rule rejection
-- dynamic target validation
-
-### 10.3 Handler Tests
-
-Test each action handler with fake navigators and contexts:
-
-- input contract
-- navigator query/mutation
-- context patch
-- presentation result
-- failure without an invalid state commit
-
-### 10.4 Table Contract Tests
-
-Validate the complete transition matrix with data-driven tests rather than
-repeating extensive imperative setup for every rule.
-
-### 10.5 Integration Tests
-
-Retain a small set of high-value paths:
-
-- select GraphML and start navigation
-- direction exploration
-- undirected exploration
-- route planning
-- help/menu return
+- direction
+- undirected
+- route plan
 - transfer
-- invalid-command beep
-- exception -> error event -> stop navigation
+- help/mode selection
 
-## 11. Risks and Controls
+That means grouping each family’s:
 
-### 11.1 Highest Risk: Missing Implicit Behavior
+- rules
+- actions
+- view builders
+- state-entry behavior
 
-Existing transitions are distributed across state methods, while some behavior
-is triggered indirectly by the property setter, `enter()`, `exit()`, and
-`refresh_view()`.
+more tightly, instead of keeping too much shared machinery in `common.py`.
 
-Controls:
+This is valuable, but it should follow Slices 1 and 2.
 
-- build the transition matrix in Milestone 2
-- run the same scenarios against both implementations in tests
-- do not mix old and new states in production
+### Theme B. Replace `Capabilities` with explicit composition contracts across apps
 
-### 11.2 Changed Speech Ordering
+The short-term slice is only to narrow dependencies at the service boundary.
+The larger theme would be to stop using a generic capability bag as a dominant
+cross-app composition pattern.
 
-The order in which `message`, hint, and view display are combined affects the
-user experience.
+That is a bigger shift because it touches:
 
-Controls:
+- bootstrap
+- app constructors
+- many tests
 
-- give the presenter exact sequence tests
-- make parity tests compare speech-item order, not only final state
+It should be approached incrementally after Slice 3 proves the narrower
+dependency style in one or two apps.
 
-### 11.3 Navigator Mutation
+### Theme C. Separate speech-output transport concerns from speech-engine settings entirely
 
-Some actions directly change navigator
-current/source/destination/line/station fields.
+The long-term output architecture still has three different concerns near each
+other:
 
-Controls:
+- queueing/scheduling
+- engine/voice/settings
+- runtime shutdown/lifecycle
 
-- make action handlers explicitly own mutation
-- update state only after the action succeeds
-- add before/after snapshot assertions for high-risk transfer and route actions
+The larger redesign would turn these into deliberately separate layers instead
+of one object that happens to satisfy all ports.
 
-### 11.4 Over-Abstraction
+This has real value, but it is larger than the next safe slice.
 
-The table engine could incorrectly grow into a repository-wide generic
-framework.
+## 6. Recommended Order of Execution
 
-Controls:
+Recommended near-term order:
 
-- keep the engine under `apps/access8graph` initially
-- do not force Key Echo or NVDA Remote to adopt it
-- consider moving it into a shared/application package only after a second
-  equivalent use case appears
+1. Slice 1: Access8Graph navigation assembly extraction
+2. Slice 2: navigation view-model extraction from `actions/common.py`
+3. Slice 6: promote one-off adapters into named boundaries
+4. Slice 4: extract mode objects from app-service modules
+5. Slice 3: narrow app-service dependencies away from broad `Capabilities`
+6. Slice 5: narrow `QueuedService` into a clearer decorator role
 
-## 12. Work Not Recommended for This Phase
+Reason for this order:
 
-- do not mechanically split the 20 old State classes into separate files first
-- do not retain a dictionary-command compatibility layer
-- do not keep the old and new state engines in parallel long term
-- do not rewrite the GraphML parser, model, or navigator at the same time
-- do not reopen bootstrap/runtime-provider refactoring
-- do not create a repository-wide generic state-machine framework
-- do not mix Scheduler concurrency refactoring into this phase
-- do not change the speech-settings JSON schema
+- start with Access8Graph structural cleanup where the transition rewrite just
+  completed
+- then clean low-risk naming and ownership boundaries
+- only after that widen the changes into cross-app dependency cleanup
+- leave output-stack reshaping until the narrower ports are actually used by
+  consumers
 
-## 13. Later Candidates
+## 7. Final Recommendation
 
-Reassess the following after this phase:
+If only one next refactor slice is chosen, it should be:
 
-1. Whether `graphml/mrt_navigator.py` should separate queries from mutable
-   session state.
-2. Whether `graphml/model.py` should separate parsing, domain entities, and
-   graph queries.
-3. Whether the concurrency contract in `application/output/scheduler.py` needs
-   a clearer state model and shutdown semantics.
-4. Whether module-level factories and `PlatformProvider` in
-   `bootstrap/platform.py` should converge on one Abstract Factory API.
-5. Whether app services still need complete `Capabilities` or can use narrow
-   output ports throughout.
+> extract Access8Graph navigation assembly from
+> `src/apps/access8graph/use_cases/navigation.py`
 
-These items should not begin while the transition-table rewrite remains
-unstable.
+If two slices are chosen, the second should be:
 
-## 14. Definition of Done for the Next Phase
+> split `src/apps/access8graph/navigation/actions/common.py`, beginning with
+> the view-model classes
 
-All five milestones are complete only when:
+Those two steps have the best balance of:
 
-- package ownership is clear and wx UI code is no longer under `apps/shared`
-- speech-settings compatibility shims have been removed
-- application policy does not directly depend on a JSON configuration
-  implementation
-- NVDA Remote-specific state is no longer under the shared application root
-- speech consumers use protocols narrowed to their needs
-- Access8Graph uses typed commands
-- the Access8Graph transition graph is expressed by a fully validatable
-  declarative table
-- injected action handlers provide navigator and context mutation
-- presentation/output policy is outside the transition table and engine
-- the old State hierarchy, dynamic `getattr` dispatch, and command dictionaries
-  have been removed
-- navigation, speech, beep, hotkey, and error behavior remains compatible
-- all unit and integration tests pass
-
-## 15. Final Recommendation
-
-The next phase should begin with Milestone 1 to correct low-risk but explicit
-ownership, ISP, and DIP problems and stabilize package boundaries. It should
-then stop extending the current object-oriented State hierarchy. Milestones 2
-through 5 should establish a complete behavioral baseline, build the
-declarative transition engine in parallel, and finally perform an atomic
-cutover that removes the old architecture.
-
-This approach improves extensibility more than merely splitting `flow.py`.
-Adding a command, guard, action, or transition will not require changing the
-engine or granting a new state class access to the entire flow.
+- immediate codebase clarity
+- low behavioral risk
+- alignment with the superpowers design history
+- leverage for later dependency and output cleanup

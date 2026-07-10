@@ -2,8 +2,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from accessibility_toolkit.input.capture import HotkeyCapture, InputCapture
-from accessibility_toolkit.adapters.outputs.interfaces import ToneOutput
-from accessibility_toolkit.application.output import ClipboardService
+from accessibility_toolkit.output import ClipboardService, ToneOutput
 from accessibility_toolkit.runtime.output import OutputServices, build_output_services
 from accessibility_toolkit.runtime.platform import PlatformProvider
 

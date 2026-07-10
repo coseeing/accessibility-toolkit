@@ -8,7 +8,7 @@ import pytest
 import accessibility_toolkit.runtime.platform
 import accessibility_toolkit.runtime.environment
 from accessibility_toolkit.events import ErrorRaised, SpeechEngineChanged
-from accessibility_toolkit.application.output.speech import SpeechEngineOption, SpeechNumericSetting
+from accessibility_toolkit.output.speech import SpeechEngineOption, SpeechNumericSetting
 from apps.key_echo.events import EchoStateChanged
 from apps.nvda_remote.events import RemoteConnectionChanged
 from accessibility_toolkit.input import HID

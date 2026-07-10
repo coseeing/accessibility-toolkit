@@ -1,14 +1,14 @@
 import pytest
 
 from accessibility_toolkit.input import HID, KeyEvent
-from accessibility_toolkit.interop.speech.speech_commands import (
+from accessibility_toolkit.output.speech import (
     BreakCommand,
     PitchCommand,
     RateCommand,
     SpeechCommand,
+    SpeechSequence,
     VolumeCommand,
 )
-from accessibility_toolkit.interop.speech.speech_sequence import SpeechSequence
 from accessibility_toolkit.interop.protocol.messages import RemoteMessageType, address_to_host_port
 from accessibility_toolkit.interop.protocol.serializer import JSONSerializer
 

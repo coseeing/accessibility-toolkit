@@ -1,6 +1,6 @@
 from collections.abc import Callable
 
-from accessibility_toolkit.application.output import SpeechSettingsPort
+from accessibility_toolkit.output.ports import SpeechSettingsPort
 
 
 class SpeechSettingsFacade:

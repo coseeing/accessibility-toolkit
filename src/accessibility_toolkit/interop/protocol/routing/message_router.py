@@ -2,7 +2,7 @@ import math
 from collections.abc import Callable
 from typing import Any
 
-from accessibility_toolkit.interop.speech.speech_sequence import SpeechSequence
+from accessibility_toolkit.output.speech import SpeechSequence
 from accessibility_toolkit.interop.protocol.messages import RemoteMessageType
 from accessibility_toolkit.interop.protocol.events import (
     RemotePeerMessageReceived,

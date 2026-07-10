@@ -1,7 +1,6 @@
-from accessibility_toolkit.adapters.windows.clipboard import WindowsClipboardService
-from accessibility_toolkit.adapters.windows.nvda_controller import NvdaControllerSpeechOutput
-from accessibility_toolkit.interop.speech.speech_commands import BreakCommand
-from accessibility_toolkit.interop.speech.speech_sequence import SpeechSequence
+from accessibility_toolkit.output.speech import BreakCommand, SpeechSequence
+from accessibility_toolkit.output.speech.windows.nvda_controller import NvdaControllerSpeechOutput
+from accessibility_toolkit.output.windows.clipboard import WindowsClipboardService
 
 
 def test_windows_clipboard_service_round_trip(monkeypatch):

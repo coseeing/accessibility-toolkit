@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from accessibility_toolkit.application.output.speech import SpeechService
-from accessibility_toolkit.application.output.speech.settings_store import SpeechSettingsStore
+from accessibility_toolkit.output.speech.service import SpeechService
+from accessibility_toolkit.output.speech.settings_store import SpeechSettingsStore
 
 
 class SpeechRuntimeSettingsCoordinator:

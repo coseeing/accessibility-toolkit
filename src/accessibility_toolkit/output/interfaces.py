@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol
-from accessibility_toolkit.interop.speech.speech_sequence import SpeechSequence
 
 if TYPE_CHECKING:
-    from accessibility_toolkit.application.output.speech.settings import SpeechNumericSetting
+    from accessibility_toolkit.output.speech.sequence import SpeechSequence
+    from accessibility_toolkit.output.speech.settings import SpeechNumericSetting
 
 
 class SpeechOutput(Protocol):
-    def speak(self, sequence: SpeechSequence) -> None: ...
+    def speak(self, sequence: "SpeechSequence") -> None: ...
 
     def cancel(self) -> None: ...
 

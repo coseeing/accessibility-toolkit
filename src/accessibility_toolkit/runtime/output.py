@@ -2,9 +2,8 @@ import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from accessibility_toolkit.adapters.outputs.interfaces import ToneOutput
-from accessibility_toolkit.application.output import Capabilities, QueuedService
-from accessibility_toolkit.application.output.speech import SpeechEngineOption, SpeechService
+from accessibility_toolkit.output import Capabilities, QueuedService, ToneOutput
+from accessibility_toolkit.output.speech import SpeechEngineOption, SpeechService
 from accessibility_toolkit.scheduling import Scheduler
 
 _logger = logging.getLogger(__name__)

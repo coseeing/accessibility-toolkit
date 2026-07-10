@@ -2,7 +2,7 @@ from accessibility_toolkit.input.events import CapturedKeyEvent
 from accessibility_toolkit.input.windows.native_key_context import WindowsNativeKeyContext
 from accessibility_toolkit.events import ErrorRaised, ModeChanged, SpeechEngineChanged
 from accessibility_toolkit.input import AppKeyEventResult, KeyboardPipelineResult
-from accessibility_toolkit.application.output import Capabilities
+from accessibility_toolkit.output import Capabilities
 from accessibility_toolkit.input import HID, KeyEvent
 from accessibility_toolkit.interop.protocol.events import (
     RemotePeerMessageReceived,

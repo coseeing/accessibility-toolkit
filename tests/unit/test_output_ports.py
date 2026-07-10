@@ -1,4 +1,4 @@
-from accessibility_toolkit.application.output.ports import (
+from accessibility_toolkit.output import (
     SpeechLifecyclePort,
     SpeechOutputPort,
     SpeechServicePort,

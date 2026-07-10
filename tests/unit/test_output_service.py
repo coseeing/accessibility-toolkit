@@ -1,6 +1,5 @@
-from accessibility_toolkit.application.output import QueuedService
-from accessibility_toolkit.application.output.speech import SpeechEngineOption, SpeechService
-from accessibility_toolkit.interop.speech.speech_sequence import SpeechSequence
+from accessibility_toolkit.output import QueuedService
+from accessibility_toolkit.output.speech import SpeechEngineOption, SpeechSequence, SpeechService
 from accessibility_toolkit.scheduling import Scheduler
 
 
@@ -148,19 +147,21 @@ def test_queued_output_service_proxies_speech_calls() -> None:
     service.shutdown()
 
 
-def test_application_output_speech_exports_engine_types() -> None:
-    from accessibility_toolkit.application.output import (
+def test_output_and_speech_export_public_types() -> None:
+    from accessibility_toolkit.output import (
         Capabilities,
         Mode,
         QueuedService,
     )
-    from accessibility_toolkit.application.output import ClipboardService
-    from accessibility_toolkit.application.output.speech import (
+    from accessibility_toolkit.output import ClipboardService
+    from accessibility_toolkit.output.speech import (
+        BreakCommand,
         SpeechEngineManager,
         SpeechEngineOption,
+        SpeechSequence,
         SpeechService,
     )
-    from accessibility_toolkit.application.output import (
+    from accessibility_toolkit.output import (
         SpeechLifecyclePort,
         SpeechOutputPort,
         SpeechServicePort,
@@ -182,10 +183,12 @@ def test_application_output_speech_exports_engine_types() -> None:
     assert SpeechSettingsPort is not None
     assert SpeechLifecyclePort is not None
     assert SpeechServicePort is not None
+    assert BreakCommand is not None
+    assert SpeechSequence is not None
 
 
-def test_application_output_exports_clipboard_service_protocol():
-    from accessibility_toolkit.application.output import ClipboardService
+def test_output_exports_clipboard_service_protocol():
+    from accessibility_toolkit.output import ClipboardService
 
     assert ClipboardService is not None
 
@@ -227,7 +230,7 @@ def test_queued_output_service_proxies_supported_numeric_settings() -> None:
 
 import threading
 
-from accessibility_toolkit.application.output import Mode
+from accessibility_toolkit.output import Mode
 
 
 def test_output_mode_enum_values() -> None:

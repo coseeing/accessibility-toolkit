@@ -8,7 +8,7 @@ from accessibility_toolkit.input import (
     should_pass_through_system_toggle,
 )
 from accessibility_toolkit.input import KeyEventHandler, KeyboardInputService
-from accessibility_toolkit.application.output import Capabilities
+from accessibility_toolkit.output import Capabilities
 from accessibility_toolkit.input import HID
 
 from apps.key_echo.use_cases import (

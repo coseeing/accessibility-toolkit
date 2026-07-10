@@ -1,10 +1,8 @@
 from collections.abc import Iterable
 from typing import Protocol
 
-from accessibility_toolkit.adapters.outputs.interfaces import ToneOutput
-from accessibility_toolkit.application.output import SpeechOutputPort
-from accessibility_toolkit.interop.speech.speech_commands import BreakCommand
-from accessibility_toolkit.interop.speech.speech_sequence import SpeechSequence
+from accessibility_toolkit.output import SpeechOutputPort, ToneOutput
+from accessibility_toolkit.output.speech import BreakCommand, SpeechSequence
 
 
 class FlowOutput(Protocol):

@@ -3,7 +3,7 @@ import logging
 from enum import Enum
 from typing import Any
 
-from accessibility_toolkit.interop.speech.speech_sequence import restore_sequence_items
+from accessibility_toolkit.output.speech import restore_sequence_items
 
 
 logger = logging.getLogger(__name__)

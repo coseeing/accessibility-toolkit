@@ -1,8 +1,12 @@
 import pytest
 
-from accessibility_toolkit.application.output import Capabilities
-from accessibility_toolkit.application.output.speech import SpeechEngineOption, SpeechNumericSetting, SpeechService
-from accessibility_toolkit.interop.speech.speech_sequence import SpeechSequence
+from accessibility_toolkit.output import Capabilities
+from accessibility_toolkit.output.speech import (
+    SpeechEngineOption,
+    SpeechNumericSetting,
+    SpeechSequence,
+    SpeechService,
+)
 
 
 class FakeSpeechOutput:

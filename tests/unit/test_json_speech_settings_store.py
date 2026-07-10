@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-from accessibility_toolkit.adapters.config.json_speech_settings import JsonSpeechSettingsStore
+from accessibility_toolkit.output.speech.json_settings_store import JsonSpeechSettingsStore
 
 
 def test_missing_file_returns_defaults(tmp_path):

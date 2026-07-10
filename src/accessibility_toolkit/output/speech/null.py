@@ -1,6 +1,6 @@
-from accessibility_toolkit.interop.speech.speech_sequence import SpeechSequence
-from accessibility_toolkit.adapters.outputs.interfaces import SpeechOutput
-from accessibility_toolkit.application.output.speech.settings import SpeechNumericSetting
+from accessibility_toolkit.output.interfaces import SpeechOutput
+from accessibility_toolkit.output.speech.sequence import SpeechSequence
+from accessibility_toolkit.output.speech.settings import SpeechNumericSetting
 
 
 class NullSpeechOutput(SpeechOutput):

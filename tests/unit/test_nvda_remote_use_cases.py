@@ -52,7 +52,7 @@ class FakeSpeech:
 
 
 def test_nvda_speech_settings_use_case_proxies_engine_and_voice_controls():
-    from accessibility_toolkit.application_support.speech_settings_facade import SpeechSettingsFacade
+    from accessibility_toolkit.output.speech import SpeechSettingsFacade
 
     speech = FakeSpeech()
     saved = []
