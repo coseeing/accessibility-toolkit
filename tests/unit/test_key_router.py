@@ -78,11 +78,83 @@ def test_multi_key_chord_is_order_independent_and_exact():
     calls = []
     router = KeyEventRouter(bindings=(binding({HID.A, HID.B}, KeyTrigger.KEY_DOWN, lambda event: calls.append(event.usage)),))
 
-    assert router.handle(key(HID.B)) is AppKeyEventResult.UNHANDLED
+    assert router.handle(key(HID.B)) is AppKeyEventResult.HANDLED_STOP
     assert router.handle(key(HID.A)) is AppKeyEventResult.HANDLED_STOP
     assert calls == [HID.A]
-    assert router.handle(key(HID.C)) is AppKeyEventResult.UNHANDLED
-    assert calls == [HID.A]
+
+
+def test_shorter_binding_waits_for_longer_chord():
+    calls = []
+    router = KeyEventRouter(
+        bindings=(
+            binding({HID.A}, KeyTrigger.KEY_DOWN, lambda _e: calls.append("a")),
+            binding({HID.A, HID.B}, KeyTrigger.KEY_DOWN, lambda _e: calls.append("ab")),
+            binding({HID.A, HID.B, HID.C}, KeyTrigger.KEY_DOWN, lambda _e: calls.append("abc")),
+        )
+    )
+
+    assert router.handle(key(HID.A)) is AppKeyEventResult.HANDLED_STOP
+    assert router.handle(key(HID.B)) is AppKeyEventResult.HANDLED_STOP
+    assert calls == []
+    assert router.handle(key(HID.B, pressed=False)) is AppKeyEventResult.HANDLED_STOP
+    assert calls == ["ab"]
+
+
+def test_longer_chord_prevents_shorter_handlers():
+    calls = []
+    router = KeyEventRouter(
+        bindings=(
+            binding({HID.A}, KeyTrigger.KEY_DOWN, lambda _e: calls.append("a")),
+            binding({HID.A, HID.B}, KeyTrigger.KEY_DOWN, lambda _e: calls.append("ab")),
+            binding({HID.A, HID.B, HID.C}, KeyTrigger.KEY_DOWN, lambda _e: calls.append("abc")),
+        )
+    )
+
+    router.handle(key(HID.A))
+    router.handle(key(HID.B))
+    assert router.handle(key(HID.C)) is AppKeyEventResult.HANDLED_STOP
+    assert calls == ["abc"]
+
+
+def test_failed_modifier_prefix_replays_original_events_to_fallback():
+    native = object()
+    replayed = []
+    router = KeyEventRouter(
+        bindings=(binding({HID.A}, KeyTrigger.KEY_DOWN, handled,
+                          modifiers={Modifier.CONTROL}),),
+        fallback=lambda event: replayed.append(event)
+        or AppKeyEventResult.HANDLED_STOP,
+    )
+    down = CapturedKeyEvent(key(HID.LEFT_CONTROL), native_context=native)
+    up = CapturedKeyEvent(key(HID.LEFT_CONTROL, False), native_context=native)
+
+    assert router.handle(down) is AppKeyEventResult.HANDLED_STOP
+    assert replayed == []
+    assert router.handle(up) is AppKeyEventResult.HANDLED_STOP
+    assert replayed == [down, up]
+
+
+def test_failed_general_prefix_replays_original_events_to_fallback():
+    replayed = []
+    router = KeyEventRouter(
+        bindings=(binding({HID.A, HID.B}, KeyTrigger.KEY_DOWN, handled),),
+        fallback=lambda event: replayed.append(event) or AppKeyEventResult.HANDLED_STOP,
+    )
+    down = CapturedKeyEvent(key(HID.A), native_context=object())
+    next_down = key(HID.C)
+
+    router.handle(down)
+    router.handle(next_down)
+    assert replayed == [down, next_down]
+
+
+def test_failed_prefix_without_fallback_discards_buffered_events():
+    router = KeyEventRouter(bindings=(binding({HID.A, HID.B}, KeyTrigger.KEY_DOWN, handled),))
+
+    assert router.handle(key(HID.A)) is AppKeyEventResult.HANDLED_STOP
+    assert router.handle(key(HID.C)) is AppKeyEventResult.HANDLED_STOP
+    assert router.handle(key(HID.A, pressed=False)) is AppKeyEventResult.HANDLED_STOP
+    assert router.handle(key(HID.C)) is AppKeyEventResult.HANDLED_STOP
 
 
 def test_multi_key_chord_matches_reverse_order_and_control_variants():
@@ -117,8 +189,10 @@ def test_unformed_chord_fallback_preserves_physical_event_and_context():
     calls = []
     router = KeyEventRouter(bindings=(binding({HID.A, HID.B}, KeyTrigger.KEY_DOWN, handled),), fallback=lambda event: calls.append(event) or AppKeyEventResult.UNHANDLED)
 
-    assert router.handle(captured) is AppKeyEventResult.UNHANDLED
-    assert calls == [captured]
+    assert router.handle(captured) is AppKeyEventResult.HANDLED_STOP
+    assert calls == []
+    assert router.handle(key(HID.C)) is AppKeyEventResult.HANDLED_STOP
+    assert calls == [captured, key(HID.C)]
 
 
 def test_router_dispatches_a_key_down_binding():
