@@ -148,6 +148,66 @@ def test_failed_general_prefix_replays_original_events_to_fallback():
     assert replayed == [down, next_down]
 
 
+def test_failed_prefix_replays_breaking_captured_event_with_original_wrapper():
+    replayed = []
+    router = KeyEventRouter(
+        bindings=(binding({HID.A, HID.B}, KeyTrigger.KEY_DOWN, handled),),
+        fallback=lambda event: replayed.append(event) or AppKeyEventResult.HANDLED_STOP,
+    )
+    prefix = CapturedKeyEvent(key(HID.A), native_context=object())
+    breaking = CapturedKeyEvent(key(HID.C), native_context=object())
+
+    router.handle(prefix)
+    router.handle(breaking)
+
+    assert replayed == [prefix, breaking]
+    assert replayed[1].native_context is breaking.native_context
+
+
+def test_repeated_modifier_key_down_is_suppressed():
+    replayed = []
+    router = KeyEventRouter(
+        bindings=(binding({HID.A}, KeyTrigger.KEY_DOWN, handled, modifiers={Modifier.CONTROL}),),
+        fallback=lambda event: replayed.append(event) or AppKeyEventResult.HANDLED_STOP,
+    )
+
+    down = key(HID.LEFT_CONTROL)
+    up = key(HID.LEFT_CONTROL, False)
+    router.handle(down)
+    router.handle(key(HID.LEFT_CONTROL))
+    router.handle(up)
+
+    assert replayed == [down, up]
+
+
+def test_long_press_candidate_is_cancelled_when_longer_chord_forms():
+    scheduler = FakeDelayedScheduler()
+    calls = []
+    router = KeyEventRouter(
+        bindings=(
+            KeyBinding(
+                chord=KeyChord(usages=frozenset({HID.A})),
+                trigger=KeyTrigger.LONG_PRESS,
+                duration_seconds=1.0,
+                handler=lambda _e: calls.append("a") or AppKeyEventResult.HANDLED_STOP,
+            ),
+            KeyBinding(
+                chord=KeyChord(usages=frozenset({HID.A, HID.B})),
+                trigger=KeyTrigger.KEY_DOWN,
+                handler=lambda _e: calls.append("ab") or AppKeyEventResult.HANDLED_STOP,
+            ),
+        ),
+        delayed_scheduler=scheduler,
+    )
+
+    router.handle(key(HID.A))
+    router.handle(key(HID.B))
+    scheduler.calls[0][1].fire()
+
+    assert scheduler.calls[0][1].cancelled is True
+    assert calls == ["ab"]
+
+
 def test_failed_prefix_without_fallback_discards_buffered_events():
     router = KeyEventRouter(bindings=(binding({HID.A, HID.B}, KeyTrigger.KEY_DOWN, handled),))
 

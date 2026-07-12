@@ -150,6 +150,8 @@ class KeyEventRouter:
             modifier = _MODIFIER_BY_USAGE.get(event.usage)
             if modifier is not None:
                 if event.pressed:
+                    if event.usage in self._pressed_modifier_usages:
+                        return AppKeyEventResult.HANDLED_STOP
                     self._update_modifier_state(event)
                     return self._handle_state_change(event, original_event)
                 self._pressed_modifier_usages.add(event.usage)
@@ -191,6 +193,8 @@ class KeyEventRouter:
         prefix = any(self._is_prefix(state, target) for target in self._candidate_chords)
         if key_down_binding is not None or prefix:
             self._buffered_inputs.append(_BufferedInput(original_event, event))
+        if long_press_binding is not None or key_down_binding is not None:
+            self._cancel_obsolete_long_presses(chord)
         if long_press_binding is not None:
             if event.usage not in self._pending_long_presses:
                 self._schedule_long_press(
@@ -255,7 +259,7 @@ class KeyEventRouter:
         self, current: KeyEventInput | None = None
     ) -> AppKeyEventResult:
         if current is not None:
-            self._buffered_inputs.append(_BufferedInput(current.key_event if isinstance(current, CapturedKeyEvent) else current, current))
+            self._buffered_inputs.append(_BufferedInput(current, current.key_event if isinstance(current, CapturedKeyEvent) else current))
         for buffered in self._buffered_inputs:
             self._handle_fallback(buffered.original)
         self._clear_prefix_state()
@@ -319,6 +323,12 @@ class KeyEventRouter:
     def _cancel_long_presses_requiring(self, modifier: Modifier) -> None:
         for usage, pending in tuple(self._pending_long_presses.items()):
             if modifier in pending.chord.modifiers:
+                pending.timer.cancel()
+                del self._pending_long_presses[usage]
+
+    def _cancel_obsolete_long_presses(self, chord: KeyChord) -> None:
+        for usage, pending in tuple(self._pending_long_presses.items()):
+            if pending.chord != chord and pending.chord.usages <= chord.usages and pending.chord.modifiers <= chord.modifiers:
                 pending.timer.cancel()
                 del self._pending_long_presses[usage]
 

@@ -46,3 +46,25 @@ Output:
 ## Commit
 
 `feat: buffer multi-key chord prefixes`
+
+## Blocking review fixes
+
+- Suppressed repeated modifier key-down events using the same pressed-state guard as general keys.
+- Replayed the breaking input through its original `KeyEventInput` wrapper, preserving `CapturedKeyEvent.native_context`.
+- Cancelled shorter pending long-press candidates when a longer exact chord is recognized.
+- Added focused regressions for all three findings.
+
+## Review-fix verification
+
+Command:
+
+```bash
+pytest tests/unit/test_key_router.py -q
+```
+
+Output:
+
+```text
+.......................                                                  [100%]
+23 passed in 0.08s
+```
