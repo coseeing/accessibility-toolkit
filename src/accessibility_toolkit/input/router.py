@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from enum import StrEnum
+import threading
 from typing import Protocol
 
 from accessibility_toolkit.input.events import CapturedKeyEvent, KeyEvent
@@ -59,6 +60,16 @@ class DelayedScheduler(Protocol):
     ) -> ScheduledCall: ...
 
 
+class _ThreadingDelayedScheduler:
+    def schedule(
+        self, delay_seconds: float, callback: Callable[[], None]
+    ) -> ScheduledCall:
+        timer = threading.Timer(delay_seconds, callback)
+        timer.daemon = True
+        timer.start()
+        return timer
+
+
 @dataclass(slots=True)
 class _PendingLongPress:
     chord: KeyChord
@@ -91,35 +102,35 @@ class KeyEventRouter:
     ) -> None:
         self._bindings = self._index_bindings(bindings)
         self._fallback = fallback
-        self._delayed_scheduler = delayed_scheduler
+        self._delayed_scheduler = delayed_scheduler or _ThreadingDelayedScheduler()
+        self._state_lock = threading.RLock()
         self._pressed_modifier_usages: set[int] = set()
         self._pending_long_presses: dict[int, _PendingLongPress] = {}
-        if any(binding.trigger is KeyTrigger.LONG_PRESS for binding in bindings):
-            if delayed_scheduler is None:
-                raise ValueError("Long-press bindings require a delayed_scheduler")
 
     def handle(self, event: KeyEventInput) -> AppKeyEventResult:
-        original_event = event
-        event = event.key_event if isinstance(event, CapturedKeyEvent) else event
-        if event.usage_page != HID.KEYBOARD_PAGE:
-            return self._handle_fallback(original_event)
+        with self._state_lock:
+            original_event = event
+            event = event.key_event if isinstance(event, CapturedKeyEvent) else event
+            if event.usage_page != HID.KEYBOARD_PAGE:
+                return self._handle_fallback(original_event)
 
-        modifier = _MODIFIER_BY_USAGE.get(event.usage)
-        if modifier is not None:
-            self._update_modifier_state(event)
-            if not event.pressed and modifier not in self._active_modifiers():
-                self._cancel_long_presses_requiring(modifier)
-            return self._handle_fallback(original_event)
+            modifier = _MODIFIER_BY_USAGE.get(event.usage)
+            if modifier is not None:
+                self._update_modifier_state(event)
+                if not event.pressed and modifier not in self._active_modifiers():
+                    self._cancel_long_presses_requiring(modifier)
+                return self._handle_fallback(original_event)
 
-        if event.pressed:
-            return self._handle_key_down(event, original_event)
-        return self._handle_key_up(event, original_event)
+            if event.pressed:
+                return self._handle_key_down(event, original_event)
+            return self._handle_key_up(event, original_event)
 
     def reset(self) -> None:
-        for pending in self._pending_long_presses.values():
-            pending.timer.cancel()
-        self._pending_long_presses.clear()
-        self._pressed_modifier_usages.clear()
+        with self._state_lock:
+            for pending in self._pending_long_presses.values():
+                pending.timer.cancel()
+            self._pending_long_presses.clear()
+            self._pressed_modifier_usages.clear()
 
     def _handle_key_down(
         self, event: KeyEvent, original_event: KeyEventInput
@@ -162,14 +173,13 @@ class KeyEventRouter:
         key_down_binding: KeyBinding | None,
         long_press_binding: KeyBinding,
     ) -> None:
-        assert self._delayed_scheduler is not None
-
         def fire() -> None:
-            pending = self._pending_long_presses.get(event.usage)
-            if pending is None or pending.chord != chord:
-                return
-            pending.fired = True
-            long_press_binding.handler(event)
+            with self._state_lock:
+                pending = self._pending_long_presses.get(event.usage)
+                if pending is None or pending.chord != chord:
+                    return
+                pending.fired = True
+                long_press_binding.handler(event)
 
         timer = self._delayed_scheduler.schedule(
             long_press_binding.duration_seconds, fire

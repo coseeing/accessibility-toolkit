@@ -93,6 +93,66 @@ def test_router_uses_fallback_for_an_unbound_event():
     assert calls == [key(HID.A)]
 
 
+def test_long_press_uses_default_scheduler_when_none_is_injected(monkeypatch):
+    created = []
+
+    class FakeTimer:
+        def __init__(self, seconds, callback):
+            self.seconds = seconds
+            self.callback = callback
+            self.daemon = False
+            self.started = False
+            self.cancelled = False
+            created.append(self)
+
+        def start(self):
+            self.started = True
+
+        def cancel(self):
+            self.cancelled = True
+
+    monkeypatch.setattr("accessibility_toolkit.input.router.threading.Timer", FakeTimer)
+    router = KeyEventRouter(
+        bindings=(
+            KeyBinding(
+                chord=KeyChord(HID.A),
+                trigger=KeyTrigger.LONG_PRESS,
+                duration_seconds=1.25,
+                handler=lambda _event: AppKeyEventResult.HANDLED_STOP,
+            ),
+        )
+    )
+
+    assert router.handle(key(HID.A)) is AppKeyEventResult.HANDLED_STOP
+    assert created[0].seconds == 1.25
+    assert created[0].daemon is True
+    assert created[0].started is True
+
+
+def test_long_press_uses_injected_scheduler_instead_of_threading_timer(monkeypatch):
+    def unexpected_timer(*_args, **_kwargs):
+        raise AssertionError("threading.Timer should not be used")
+
+    monkeypatch.setattr(
+        "accessibility_toolkit.input.router.threading.Timer", unexpected_timer
+    )
+    scheduler = FakeDelayedScheduler()
+    router = KeyEventRouter(
+        bindings=(
+            KeyBinding(
+                chord=KeyChord(HID.A),
+                trigger=KeyTrigger.LONG_PRESS,
+                duration_seconds=1.25,
+                handler=lambda _event: AppKeyEventResult.HANDLED_STOP,
+            ),
+        ),
+        delayed_scheduler=scheduler,
+    )
+
+    assert router.handle(key(HID.A)) is AppKeyEventResult.HANDLED_STOP
+    assert scheduler.calls[0][0] == 1.25
+
+
 def test_long_press_defers_key_down_until_key_is_released_before_deadline():
     calls = []
     scheduler = FakeDelayedScheduler()
@@ -148,6 +208,34 @@ def test_long_press_runs_at_deadline_without_running_delayed_key_down():
     router.handle(key(HID.A, pressed=False))
 
     assert calls == ["long"]
+
+
+def test_long_press_handler_can_reset_router():
+    scheduler = FakeDelayedScheduler()
+    calls = []
+
+    def reset_router(_event):
+        calls.append("long")
+        router.reset()
+        return AppKeyEventResult.HANDLED_STOP
+
+    router = KeyEventRouter(
+        bindings=(
+            KeyBinding(
+                chord=KeyChord(HID.A),
+                trigger=KeyTrigger.LONG_PRESS,
+                duration_seconds=1.5,
+                handler=reset_router,
+            ),
+        ),
+        delayed_scheduler=scheduler,
+    )
+
+    router.handle(key(HID.A))
+    scheduler.calls[0][1].fire()
+
+    assert calls == ["long"]
+    assert router._pending_long_presses == {}
 
 
 def test_long_press_is_cancelled_when_its_modifier_is_released():
