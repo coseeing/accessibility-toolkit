@@ -7,7 +7,14 @@ from accessibility_toolkit.input import (
     KeyboardPipelineResult,
     should_pass_through_system_toggle,
 )
-from accessibility_toolkit.input import KeyEventHandler, KeyboardInputService
+from accessibility_toolkit.input import (
+    KeyBinding,
+    KeyChord,
+    KeyEventHandler,
+    KeyEventRouter,
+    KeyTrigger,
+    KeyboardInputService,
+)
 from accessibility_toolkit.output import Capabilities
 from accessibility_toolkit.input import HID
 
@@ -22,11 +29,19 @@ from accessibility_toolkit.interaction import ModeManager
 class EchoKeysMode:
     mode_id = "echo_keys"
     enter_usage = HID.F10
-    exit_usage = HID.ESCAPE
-
-    def __init__(self, control, echo_input):
+    def __init__(self, control, echo_input, exit_active):
         self._control = control
         self._echo_input = echo_input
+        self.key_router = KeyEventRouter(
+            bindings=(
+                KeyBinding(
+                    chord=KeyChord(HID.ESCAPE),
+                    trigger=KeyTrigger.KEY_DOWN,
+                    handler=lambda _event: exit_active(),
+                ),
+            ),
+            fallback=echo_input.handle,
+        )
 
     def can_enter(self) -> bool:
         return True
@@ -38,10 +53,6 @@ class EchoKeysMode:
     def exit(self) -> bool:
         self._control.stop_echo()
         return True
-
-    def handle_key_event(self, event):
-        return self._echo_input.handle(event)
-
 
 class KeyEchoAppService(KeyEventHandler):
     enter_usage = EchoKeysMode.enter_usage
@@ -88,7 +99,11 @@ class KeyEchoAppService(KeyEventHandler):
             notify_status=self._notify_status_listener,
         )
         self._mode_manager.register(
-            EchoKeysMode(self._echo_control, self._echo_input)
+            EchoKeysMode(
+                self._echo_control,
+                self._echo_input,
+                self._mode_manager.exit_active_mode,
+            )
         )
 
     def bind(self) -> None:

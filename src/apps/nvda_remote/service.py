@@ -1,7 +1,7 @@
 from collections.abc import Callable
 from typing import Any
 
-from accessibility_toolkit.input.capture import HotkeyCapture, InputCapture, KeyEventDecision
+from accessibility_toolkit.input.capture import HotkeyCapture, InputCapture
 from accessibility_toolkit.input.events import CapturedKeyEvent
 from accessibility_toolkit.events import (
     ErrorRaised,
@@ -11,6 +11,10 @@ from accessibility_toolkit.input import (
     AppKeyEventResult,
     InputActivationUseCase,
     KeyboardPipelineResult,
+    KeyBinding,
+    KeyChord,
+    KeyEventRouter,
+    KeyTrigger,
     assemble_pipeline_result,
     should_pass_through_system_toggle,
 )
@@ -41,11 +45,19 @@ from accessibility_toolkit.interaction import ModeManager
 class RemoteControlMode:
     mode_id = "remote_control"
     enter_usage = HID.F11
-    exit_usage = HID.F11
-
-    def __init__(self, control_mode, input_forwarding):
+    def __init__(self, control_mode, input_forwarding, exit_active):
         self._control_mode = control_mode
         self._input_forwarding = input_forwarding
+        self.key_router = KeyEventRouter(
+            bindings=(
+                KeyBinding(
+                    chord=KeyChord(HID.F11),
+                    trigger=KeyTrigger.KEY_DOWN,
+                    handler=lambda _event: exit_active(),
+                ),
+            ),
+            fallback=self._forward_input,
+        )
 
     def can_enter(self) -> bool:
         return True
@@ -59,8 +71,10 @@ class RemoteControlMode:
         self._input_forwarding.clear()
         return True
 
-    def handle_key_event(self, event):
-        return self._input_forwarding.handle(CapturedKeyEvent(key_event=event, native_context=None))
+    def _forward_input(self, event) -> AppKeyEventResult:
+        captured = event if isinstance(event, CapturedKeyEvent) else CapturedKeyEvent(event)
+        self._input_forwarding.handle(captured)
+        return AppKeyEventResult.HANDLED_STOP
 
 
 class NvdaRemoteAppService(KeyEventHandler):
@@ -127,7 +141,11 @@ class NvdaRemoteAppService(KeyEventHandler):
             notify_status=self._notify_status_listener,
         )
         self._mode_manager.register(
-            RemoteControlMode(self._control_mode, self._input_forwarding)
+            RemoteControlMode(
+                self._control_mode,
+                self._input_forwarding,
+                self._mode_manager.exit_active_mode,
+            )
         )
 
         self._status_presenter = RemoteStatusPresenter(
@@ -222,25 +240,21 @@ class NvdaRemoteAppService(KeyEventHandler):
         should_pass_through_toggle = should_pass_through_system_toggle(event)
         if not key_event.pressed and key_event.usage in self._suppressed_keyups:
             self._suppressed_keyups.discard(key_event.usage)
-            return assemble_pipeline_result(send_to_system=False, app_result=AppKeyEventResult.HANDLED_STOP)
-        if key_event.pressed and key_event.usage == self._LOCAL_STOP_USAGE and self._mode_manager.active_mode_id is not None:
-            self._suppressed_keyups.add(self._LOCAL_STOP_USAGE)
-        if key_event.pressed and key_event.usage == RemoteControlMode.exit_usage and self._mode_manager.active_mode_id is not None:
-            mode_result = self._mode_manager.handle_key_event(key_event)
-            return assemble_pipeline_result(send_to_system=False, app_result=mode_result)
-        if self.state.control_state == ControlState.CONTROLLING:
-            decision = self._input_forwarding.handle(event)
-            if decision == KeyEventDecision.SUPPRESS:
-                return assemble_pipeline_result(
-                    send_to_system=should_pass_through_toggle,
-                    app_result=AppKeyEventResult.HANDLED_STOP,
-                )
-            else:
-                return assemble_pipeline_result(send_to_system=True, app_result=AppKeyEventResult.HANDLED_STOP)
-        if should_pass_through_toggle:
-            return assemble_pipeline_result(send_to_system=True, app_result=AppKeyEventResult.UNHANDLED)
-        mode_result = self._mode_manager.handle_key_event(key_event)
-        send_to_system = mode_result == AppKeyEventResult.UNHANDLED
+            return assemble_pipeline_result(
+                send_to_system=False,
+                app_result=AppKeyEventResult.HANDLED_STOP,
+            )
+        if (
+            key_event.pressed
+            and key_event.usage == self._LOCAL_STOP_USAGE
+            and self._mode_manager.active_mode_id is not None
+        ):
+            self._suppressed_keyups.add(key_event.usage)
+        mode_result = self._mode_manager.handle_key_event(event)
+        send_to_system = (
+            should_pass_through_toggle
+            or mode_result == AppKeyEventResult.UNHANDLED
+        )
         return assemble_pipeline_result(send_to_system=send_to_system, app_result=mode_result)
 
     def _handle_tone(

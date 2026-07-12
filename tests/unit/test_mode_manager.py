@@ -1,6 +1,13 @@
 from accessibility_toolkit.events import ModeChanged
-from accessibility_toolkit.input import AppKeyEventResult
-from accessibility_toolkit.input import HID, KeyEvent
+from accessibility_toolkit.input import (
+    AppKeyEventResult,
+    HID,
+    KeyBinding,
+    KeyChord,
+    KeyEvent,
+    KeyEventRouter,
+    KeyTrigger,
+)
 
 from accessibility_toolkit.interaction import ModeManager
 
@@ -34,10 +41,10 @@ class FakeMode:
         self.entered = 0
         self.exited = 0
         self.events = []
+        self.key_router = KeyEventRouter(bindings=(), fallback=self._handle_event)
 
     mode_id = "echo"
     enter_usage = HID.ENTER
-    exit_usage = HID.ESCAPE
 
     def can_enter(self):
         return True
@@ -50,7 +57,7 @@ class FakeMode:
         self.exited += 1
         return True
 
-    def handle_key_event(self, event):
+    def _handle_event(self, event):
         self.events.append(event.usage)
         return AppKeyEventResult.HANDLED_STOP
 
@@ -73,7 +80,7 @@ def test_mode_manager_enters_mode_on_activation():
     assert statuses == [ModeChanged("echo", active=True)]
 
 
-def test_mode_manager_routes_non_exit_keys_to_active_mode():
+def test_mode_manager_routes_events_to_active_mode_router():
     mode = FakeMode()
     activation = FakeActivation()
     manager = ModeManager(
@@ -91,13 +98,22 @@ def test_mode_manager_routes_non_exit_keys_to_active_mode():
     assert mode.events == [HID.A]
 
 
-def test_mode_manager_exit_key_deactivates_mode():
+def test_mode_router_binding_can_deactivate_active_mode():
     mode = FakeMode()
     activation = FakeActivation()
     statuses = []
     manager = ModeManager(
         activation=activation,
         notify_status=statuses.append,
+    )
+    mode.key_router = KeyEventRouter(
+        bindings=(
+            KeyBinding(
+                chord=KeyChord(HID.ESCAPE),
+                trigger=KeyTrigger.KEY_DOWN,
+                handler=lambda _event: manager.exit_active_mode(),
+            ),
+        )
     )
     manager.register(mode)
     manager.activate_mode("echo")
@@ -166,7 +182,7 @@ def test_mode_manager_single_active_mode_guarantee():
     assert manager.active_mode_id == "echo"
 
 
-def test_mode_manager_ignores_exit_key_release():
+def test_mode_manager_routes_key_release_to_mode_router():
     mode = FakeMode()
     activation = FakeActivation()
     manager = ModeManager(
@@ -202,7 +218,7 @@ def test_mode_manager_handles_activate_rollback_on_enter_failure():
     assert manager.active_mode_id is None
 
 
-def test_mode_manager_preserves_active_mode_when_exit_active_fails():
+def test_mode_manager_preserves_active_mode_when_router_exit_handler_fails():
     mode = FakeMode()
     activation = FakeActivation()
     activation.fail_exit = True
@@ -210,6 +226,15 @@ def test_mode_manager_preserves_active_mode_when_exit_active_fails():
     manager = ModeManager(
         activation=activation,
         notify_status=statuses.append,
+    )
+    mode.key_router = KeyEventRouter(
+        bindings=(
+            KeyBinding(
+                chord=KeyChord(HID.ESCAPE),
+                trigger=KeyTrigger.KEY_DOWN,
+                handler=lambda _event: manager.exit_active_mode(),
+            ),
+        )
     )
     manager.register(mode)
     manager.activate_mode("echo")

@@ -2,19 +2,18 @@ from collections.abc import Callable
 from typing import Any, Protocol
 
 from accessibility_toolkit.events import ModeChanged
-from accessibility_toolkit.input import AppKeyEventResult
-from accessibility_toolkit.input.events import KeyEvent
+from accessibility_toolkit.input import AppKeyEventResult, KeyEventRouter
+from accessibility_toolkit.input.events import CapturedKeyEvent, KeyEvent
 
 
 class ActivationMode(Protocol):
     mode_id: str
     enter_usage: int
-    exit_usage: int
+    key_router: KeyEventRouter
 
     def can_enter(self) -> bool: ...
     def enter(self) -> bool: ...
     def exit(self) -> bool: ...
-    def handle_key_event(self, event: KeyEvent) -> AppKeyEventResult: ...
 
 
 class ModeManager:
@@ -42,6 +41,7 @@ class ModeManager:
             return False
         if not self._activation.enter_active():
             return False
+        mode.key_router.reset()
         if not mode.enter():
             self._activation.exit_active()
             return False
@@ -56,15 +56,16 @@ class ModeManager:
         mode_id = mode.mode_id
         if not self._activation.exit_active():
             return AppKeyEventResult.HANDLED_STOP
+        mode.key_router.reset()
         mode.exit()
         self._notify_status(ModeChanged(mode_id, active=False))
         self.active_mode_id = None
         return AppKeyEventResult.HANDLED_STOP
 
-    def handle_key_event(self, event: KeyEvent) -> AppKeyEventResult:
+    def handle_key_event(
+        self, event: KeyEvent | CapturedKeyEvent
+    ) -> AppKeyEventResult:
         if self.active_mode_id is None:
             return AppKeyEventResult.UNHANDLED
         mode = self._modes[self.active_mode_id]
-        if event.pressed and event.usage == mode.exit_usage:
-            return self.exit_active_mode()
-        return mode.handle_key_event(event)
+        return mode.key_router.handle(event)

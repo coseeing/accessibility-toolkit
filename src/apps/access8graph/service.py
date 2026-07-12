@@ -8,13 +8,20 @@ from accessibility_toolkit.input import (
     should_pass_through_system_toggle,
 )
 from accessibility_toolkit.input import AppKeyEventResult
-from accessibility_toolkit.input import KeyEventHandler, KeyboardInputService
+from accessibility_toolkit.input import (
+    KeyBinding,
+    KeyChord,
+    KeyEventHandler,
+    KeyEventRouter,
+    KeyTrigger,
+    KeyboardInputService,
+)
 from accessibility_toolkit.output import Capabilities
 from accessibility_toolkit.input import HID
 from accessibility_toolkit.output.speech import SpeechSequence
 
 from apps.access8graph.events import GraphNavigationChanged
-from apps.access8graph.input import Access8GraphKeyTranslator
+from apps.access8graph.navigation.model import NavigationCommand
 from apps.access8graph.output import Access8GraphFlowOutput
 from apps.access8graph.use_cases import (
     Access8GraphCommandDispatcher,
@@ -28,11 +35,50 @@ from accessibility_toolkit.interaction import ModeManager
 class Access8GraphNavigationMode:
     mode_id = "navigation"
     enter_usage = HID.F10
-    exit_usage = HID.ESCAPE
 
-    def __init__(self, *, navigation, command_dispatcher):
+    _COMMAND_BY_USAGE = {
+        HID.UP: NavigationCommand.UP,
+        HID.DOWN: NavigationCommand.DOWN,
+        HID.LEFT: NavigationCommand.LEFT,
+        HID.RIGHT: NavigationCommand.RIGHT,
+        HID.ENTER: NavigationCommand.CONFIRM,
+        HID.KEYPAD_ENTER: NavigationCommand.CONFIRM,
+        HID.HOME: NavigationCommand.HOME,
+        HID.END: NavigationCommand.END,
+        HID.D: NavigationCommand.SELECT_DIRECTION,
+        HID.U: NavigationCommand.SELECT_UNDIRECTED,
+        HID.P: NavigationCommand.SELECT_PLAN,
+        HID.Q: NavigationCommand.QUIT,
+        HID.H: NavigationCommand.OPEN_HELP,
+        HID.M: NavigationCommand.OPEN_MODE,
+        HID.V: NavigationCommand.OPEN_BROWSER,
+        HID.S: NavigationCommand.SELECT_STATION,
+        HID.L: NavigationCommand.SELECT_LINE,
+        HID.E: NavigationCommand.SELECT_ENDPOINT,
+    }
+
+    def __init__(self, *, navigation, command_dispatcher, exit_active):
         self._navigation = navigation
         self._command_dispatcher = command_dispatcher
+        bindings = [
+            KeyBinding(
+                chord=KeyChord(usage),
+                trigger=KeyTrigger.KEY_DOWN,
+                handler=lambda _event, command=command: command_dispatcher.dispatch(command),
+            )
+            for usage, command in self._COMMAND_BY_USAGE.items()
+        ]
+        bindings.append(
+            KeyBinding(
+                chord=KeyChord(HID.ESCAPE),
+                trigger=KeyTrigger.KEY_DOWN,
+                handler=lambda _event: exit_active(),
+            )
+        )
+        self.key_router = KeyEventRouter(
+            bindings=tuple(bindings),
+            fallback=lambda _event: AppKeyEventResult.HANDLED_STOP,
+        )
 
     def can_enter(self) -> bool:
         return self._navigation.can_start()
@@ -48,10 +94,6 @@ class Access8GraphNavigationMode:
     def exit(self) -> bool:
         self._navigation.stop_flow()
         return True
-
-    def handle_key_event(self, event):
-        return self._command_dispatcher.handle_key_event(event)
-
 
 class Access8GraphAppService(KeyEventHandler):
     enter_usage = Access8GraphNavigationMode.enter_usage
@@ -86,7 +128,6 @@ class Access8GraphAppService(KeyEventHandler):
             notify_status=self._notify_status_listener,
         )
         self._command_dispatcher = Access8GraphCommandDispatcher(
-            translator=Access8GraphKeyTranslator(),
             navigation=self._navigation,
         )
         self._activation = InputActivationUseCase(
@@ -109,6 +150,7 @@ class Access8GraphAppService(KeyEventHandler):
             Access8GraphNavigationMode(
                 navigation=self._navigation,
                 command_dispatcher=self._command_dispatcher,
+                exit_active=self._mode_manager.exit_active_mode,
             )
         )
 
