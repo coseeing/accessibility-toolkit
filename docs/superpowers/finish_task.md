@@ -43,7 +43,7 @@ pass. The work is complete with the documented missing-fixture baseline
 limitation; no source or plan/spec changes are included in this completion
 commit.
 
-## Commits after base `6bb37eb`
+## Commits after base `6bb37eb` (before this report amendment)
 
 Chronological order:
 
@@ -59,3 +59,4 @@ Chronological order:
 10. `d795648f48367aeee00147d58db95b0e0a5e3595` — `test: address task 5 review findings`
 11. `e1e3ab0657c47b435350cafff9bbc56542650c38` — `docs: make task 5 placeholder scan self-clean`
 12. `f116deabb20cf4a3af179b2c8780ad465ad651ea` — `fix: cancel stale long-press timers`
+13. `cb9509c` — `docs: record mode-key-router completion`
