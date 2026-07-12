@@ -294,7 +294,7 @@ class PlatformProvider:
     def create_clipboard_service(self) -> ClipboardService:
         return create_clipboard_service()
 
-    def create_tone_output(self) -> DefaultToneOutput:
+    def create_tone_output(self) -> ToneOutput:
         return create_tone_output()
 
     def default_speech_engine_options(

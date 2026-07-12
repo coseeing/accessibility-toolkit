@@ -335,7 +335,7 @@ tests/
   integration/
 ```
 
-Dependencies flow bottom-up: `scheduling` and `events` are foundations, `input` and `interaction` consume `events`, `remote` consumes stable output/speech wire models, and `runtime` performs app composition.
+Dependencies flow bottom-up: `scheduling` and `events` are foundations, `output` consumes `scheduling`, `interaction` consumes `input` and `events`, `remote` consumes stable output/speech wire models, and `runtime` performs app composition across all functional packages. An `input` dependency on `scheduling` is allowed in the future but does not exist today.
 
 ```python
 from accessibility_toolkit.input import KeyEvent, KeyboardInputService

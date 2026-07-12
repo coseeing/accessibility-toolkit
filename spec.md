@@ -336,15 +336,15 @@ Architectural result:
 The architecture maps to 7 functional packages under `src/accessibility_toolkit/`:
 
 - `input/`
-  - keyboard input service, HID key models, platform capture adapters, and the keyboard event handling pipeline
+  - keyboard input service, `InputActivationUseCase`, HID key models, platform capture adapters, and the keyboard event handling pipeline
 - `output/` and `output/speech/`
   - output scheduling, queued output service, speech sequence playback, tone/wave output, braille, and clipboard
 - `scheduling/`
-  - domain-neutral scheduler shared by input, output, and runtime components
+  - domain-neutral scheduler currently consumed by output; input may consume it in the future, but does not today
 - `interaction/`
-  - mode lifecycle management, `ModeManager`, and `InputActivationUseCase`
+  - mode lifecycle management and `ModeManager`
 - `events/`
-  - cross-functional lifecycle events consumed by input, output, interaction, and runtime
+  - cross-functional lifecycle events consumed by interaction and available to runtime composition
 - `remote/`
   - relay protocol wire models and transport session
 - `runtime/`
@@ -352,6 +352,6 @@ The architecture maps to 7 functional packages under `src/accessibility_toolkit/
 
 `src/apps/` contains app-specific composition and `src/ui/` contains wxPython shells and app-specific panels.
 
-Dependencies flow bottom-up: `scheduling` and `events` are foundations with no internal dependencies; `input` and `interaction` consume `events`; `remote` consumes stable output/speech wire models; and `runtime` performs composition across all packages.
+Dependencies flow bottom-up: `scheduling` and `events` are foundations with no dependencies on other functional packages; `output` consumes `scheduling`; `interaction` consumes `input` and `events`; `remote` consumes stable output/speech wire models; and `runtime` performs composition across all functional packages. An `input` dependency on `scheduling` is allowed in the future but does not exist today.
 
 The key principle is not the package names themselves but that shared runtime behavior stays shared, and domain behavior stays with the app that owns it.

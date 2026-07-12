@@ -336,15 +336,15 @@ app 使用到的 toolkit 職責：
 架構對應到 `src/accessibility_toolkit/` 下的 7 個功能導向套件：
 
 - `input/`
-  - 鍵盤輸入服務、HID 按鍵模型、平台 capture adapter，以及鍵盤事件處理管線
+  - 鍵盤輸入服務、`InputActivationUseCase`、HID 按鍵模型、平台 capture adapter，以及鍵盤事件處理管線
 - `output/` 與 `output/speech/`
   - 輸出排程、佇列輸出服務、語音序列播放、tone/wave 輸出、braille 與剪貼簿
 - `scheduling/`
-  - 領域中立的排程器，供 input、output 與 runtime 元件共用
+  - 領域中立的排程器，目前由 output 使用；未來 input 可以使用，但目前尚未使用
 - `interaction/`
-  - 模式生命週期管理、`ModeManager` 與 `InputActivationUseCase`
+  - 模式生命週期管理與 `ModeManager`
 - `events/`
-  - 跨模組生命週期事件，供 input、output、interaction 與 runtime 使用
+  - 跨模組生命週期事件，由 interaction 使用，並可供 runtime 組裝
 - `remote/`
   - relay 協定 wire 模型與 transport session
 - `runtime/`
@@ -352,6 +352,6 @@ app 使用到的 toolkit 職責：
 
 `src/apps/` 包含 app 專屬組裝，`src/ui/` 包含 wxPython 殼層與 app 專屬面板。
 
-相依方向由下往上：`scheduling` 與 `events` 是無內部依賴的基礎層；`input` 與 `interaction` 使用 `events`；`remote` 使用穩定的 output/speech wire 模型；`runtime` 則進行跨套件的組裝。
+相依方向由下往上：`scheduling` 與 `events` 是不依賴其他功能套件的基礎層；`output` 使用 `scheduling`；`interaction` 使用 `input` 與 `events`；`remote` 使用穩定的 output/speech wire 模型；`runtime` 則進行跨所有功能套件的組裝。未來允許 `input` 依賴 `scheduling`，但目前並不存在此相依。
 
 真正重要的不是套件名稱本身，而是這個原則：共享 runtime 行為留在共享層，domain 行為留在擁有它的 app。

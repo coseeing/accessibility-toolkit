@@ -333,7 +333,7 @@ tests/
   integration/
 ```
 
-相依方向由下往上：`scheduling` 與 `events` 是基礎層，`input` 與 `interaction` 使用 `events`，`remote` 使用穩定的 output/speech wire 模型，`runtime` 負責 app 組裝。
+相依方向由下往上：`scheduling` 與 `events` 是基礎層，`output` 使用 `scheduling`，`interaction` 使用 `input` 與 `events`，`remote` 使用穩定的 output/speech wire 模型，`runtime` 負責跨所有功能套件進行 app 組裝。未來允許 `input` 依賴 `scheduling`，但目前並不存在此相依。
 
 ```python
 from accessibility_toolkit.input import KeyEvent, KeyboardInputService
