@@ -32,7 +32,7 @@
 - Consumes: `DelayedScheduler.schedule(delay_seconds: float, callback: Callable[[], None]) -> ScheduledCall`.
 - Produces: `KeyEventRouter(..., delayed_scheduler: DelayedScheduler | None = None)` that uses an internal `threading.Timer` scheduler when omitted.
 
-- [ ] **Step 1: Write failing tests for default and injected scheduling**
+- [x] **Step 1: Write failing tests for default and injected scheduling**
 
 Add a timer factory seam to the expected API and test it without sleeping:
 
@@ -76,13 +76,13 @@ def test_long_press_uses_default_scheduler_when_none_is_injected(monkeypatch):
 Keep the existing fake `DelayedScheduler` test and assert an injected scheduler is used instead of `threading.Timer`.
 Add a test whose long-press handler calls `router.reset()` to prove the reentrant lock does not deadlock and the pending state is cleared.
 
-- [ ] **Step 2: Run the scheduler tests and verify RED**
+- [x] **Step 2: Run the scheduler tests and verify RED**
 
 Run: `pytest tests/unit/test_key_router.py -q`
 
 Expected: FAIL because long-press bindings currently reject a missing `delayed_scheduler`.
 
-- [ ] **Step 3: Implement the default scheduler adapter**
+- [x] **Step 3: Implement the default scheduler adapter**
 
 Add these private types in `router.py`:
 
@@ -105,13 +105,13 @@ Set `self._delayed_scheduler = delayed_scheduler or _ThreadingDelayedScheduler()
 while holding the reentrant lock so `reset()` cannot race past a callback that has already claimed the pending
 press; allow same-thread lifecycle re-entry. Do not catch callback exceptions.
 
-- [ ] **Step 4: Run the focused scheduler tests and verify GREEN**
+- [x] **Step 4: Run the focused scheduler tests and verify GREEN**
 
 Run: `pytest tests/unit/test_key_router.py -q`
 
 Expected: the default/injected scheduler tests pass; multi-key tests added in later tasks are not present yet.
 
-- [ ] **Step 5: Commit the scheduler behavior**
+- [x] **Step 5: Commit the scheduler behavior**
 
 ```bash
 git add src/accessibility_toolkit/input/router.py tests/unit/test_key_router.py
@@ -134,7 +134,7 @@ git commit -m "feat: add default long press scheduler"
 - Produces: `KeyChord(usages: frozenset[int], modifiers: frozenset[Modifier] = frozenset())`.
 - Preserves: matched handlers receive the `KeyEvent` that completed/released the chord; fallback receives the original `KeyEvent | CapturedKeyEvent`.
 
-- [ ] **Step 1: Write failing value-object and exact-match tests**
+- [x] **Step 1: Write failing value-object and exact-match tests**
 
 Add `import pytest` and this test helper before the new cases:
 
@@ -191,13 +191,13 @@ def test_multi_key_chord_is_order_independent_and_exact():
 
 Add the reverse A-then-B order and `Ctrl+A+B` tests. Assert left/right Ctrl both match `Modifier.CONTROL`, while the fallback receives the unchanged physical modifier usage and unchanged `CapturedKeyEvent.native_context` when the chord does not form.
 
-- [ ] **Step 2: Run the value-object tests and verify RED**
+- [x] **Step 2: Run the value-object tests and verify RED**
 
 Run: `pytest tests/unit/test_key_router.py -q`
 
 Expected: FAIL because `KeyChord` currently has singular `usage` and the router tracks only modifiers.
 
-- [ ] **Step 3: Implement the new KeyChord contract and pressed-key state**
+- [x] **Step 3: Implement the new KeyChord contract and pressed-key state**
 
 Replace `KeyChord` and add validation:
 
@@ -233,7 +233,7 @@ def _current_state(self) -> _MatchState:
 
 Preserve the original input object before updating matching state. Never replace its HID usage.
 
-- [ ] **Step 4: Migrate every existing single-key binding**
+- [x] **Step 4: Migrate every existing single-key binding**
 
 Change all app construction sites from:
 
@@ -249,7 +249,7 @@ KeyChord(usages=frozenset({HID.ESCAPE}))
 
 Apply the same migration to Access8Graph command bindings and all router tests. Do not change app command maps, fallback handlers, or ModeManager lifecycle.
 
-- [ ] **Step 5: Run router and app compatibility tests**
+- [x] **Step 5: Run router and app compatibility tests**
 
 Run:
 
@@ -257,7 +257,7 @@ Run:
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit the multi-key value model**
+- [x] **Step 6: Commit the multi-key value model**
 
 ```bash
 git add src/accessibility_toolkit/input/router.py src/apps/access8graph/service.py src/apps/key_echo/service.py src/apps/nvda_remote/service.py tests/unit/test_key_router.py tests/unit/test_mode_manager.py
@@ -274,7 +274,7 @@ git commit -m "feat: support multi-key chord values"
 - Consumes: immutable indexed `KeyBinding` values and raw `KeyEventInput` events.
 - Produces: deterministic prefix buffering for general keys and modifiers, exact-chord dispatch, and original-event fallback replay.
 
-- [ ] **Step 1: Write failing prefix tests for general keys**
+- [x] **Step 1: Write failing prefix tests for general keys**
 
 ```python
 def test_shorter_binding_waits_for_longer_chord():
@@ -296,7 +296,7 @@ def test_shorter_binding_waits_for_longer_chord():
 
 Add a second test where C completes `A+B+C` and neither shorter handler runs.
 
-- [ ] **Step 2: Write failing replay tests for general and modifier prefixes**
+- [x] **Step 2: Write failing replay tests for general and modifier prefixes**
 
 ```python
 def test_failed_modifier_prefix_replays_original_events_to_fallback():
@@ -319,13 +319,13 @@ def test_failed_modifier_prefix_replays_original_events_to_fallback():
 
 Add the same replay assertion for an unbound A prefix of `A+B`. Add a no-fallback case asserting buffered events are discarded and release remains `HANDLED_STOP`.
 
-- [ ] **Step 3: Run the prefix tests and verify RED**
+- [x] **Step 3: Run the prefix tests and verify RED**
 
 Run: `pytest tests/unit/test_key_router.py -q`
 
 Expected: FAIL because events currently reach fallback immediately and no general-key prefix state exists.
 
-- [ ] **Step 4: Add explicit buffered-state records and candidate indexing**
+- [x] **Step 4: Add explicit buffered-state records and candidate indexing**
 
 Add these private records:
 
@@ -359,7 +359,7 @@ def _is_prefix(current: _MatchState, target: KeyChord) -> bool:
 
 Maintain `_buffered_inputs` in arrival order and `_deferred_chord` as the most specific exact chord reached but delayed by a strict superset or long-press decision.
 
-- [ ] **Step 5: Implement deterministic key-down precedence**
+- [x] **Step 5: Implement deterministic key-down precedence**
 
 For a non-repeat key-down, update physical state, append the original input when the resulting state is an exact chord or prefix, then apply this precedence:
 
@@ -371,7 +371,7 @@ For a non-repeat key-down, update physical state, append the original input when
 
 Repeated key-down for an already-held physical usage must not append another buffered input, reset a long-press timer, or re-trigger a multi-key chord. Preserve existing repeat dispatch only for a non-deferred single-key key-down binding.
 
-- [ ] **Step 6: Implement release resolution and verify GREEN**
+- [x] **Step 6: Implement release resolution and verify GREEN**
 
 Before removing a released physical key, inspect the complete pre-release chord:
 
@@ -383,7 +383,7 @@ Run: `pytest tests/unit/test_key_router.py -q`
 
 Expected: all prefix, replay, exact-match, and existing long-press tests pass.
 
-- [ ] **Step 7: Commit prefix buffering**
+- [x] **Step 7: Commit prefix buffering**
 
 ```bash
 git add src/accessibility_toolkit/input/router.py tests/unit/test_key_router.py
@@ -401,7 +401,7 @@ git commit -m "feat: buffer multi-key chord prefixes"
 - Produces: owned chord member-release suppression, first-release `KEY_UP`, final-member long-press start, and reset cancellation.
 - Preserves: `KeyEventRouter.handle(...) -> AppKeyEventResult` and `ModeManager` reset calls on activation/exit.
 
-- [ ] **Step 1: Write failing ownership and key-up tests**
+- [x] **Step 1: Write failing ownership and key-up tests**
 
 ```python
 def test_handled_key_down_owns_all_member_key_ups():
@@ -428,7 +428,7 @@ def test_handled_key_down_owns_all_member_key_ups():
 
 Add tests that a key-down handler returning `UNHANDLED` does not claim releases, while a chord with only a key-up binding claims its prefix downs and invokes key-up exactly once on first release.
 
-- [ ] **Step 2: Write failing multi-key long-press tests**
+- [x] **Step 2: Write failing multi-key long-press tests**
 
 Use the fake scheduler to assert:
 
@@ -443,13 +443,13 @@ assert len(scheduler.calls) == 1
 
 Fire the timer and assert one long handler call whose event usage is B, the key that completed the chord. Add cancellation tests for first member release, required modifier release, an extra C key causing exact mismatch, `reset()`, and mode exit through `ModeManager.exit_active_mode()`.
 
-- [ ] **Step 3: Run ownership/long-press tests and verify RED**
+- [x] **Step 3: Run ownership/long-press tests and verify RED**
 
 Run: `pytest tests/unit/test_key_router.py tests/unit/test_mode_manager.py -q`
 
 Expected: FAIL because the current router has no owned chord record and keys long-press state by one primary usage.
 
-- [ ] **Step 4: Implement owned chord state**
+- [x] **Step 4: Implement owned chord state**
 
 Add:
 
@@ -466,7 +466,7 @@ When an immediate key-down handler returns `HANDLED_STOP` or `HANDLED_CONTINUE`,
 
 On the first owned member release, invoke `KEY_UP` once if present and return its result; mark it fired. Every later owned member release returns `HANDLED_STOP`. Never replay owned inputs to fallback.
 
-- [ ] **Step 5: Generalize pending long-press state by chord**
+- [x] **Step 5: Generalize pending long-press state by chord**
 
 Replace the singular-usage pending record with:
 
@@ -484,13 +484,13 @@ class _PendingLongPress:
 
 Schedule only when the complete exact chord first forms. Ignore repeat downs. On timer fire, verify the current exact chord still equals the pending chord, set `fired`, invoke the handler once, ignore its result, and establish ownership so later member releases cannot reach fallback. Cancel on any member release before deadline, required modifier loss, extra general/modifier key, or reset.
 
-- [ ] **Step 6: Run all router/mode tests and verify GREEN**
+- [x] **Step 6: Run all router/mode tests and verify GREEN**
 
 Run: `pytest tests/unit/test_key_router.py tests/unit/test_mode_manager.py -q`
 
 Expected: PASS.
 
-- [ ] **Step 7: Commit ownership and lifecycle behavior**
+- [x] **Step 7: Commit ownership and lifecycle behavior**
 
 ```bash
 git add src/accessibility_toolkit/input/router.py tests/unit/test_key_router.py tests/unit/test_mode_manager.py

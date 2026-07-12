@@ -20,6 +20,7 @@ from apps.nvda_remote.events import (
     RemoteTransportDisconnected,
 )
 from apps.nvda_remote.service import NvdaRemoteAppService
+from apps.nvda_remote.state import ConnectionState
 
 
 class FakeTransport:
@@ -238,6 +239,27 @@ def test_nvda_remote_service_can_forward_windows_native_payloads():
 
     assert decision == KeyboardPipelineResult(send_to_system=False, app_result=AppKeyEventResult.HANDLED_STOP)
     assert transport.sent == [(RemoteMessageType.KEY, {"vk_code": 0x09, "scan_code": 15, "extended": False, "pressed": True})]
+
+
+def test_nvda_remote_fallback_preserves_physical_modifier_and_native_context():
+    service, transport, _capture, _hotkey, _dispatch_calls = build_service(
+        use_windows_native_key_payload=True
+    )
+    service.state.connection_state = ConnectionState.CONNECTED
+    service.start_control()
+    context = WindowsNativeKeyContext(vk_code=0xA3, scan_code=0x1D, extended=True)
+
+    service.handle_key_event(
+        CapturedKeyEvent(
+            KeyEvent(HID.KEYBOARD_PAGE, HID.RIGHT_CONTROL, True),
+            native_context=context,
+        )
+    )
+
+    assert transport.sent[-1] == (
+        RemoteMessageType.KEY,
+        {"vk_code": 0xA3, "scan_code": 0x1D, "extended": True, "pressed": True},
+    )
 
 
 def test_nvda_remote_service_forwards_num_lock_while_passing_it_through_when_controlling_on_windows():
