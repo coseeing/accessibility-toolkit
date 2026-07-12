@@ -29,3 +29,11 @@ The ignored `Access8Graph/tests/test.graphml` fixture remains absent and causes 
 - Corrected the focused and full verification counts and recorded the exact commands.
 - Updated the plan checkboxes for completed Tasks 1–5 steps.
 - Relevant implementation commits: `73d8aec`, `0987a67`, `d6fb193`, `5667c9e`, `9b76b86`, `bb5c42f`.
+
+## Remaining Review Fix Verification
+
+- Adjusted the embedded placeholder scan in `docs/superpowers/plans/2026-07-12-mode-key-router.md` to use equivalent non-self-matching regex syntax; real placeholder text remains matched.
+- Placeholder scan command: `rg -n 'T[B]D|T[O]DO|implement[[:space:]]+later|fill[[:space:]]+in[[:space:]]+details|appropriate[[:space:]]+error[[:space:]]+handling|Similar[[:space:]]+to[[:space:]]+Task' docs/superpowers/specs/2026-07-12-mode-key-router-design_zh-TW.md docs/superpowers/plans/2026-07-12-mode-key-router.md` — exit `1`, no matches (clean scan).
+- Planned-type scan: found `KeyChord`, `_PendingLongPress`, `_OwnedChord`, and `KeyEventRouter` — exit `0`.
+- `git diff --check` — exit `0`, no output.
+- Focused tests: not run; documentation-only change.

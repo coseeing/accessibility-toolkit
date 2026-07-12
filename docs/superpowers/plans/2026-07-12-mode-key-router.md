@@ -559,7 +559,7 @@ Expected: no output and exit code 0.
 Run:
 
 ```bash
-rg -n "TBD|TODO|implement later|fill in details|appropriate error handling|Similar to Task" \
+rg -n 'T[B]D|T[O]DO|implement[[:space:]]+later|fill[[:space:]]+in[[:space:]]+details|appropriate[[:space:]]+error[[:space:]]+handling|Similar[[:space:]]+to[[:space:]]+Task' \
   docs/superpowers/specs/2026-07-12-mode-key-router-design_zh-TW.md \
   docs/superpowers/plans/2026-07-12-mode-key-router.md
 rg -n "class KeyChord|class KeyEventRouter|class _PendingLongPress|class _OwnedChord" \
