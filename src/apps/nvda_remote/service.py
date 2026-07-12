@@ -51,7 +51,7 @@ class RemoteControlMode:
         self.key_router = KeyEventRouter(
             bindings=(
                 KeyBinding(
-                    chord=KeyChord(HID.F11),
+                    chord=KeyChord(usages=frozenset({HID.F11})),
                     trigger=KeyTrigger.KEY_DOWN,
                     handler=lambda _event: exit_active(),
                 ),

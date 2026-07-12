@@ -31,8 +31,14 @@ FallbackHandler = Callable[[KeyEventInput], AppKeyEventResult]
 
 @dataclass(frozen=True, slots=True)
 class KeyChord:
-    usage: int
+    usages: frozenset[int]
     modifiers: frozenset[Modifier] = frozenset()
+
+    def __post_init__(self) -> None:
+        if not self.usages:
+            raise ValueError("KeyChord requires at least one usage")
+        if any(usage in _MODIFIER_BY_USAGE for usage in self.usages):
+            raise ValueError("KeyChord usages cannot contain modifier usages")
 
 
 @dataclass(frozen=True, slots=True)
@@ -80,6 +86,12 @@ class _PendingLongPress:
     fired: bool = False
 
 
+@dataclass(frozen=True, slots=True)
+class _MatchState:
+    usages: frozenset[int]
+    modifiers: frozenset[Modifier]
+
+
 _MODIFIER_BY_USAGE = {
     HID.LEFT_CONTROL: Modifier.CONTROL,
     HID.RIGHT_CONTROL: Modifier.CONTROL,
@@ -109,6 +121,7 @@ class KeyEventRouter:
         )
         self._state_lock = threading.RLock()
         self._pressed_modifier_usages: set[int] = set()
+        self._pressed_usages: set[int] = set()
         self._pending_long_presses: dict[int, _PendingLongPress] = {}
 
     def handle(self, event: KeyEventInput) -> AppKeyEventResult:
@@ -135,11 +148,14 @@ class KeyEventRouter:
                 pending.timer.cancel()
             self._pending_long_presses.clear()
             self._pressed_modifier_usages.clear()
+            self._pressed_usages.clear()
 
     def _handle_key_down(
         self, event: KeyEvent, original_event: KeyEventInput
     ) -> AppKeyEventResult:
-        chord = KeyChord(event.usage, self._active_modifiers())
+        self._pressed_usages.add(event.usage)
+        state = self._current_state()
+        chord = KeyChord(state.usages, state.modifiers)
         long_press_binding = self._bindings.get((chord, KeyTrigger.LONG_PRESS))
         key_down_binding = self._bindings.get((chord, KeyTrigger.KEY_DOWN))
         if long_press_binding is not None:
@@ -155,6 +171,11 @@ class KeyEventRouter:
     def _handle_key_up(
         self, event: KeyEvent, original_event: KeyEventInput
     ) -> AppKeyEventResult:
+        state = _MatchState(
+            usages=frozenset((*self._pressed_usages, event.usage)),
+            modifiers=self._active_modifiers(),
+        )
+        self._pressed_usages.discard(event.usage)
         pending = self._pending_long_presses.pop(event.usage, None)
         delayed_result: AppKeyEventResult | None = None
         if pending is not None:
@@ -162,7 +183,7 @@ class KeyEventRouter:
             if not pending.fired and pending.key_down_binding is not None:
                 delayed_result = pending.key_down_binding.handler(pending.event)
 
-        chord = KeyChord(event.usage, self._active_modifiers())
+        chord = KeyChord(state.usages, state.modifiers)
         key_up_binding = self._bindings.get((chord, KeyTrigger.KEY_UP))
         if key_up_binding is not None:
             return key_up_binding.handler(event)
@@ -205,6 +226,12 @@ class KeyEventRouter:
     def _active_modifiers(self) -> frozenset[Modifier]:
         return frozenset(
             _MODIFIER_BY_USAGE[usage] for usage in self._pressed_modifier_usages
+        )
+
+    def _current_state(self) -> _MatchState:
+        return _MatchState(
+            usages=frozenset(self._pressed_usages),
+            modifiers=self._active_modifiers(),
         )
 
     def _cancel_long_presses_requiring(self, modifier: Modifier) -> None:

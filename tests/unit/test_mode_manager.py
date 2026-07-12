@@ -109,7 +109,7 @@ def test_mode_router_binding_can_deactivate_active_mode():
     mode.key_router = KeyEventRouter(
         bindings=(
             KeyBinding(
-                chord=KeyChord(HID.ESCAPE),
+                chord=KeyChord(usages=frozenset({HID.ESCAPE})),
                 trigger=KeyTrigger.KEY_DOWN,
                 handler=lambda _event: manager.exit_active_mode(),
             ),
@@ -230,7 +230,7 @@ def test_mode_manager_preserves_active_mode_when_router_exit_handler_fails():
     mode.key_router = KeyEventRouter(
         bindings=(
             KeyBinding(
-                chord=KeyChord(HID.ESCAPE),
+                chord=KeyChord(usages=frozenset({HID.ESCAPE})),
                 trigger=KeyTrigger.KEY_DOWN,
                 handler=lambda _event: manager.exit_active_mode(),
             ),

@@ -62,7 +62,7 @@ class Access8GraphNavigationMode:
         self._command_dispatcher = command_dispatcher
         bindings = [
             KeyBinding(
-                chord=KeyChord(usage),
+                chord=KeyChord(usages=frozenset({usage})),
                 trigger=KeyTrigger.KEY_DOWN,
                 handler=lambda _event, command=command: command_dispatcher.dispatch(command),
             )
@@ -70,7 +70,7 @@ class Access8GraphNavigationMode:
         ]
         bindings.append(
             KeyBinding(
-                chord=KeyChord(HID.ESCAPE),
+                chord=KeyChord(usages=frozenset({HID.ESCAPE})),
                 trigger=KeyTrigger.KEY_DOWN,
                 handler=lambda _event: exit_active(),
             )

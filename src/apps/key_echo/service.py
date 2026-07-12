@@ -35,7 +35,7 @@ class EchoKeysMode:
         self.key_router = KeyEventRouter(
             bindings=(
                 KeyBinding(
-                    chord=KeyChord(HID.ESCAPE),
+                    chord=KeyChord(usages=frozenset({HID.ESCAPE})),
                     trigger=KeyTrigger.KEY_DOWN,
                     handler=lambda _event: exit_active(),
                 ),

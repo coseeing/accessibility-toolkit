@@ -1,3 +1,5 @@
+import pytest
+
 from accessibility_toolkit.input import (
     AppKeyEventResult,
     HID,
@@ -8,6 +10,31 @@ from accessibility_toolkit.input import (
     KeyTrigger,
     Modifier,
 )
+from accessibility_toolkit.input.events import CapturedKeyEvent
+
+
+def binding(
+    usages: set[int],
+    trigger: KeyTrigger,
+    handler,
+    *,
+    modifiers: set[Modifier] | None = None,
+    duration_seconds: float | None = None,
+) -> KeyBinding:
+    return KeyBinding(
+        chord=KeyChord(
+            usages=frozenset(usages),
+            modifiers=frozenset(modifiers or ()),
+        ),
+        trigger=trigger,
+        handler=lambda event: handler(event)
+        or AppKeyEventResult.HANDLED_STOP,
+        duration_seconds=duration_seconds,
+    )
+
+
+def handled(_event) -> AppKeyEventResult:
+    return AppKeyEventResult.HANDLED_STOP
 
 
 class FakeDelayedScheduler:
@@ -42,12 +69,64 @@ def key(usage: int, pressed: bool = True) -> KeyEvent:
     return KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=usage, pressed=pressed)
 
 
+def test_key_chord_requires_at_least_one_general_key():
+    with pytest.raises(ValueError, match="at least one usage"):
+        KeyChord(usages=frozenset())
+
+
+def test_multi_key_chord_is_order_independent_and_exact():
+    calls = []
+    router = KeyEventRouter(bindings=(binding({HID.A, HID.B}, KeyTrigger.KEY_DOWN, lambda event: calls.append(event.usage)),))
+
+    assert router.handle(key(HID.B)) is AppKeyEventResult.UNHANDLED
+    assert router.handle(key(HID.A)) is AppKeyEventResult.HANDLED_STOP
+    assert calls == [HID.A]
+    assert router.handle(key(HID.C)) is AppKeyEventResult.UNHANDLED
+    assert calls == [HID.A]
+
+
+def test_multi_key_chord_matches_reverse_order_and_control_variants():
+    calls = []
+    router = KeyEventRouter(
+        bindings=(binding({HID.A, HID.B}, KeyTrigger.KEY_DOWN, lambda event: calls.append(event.usage)),
+                  binding({HID.C}, KeyTrigger.KEY_DOWN, lambda event: calls.append(event.usage), modifiers={Modifier.CONTROL}))
+    )
+    router.handle(key(HID.A))
+    assert router.handle(key(HID.B)) is AppKeyEventResult.HANDLED_STOP
+    router.handle(key(HID.A, pressed=False))
+    router.handle(key(HID.B, pressed=False))
+    router.handle(key(HID.RIGHT_CONTROL))
+    assert router.handle(key(HID.C)) is AppKeyEventResult.HANDLED_STOP
+    assert calls == [HID.B, HID.C]
+
+
+def test_multi_key_chord_matches_with_control_modifier():
+    calls = []
+    router = KeyEventRouter(
+        bindings=(binding({HID.A, HID.B}, KeyTrigger.KEY_DOWN, lambda event: calls.append(event.usage), modifiers={Modifier.CONTROL}),)
+    )
+
+    router.handle(key(HID.LEFT_CONTROL))
+    router.handle(key(HID.A))
+    assert router.handle(key(HID.B)) is AppKeyEventResult.HANDLED_STOP
+    assert calls == [HID.B]
+
+
+def test_unformed_chord_fallback_preserves_physical_event_and_context():
+    captured = CapturedKeyEvent(key(HID.A), native_context=object())
+    calls = []
+    router = KeyEventRouter(bindings=(binding({HID.A, HID.B}, KeyTrigger.KEY_DOWN, handled),), fallback=lambda event: calls.append(event) or AppKeyEventResult.UNHANDLED)
+
+    assert router.handle(captured) is AppKeyEventResult.UNHANDLED
+    assert calls == [captured]
+
+
 def test_router_dispatches_a_key_down_binding():
     calls = []
     router = KeyEventRouter(
         bindings=(
             KeyBinding(
-                chord=KeyChord(HID.A),
+                chord=KeyChord(usages=frozenset({HID.A})),
                 trigger=KeyTrigger.KEY_DOWN,
                 handler=lambda event: calls.append(event) or AppKeyEventResult.HANDLED_STOP,
             ),
@@ -65,7 +144,7 @@ def test_router_normalizes_left_and_right_control_for_exact_chord_matching():
     router = KeyEventRouter(
         bindings=(
             KeyBinding(
-                chord=KeyChord(HID.S, modifiers=frozenset({Modifier.CONTROL})),
+                chord=KeyChord(usages=frozenset({HID.S}), modifiers=frozenset({Modifier.CONTROL})),
                 trigger=KeyTrigger.KEY_DOWN,
                 handler=lambda event: calls.append(event) or AppKeyEventResult.HANDLED_STOP,
             ),
@@ -120,7 +199,7 @@ def test_long_press_uses_default_scheduler_when_none_is_injected(monkeypatch):
     router = KeyEventRouter(
         bindings=(
             KeyBinding(
-                chord=KeyChord(HID.A),
+                chord=KeyChord(usages=frozenset({HID.A})),
                 trigger=KeyTrigger.LONG_PRESS,
                 duration_seconds=1.25,
                 handler=lambda _event: AppKeyEventResult.HANDLED_STOP,
@@ -145,7 +224,7 @@ def test_long_press_uses_injected_scheduler_instead_of_threading_timer(monkeypat
     router = KeyEventRouter(
         bindings=(
             KeyBinding(
-                chord=KeyChord(HID.A),
+                chord=KeyChord(usages=frozenset({HID.A})),
                 trigger=KeyTrigger.LONG_PRESS,
                 duration_seconds=1.25,
                 handler=lambda _event: AppKeyEventResult.HANDLED_STOP,
@@ -169,7 +248,7 @@ def test_long_press_preserves_falsey_injected_scheduler(monkeypatch):
     router = KeyEventRouter(
         bindings=(
             KeyBinding(
-                chord=KeyChord(HID.A),
+                chord=KeyChord(usages=frozenset({HID.A})),
                 trigger=KeyTrigger.LONG_PRESS,
                 duration_seconds=1.25,
                 handler=lambda _event: AppKeyEventResult.HANDLED_STOP,
@@ -188,12 +267,12 @@ def test_long_press_defers_key_down_until_key_is_released_before_deadline():
     router = KeyEventRouter(
         bindings=(
             KeyBinding(
-                chord=KeyChord(HID.A),
+                chord=KeyChord(usages=frozenset({HID.A})),
                 trigger=KeyTrigger.KEY_DOWN,
                 handler=lambda event: calls.append("down") or AppKeyEventResult.HANDLED_STOP,
             ),
             KeyBinding(
-                chord=KeyChord(HID.A),
+                chord=KeyChord(usages=frozenset({HID.A})),
                 trigger=KeyTrigger.LONG_PRESS,
                 duration_seconds=1.5,
                 handler=lambda event: calls.append("long") or AppKeyEventResult.HANDLED_STOP,
@@ -218,12 +297,12 @@ def test_long_press_runs_at_deadline_without_running_delayed_key_down():
     router = KeyEventRouter(
         bindings=(
             KeyBinding(
-                chord=KeyChord(HID.A),
+                chord=KeyChord(usages=frozenset({HID.A})),
                 trigger=KeyTrigger.KEY_DOWN,
                 handler=lambda event: calls.append("down") or AppKeyEventResult.HANDLED_STOP,
             ),
             KeyBinding(
-                chord=KeyChord(HID.A),
+                chord=KeyChord(usages=frozenset({HID.A})),
                 trigger=KeyTrigger.LONG_PRESS,
                 duration_seconds=1.5,
                 handler=lambda event: calls.append("long") or AppKeyEventResult.HANDLED_STOP,
@@ -251,7 +330,7 @@ def test_long_press_handler_can_reset_router():
     router = KeyEventRouter(
         bindings=(
             KeyBinding(
-                chord=KeyChord(HID.A),
+                chord=KeyChord(usages=frozenset({HID.A})),
                 trigger=KeyTrigger.LONG_PRESS,
                 duration_seconds=1.5,
                 handler=reset_router,
@@ -273,7 +352,7 @@ def test_long_press_is_cancelled_when_its_modifier_is_released():
     router = KeyEventRouter(
         bindings=(
             KeyBinding(
-                chord=KeyChord(HID.A, modifiers=frozenset({Modifier.CONTROL})),
+                chord=KeyChord(usages=frozenset({HID.A}), modifiers=frozenset({Modifier.CONTROL})),
                 trigger=KeyTrigger.LONG_PRESS,
                 duration_seconds=1.5,
                 handler=lambda event: calls.append(event) or AppKeyEventResult.HANDLED_STOP,
