@@ -535,9 +535,30 @@ def test_long_press_runs_at_deadline_without_running_delayed_key_down():
     assert calls == ["long"]
 
 
+def test_fired_long_press_removes_pending_entry_after_handler_returns():
+    scheduler = FakeDelayedScheduler()
+    router = KeyEventRouter(
+        bindings=(
+            KeyBinding(
+                chord=KeyChord(usages=frozenset({HID.A})),
+                trigger=KeyTrigger.LONG_PRESS,
+                duration_seconds=1.5,
+                handler=handled,
+            ),
+        ),
+        delayed_scheduler=scheduler,
+    )
+
+    router.handle(key(HID.A))
+    scheduler.calls[0][1].fire()
+
+    assert router._pending_long_presses == {}
+
+
 def test_long_press_handler_can_reset_router():
     scheduler = FakeDelayedScheduler()
     calls = []
+    fallback = []
 
     def reset_router(_event):
         calls.append("long")
@@ -553,6 +574,8 @@ def test_long_press_handler_can_reset_router():
                 handler=reset_router,
             ),
         ),
+        fallback=lambda event: fallback.append(event)
+        or AppKeyEventResult.UNHANDLED,
         delayed_scheduler=scheduler,
     )
 
@@ -561,6 +584,8 @@ def test_long_press_handler_can_reset_router():
 
     assert calls == ["long"]
     assert router._pending_long_presses == {}
+    router.handle(key(HID.A, pressed=False))
+    assert [event.usage for event in fallback] == [HID.A]
 
 
 def test_long_press_is_cancelled_when_its_modifier_is_released():

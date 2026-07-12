@@ -332,7 +332,9 @@ class KeyEventRouter:
                     return
                 pending.fired = True
                 long_press_binding.handler(pending.completion_event)
-                self._own_chord(chord, pending.key_down_binding)
+                if self._pending_long_presses.get(chord) is pending:
+                    self._pending_long_presses.pop(chord)
+                    self._own_chord(chord, pending.key_down_binding)
 
         timer = self._delayed_scheduler.schedule(
             long_press_binding.duration_seconds, fire
