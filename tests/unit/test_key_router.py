@@ -104,6 +104,93 @@ def test_handled_key_down_owns_all_member_key_ups():
     assert fallback == []
 
 
+def test_non_deferred_single_key_binding_dispatches_repeated_key_downs():
+    calls = []
+    router = KeyEventRouter(
+        bindings=(
+            binding(
+                {HID.A},
+                KeyTrigger.KEY_DOWN,
+                lambda event: calls.append(event),
+            ),
+        )
+    )
+
+    down = key(HID.A)
+    assert router.handle(down) is AppKeyEventResult.HANDLED_STOP
+    assert router.handle(down) is AppKeyEventResult.HANDLED_STOP
+
+    assert calls == [down, down]
+
+
+def test_deferred_chord_ownership_excludes_member_resolved_on_release():
+    fallback = []
+    router = KeyEventRouter(
+        bindings=(
+            binding({HID.A, HID.B}, KeyTrigger.KEY_DOWN, handled),
+            binding({HID.A, HID.B, HID.C}, KeyTrigger.KEY_DOWN, handled),
+        ),
+        fallback=lambda event: fallback.append(event)
+        or AppKeyEventResult.UNHANDLED,
+    )
+
+    router.handle(key(HID.A))
+    router.handle(key(HID.B))
+    router.handle(key(HID.B, False))
+    router.handle(key(HID.A, False))
+
+    unrelated_up = key(HID.B, False)
+    assert router.handle(unrelated_up) is AppKeyEventResult.UNHANDLED
+    assert fallback == [unrelated_up]
+
+
+def test_reentrant_reset_from_key_down_handler_does_not_recreate_ownership():
+    fallback = []
+    router = None
+
+    def reset_router(_event):
+        router.reset()
+        return AppKeyEventResult.HANDLED_STOP
+
+    router = KeyEventRouter(
+        bindings=(binding({HID.A}, KeyTrigger.KEY_DOWN, reset_router),),
+        fallback=lambda event: fallback.append(event)
+        or AppKeyEventResult.UNHANDLED,
+    )
+
+    router.handle(key(HID.A))
+    up = key(HID.A, False)
+    assert router.handle(up) is AppKeyEventResult.UNHANDLED
+    assert fallback == [up]
+    assert router._owned_chords == []
+
+
+def test_reentrant_reset_from_deferred_handler_does_not_recreate_ownership():
+    fallback = []
+    router = None
+
+    def reset_router(_event):
+        router.reset()
+        return AppKeyEventResult.HANDLED_STOP
+
+    router = KeyEventRouter(
+        bindings=(
+            binding({HID.A, HID.B}, KeyTrigger.KEY_DOWN, reset_router),
+            binding({HID.A, HID.B, HID.C}, KeyTrigger.KEY_DOWN, handled),
+        ),
+        fallback=lambda event: fallback.append(event)
+        or AppKeyEventResult.UNHANDLED,
+    )
+
+    router.handle(key(HID.A))
+    router.handle(key(HID.B))
+    router.handle(key(HID.B, False))
+    up = key(HID.A, False)
+    assert router.handle(up) is AppKeyEventResult.UNHANDLED
+    assert fallback == [up]
+    assert router._owned_chords == []
+
+
 def test_unhandled_key_down_does_not_own_releases():
     fallback = []
     router = KeyEventRouter(
@@ -164,6 +251,49 @@ def test_multi_key_long_press_cancels_on_member_release_extra_key_and_reset():
     router.reset()
     scheduler.calls[0][1].fire()
     assert calls == []
+
+
+@pytest.mark.parametrize("with_short_action", [True, False])
+def test_cancelled_multi_key_long_press_owns_remaining_member_releases(
+    with_short_action,
+):
+    scheduler = FakeDelayedScheduler()
+    calls = []
+    fallback = []
+    chord = KeyChord(usages=frozenset({HID.A, HID.B}))
+    bindings = [
+        KeyBinding(
+            chord=chord,
+            trigger=KeyTrigger.LONG_PRESS,
+            duration_seconds=1.5,
+            handler=lambda event: calls.append("long")
+            or AppKeyEventResult.HANDLED_STOP,
+        )
+    ]
+    if with_short_action:
+        bindings.append(
+            KeyBinding(
+                chord=chord,
+                trigger=KeyTrigger.KEY_DOWN,
+                handler=lambda event: calls.append("short")
+                or AppKeyEventResult.HANDLED_STOP,
+            )
+        )
+    router = KeyEventRouter(
+        bindings=tuple(bindings),
+        fallback=lambda event: fallback.append(event)
+        or AppKeyEventResult.UNHANDLED,
+        delayed_scheduler=scheduler,
+    )
+
+    router.handle(key(HID.A))
+    router.handle(key(HID.B))
+    router.handle(key(HID.A, False))
+    assert router.handle(key(HID.B, False)) is AppKeyEventResult.HANDLED_STOP
+
+    assert calls == (["short"] if with_short_action else [])
+    assert fallback == []
+    assert router._owned_chords == []
 
 
 def test_multi_key_long_press_is_cancelled_when_extra_general_key_is_pressed():
@@ -321,6 +451,38 @@ def test_long_press_candidate_is_cancelled_when_longer_chord_forms():
 
     assert scheduler.calls[0][1].cancelled is True
     assert calls == ["ab"]
+
+
+def test_key_up_only_superset_cancels_shorter_long_press_without_stale_pending():
+    scheduler = FakeDelayedScheduler()
+    calls = []
+    router = KeyEventRouter(
+        bindings=(
+            KeyBinding(
+                chord=KeyChord(usages=frozenset({HID.A})),
+                trigger=KeyTrigger.LONG_PRESS,
+                duration_seconds=1.0,
+                handler=lambda _event: calls.append("long")
+                or AppKeyEventResult.HANDLED_STOP,
+            ),
+            binding(
+                {HID.A, HID.B},
+                KeyTrigger.KEY_UP,
+                lambda _event: calls.append("up"),
+            ),
+        ),
+        delayed_scheduler=scheduler,
+    )
+
+    router.handle(key(HID.A))
+    router.handle(key(HID.B))
+    scheduler.calls[0][1].fire()
+    router.handle(key(HID.A, False))
+    router.handle(key(HID.B, False))
+
+    assert scheduler.calls[0][1].cancelled is True
+    assert calls == ["up"]
+    assert router._pending_long_presses == {}
 
 
 def test_failed_prefix_without_fallback_discards_buffered_events():
