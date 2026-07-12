@@ -202,6 +202,8 @@ class KeyEventRouter:
         long_press_binding = self._bindings.get((chord, KeyTrigger.LONG_PRESS)) if chord else None
         key_down_binding = self._bindings.get((chord, KeyTrigger.KEY_DOWN)) if chord else None
         prefix = any(self._is_prefix(state, target) for target in self._candidate_chords)
+        if not prefix and chord not in self._candidate_chords:
+            self._cancel_all_long_presses()
         if key_down_binding is not None or prefix:
             self._buffered_inputs.append(_BufferedInput(original_event, event))
         if long_press_binding is not None or key_down_binding is not None:
@@ -328,7 +330,11 @@ class KeyEventRouter:
         def fire() -> None:
             with self._state_lock:
                 pending = self._pending_long_presses.get(chord)
-                if pending is None or pending.chord != chord:
+                if (
+                    pending is None
+                    or pending.chord != chord
+                    or self._current_state() != _MatchState(chord.usages, chord.modifiers)
+                ):
                     return
                 pending.fired = True
                 long_press_binding.handler(pending.completion_event)
@@ -375,6 +381,11 @@ class KeyEventRouter:
             if modifier in pending.chord.modifiers:
                 pending.timer.cancel()
                 del self._pending_long_presses[chord]
+
+    def _cancel_all_long_presses(self) -> None:
+        for pending in self._pending_long_presses.values():
+            pending.timer.cancel()
+        self._pending_long_presses.clear()
 
     def _cancel_obsolete_long_presses(self, chord: KeyChord) -> None:
         for chord_key, pending in tuple(self._pending_long_presses.items()):

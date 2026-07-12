@@ -166,6 +166,38 @@ def test_multi_key_long_press_cancels_on_member_release_extra_key_and_reset():
     assert calls == []
 
 
+def test_multi_key_long_press_is_cancelled_when_extra_general_key_is_pressed():
+    scheduler = FakeDelayedScheduler()
+    calls = []
+    router = KeyEventRouter(bindings=(KeyBinding(
+        chord=KeyChord(usages=frozenset({HID.A, HID.B})), trigger=KeyTrigger.LONG_PRESS,
+        duration_seconds=1.5, handler=lambda e: calls.append(e) or AppKeyEventResult.HANDLED_STOP,
+    ),), delayed_scheduler=scheduler)
+
+    router.handle(key(HID.A))
+    router.handle(key(HID.B))
+    router.handle(key(HID.C))
+    scheduler.calls[0][1].fire()
+
+    assert scheduler.calls[0][1].cancelled is True
+    assert calls == []
+
+
+def test_long_press_callback_requires_current_exact_pressed_state():
+    scheduler = FakeDelayedScheduler()
+    calls = []
+    router = KeyEventRouter(bindings=(KeyBinding(
+        chord=KeyChord(usages=frozenset({HID.A})), trigger=KeyTrigger.LONG_PRESS,
+        duration_seconds=1.5, handler=lambda e: calls.append(e) or AppKeyEventResult.HANDLED_STOP,
+    ),), delayed_scheduler=scheduler)
+
+    router.handle(key(HID.A))
+    router._pressed_usages.add(HID.B)
+    scheduler.calls[0][1].fire()
+
+    assert calls == []
+
+
 def test_shorter_binding_waits_for_longer_chord():
     calls = []
     router = KeyEventRouter(
