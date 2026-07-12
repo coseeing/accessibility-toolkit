@@ -3,11 +3,9 @@ import ssl
 
 import pytest
 
-from accessibility_toolkit.remote.connection import ConnectionInfo
-from accessibility_toolkit.remote.messages import RemoteMessageType
-from accessibility_toolkit.remote.serializer import JSONSerializer
-from accessibility_toolkit.remote.session.remote_session import RemoteSession
-from accessibility_toolkit.remote.transport.relay import RelayTransport
+from accessibility_toolkit.remote import ConnectionInfo, JSONSerializer, RemoteMessageType
+from accessibility_toolkit.remote.session import RemoteSession
+from accessibility_toolkit.remote.transport import RelayTransport
 
 
 def _recv_line(sock: socket.socket, buffer: bytearray) -> bytes:

@@ -4,7 +4,7 @@ from accessibility_toolkit.remote.events import (
     RemoteSessionDisconnected,
     RemoteSessionVersionMismatch,
 )
-from accessibility_toolkit.remote.session.remote_session import RemoteSession
+from accessibility_toolkit.remote.session import RemoteSession
 
 
 class DummyTransport:
