@@ -259,3 +259,38 @@ def test_mode_manager_returns_unhandled_when_no_mode_is_active():
     )
 
     assert result is AppKeyEventResult.UNHANDLED
+
+
+def test_mode_exit_cancels_pending_router_long_press():
+    class Scheduler:
+        def __init__(self):
+            self.callback = None
+            self.cancelled = False
+
+        def schedule(self, _delay, callback):
+            self.callback = callback
+            return self
+
+        def cancel(self):
+            self.cancelled = True
+
+    scheduler = Scheduler()
+    calls = []
+    mode = FakeMode()
+    mode.key_router = KeyEventRouter(
+        bindings=(KeyBinding(
+            chord=KeyChord(usages=frozenset({HID.A})),
+            trigger=KeyTrigger.LONG_PRESS,
+            duration_seconds=1.0,
+            handler=lambda _event: calls.append("long") or AppKeyEventResult.HANDLED_STOP,
+        ),),
+        delayed_scheduler=scheduler,
+    )
+    manager = ModeManager(activation=FakeActivation(), notify_status=lambda _status: None)
+    manager.register(mode)
+    manager.activate_mode("echo")
+    manager.handle_key_event(KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=HID.A, pressed=True))
+    manager.exit_active_mode()
+    scheduler.callback()
+    assert scheduler.cancelled is True
+    assert calls == []

@@ -83,6 +83,89 @@ def test_multi_key_chord_is_order_independent_and_exact():
     assert calls == [HID.A]
 
 
+def test_handled_key_down_owns_all_member_key_ups():
+    fallback = []
+    up_calls = []
+    router = KeyEventRouter(
+        bindings=(
+            binding({HID.A, HID.B}, KeyTrigger.KEY_DOWN, handled),
+            binding({HID.A, HID.B}, KeyTrigger.KEY_UP,
+                    lambda event: up_calls.append(event.usage)),
+        ),
+        fallback=lambda event: fallback.append(event)
+        or AppKeyEventResult.UNHANDLED,
+    )
+
+    router.handle(key(HID.A))
+    router.handle(key(HID.B))
+    assert router.handle(key(HID.A, False)) is AppKeyEventResult.HANDLED_STOP
+    assert router.handle(key(HID.B, False)) is AppKeyEventResult.HANDLED_STOP
+    assert up_calls == [HID.A]
+    assert fallback == []
+
+
+def test_unhandled_key_down_does_not_own_releases():
+    fallback = []
+    router = KeyEventRouter(
+        bindings=(KeyBinding(
+            chord=KeyChord(usages=frozenset({HID.A})), trigger=KeyTrigger.KEY_DOWN,
+            handler=lambda _e: AppKeyEventResult.UNHANDLED,
+        ),),
+        fallback=lambda event: fallback.append(event) or AppKeyEventResult.UNHANDLED,
+    )
+    router.handle(key(HID.A))
+    router.handle(key(HID.A, False))
+    assert len(fallback) == 1
+    assert fallback[0].pressed is False
+
+
+def test_key_up_only_binding_owns_prefix_downs_and_fires_once():
+    calls = []
+    router = KeyEventRouter(
+        bindings=(binding({HID.A, HID.B}, KeyTrigger.KEY_UP, lambda event: calls.append(event.usage)),),
+        fallback=lambda _event: AppKeyEventResult.UNHANDLED,
+    )
+    assert router.handle(key(HID.A)) is AppKeyEventResult.HANDLED_STOP
+    assert router.handle(key(HID.B)) is AppKeyEventResult.HANDLED_STOP
+    router.handle(key(HID.A, False))
+    router.handle(key(HID.B, False))
+    assert calls == [HID.A]
+
+
+def test_multi_key_long_press_starts_when_complete_chord_forms_and_uses_completion_key():
+    scheduler = FakeDelayedScheduler()
+    calls = []
+    router = KeyEventRouter(
+        bindings=(KeyBinding(
+            chord=KeyChord(usages=frozenset({HID.A, HID.B})),
+            trigger=KeyTrigger.LONG_PRESS, duration_seconds=1.5,
+            handler=lambda event: calls.append(event.usage) or AppKeyEventResult.HANDLED_STOP,
+        ),), delayed_scheduler=scheduler,
+    )
+    router.handle(key(HID.A))
+    assert scheduler.calls == []
+    router.handle(key(HID.B))
+    assert scheduler.calls[0][0] == 1.5
+    router.handle(key(HID.A))
+    assert len(scheduler.calls) == 1
+    scheduler.calls[0][1].fire()
+    assert calls == [HID.B]
+
+
+def test_multi_key_long_press_cancels_on_member_release_extra_key_and_reset():
+    scheduler = FakeDelayedScheduler()
+    calls = []
+    router = KeyEventRouter(bindings=(KeyBinding(
+        chord=KeyChord(usages=frozenset({HID.A, HID.B})), trigger=KeyTrigger.LONG_PRESS,
+        duration_seconds=1.5, handler=lambda e: calls.append(e) or AppKeyEventResult.HANDLED_STOP,
+    ),), delayed_scheduler=scheduler)
+    router.handle(key(HID.A)); router.handle(key(HID.B)); router.handle(key(HID.A, False))
+    assert scheduler.calls[0][1].cancelled
+    router.reset()
+    scheduler.calls[0][1].fire()
+    assert calls == []
+
+
 def test_shorter_binding_waits_for_longer_chord():
     calls = []
     router = KeyEventRouter(

@@ -79,11 +79,20 @@ class _ThreadingDelayedScheduler:
 @dataclass(slots=True)
 class _PendingLongPress:
     chord: KeyChord
-    event: KeyEvent
+    completion_event: KeyEvent
+    physical_usages: set[int]
     timer: ScheduledCall
     key_down_binding: KeyBinding | None
     long_press_binding: KeyBinding
     fired: bool = False
+
+
+@dataclass(slots=True)
+class _OwnedChord:
+    chord: KeyChord
+    physical_usages: set[int]
+    key_up_binding: KeyBinding | None
+    key_up_fired: bool = False
 
 
 @dataclass(slots=True)
@@ -135,7 +144,8 @@ class KeyEventRouter:
         self._state_lock = threading.RLock()
         self._pressed_modifier_usages: set[int] = set()
         self._pressed_usages: set[int] = set()
-        self._pending_long_presses: dict[int, _PendingLongPress] = {}
+        self._pending_long_presses: dict[KeyChord, _PendingLongPress] = {}
+        self._owned_chords: list[_OwnedChord] = []
         self._buffered_inputs: list[_BufferedInput] = []
         self._deferred_chord: _DeferredChord | None = None
         self._candidate_chords = frozenset(binding.chord for binding in bindings)
@@ -170,6 +180,7 @@ class KeyEventRouter:
             for pending in self._pending_long_presses.values():
                 pending.timer.cancel()
             self._pending_long_presses.clear()
+            self._owned_chords.clear()
             self._buffered_inputs.clear()
             self._deferred_chord = None
             self._pressed_modifier_usages.clear()
@@ -196,7 +207,7 @@ class KeyEventRouter:
         if long_press_binding is not None or key_down_binding is not None:
             self._cancel_obsolete_long_presses(chord)
         if long_press_binding is not None:
-            if event.usage not in self._pending_long_presses:
+            if chord not in self._pending_long_presses:
                 self._schedule_long_press(
                     chord, event, key_down_binding, long_press_binding
                 )
@@ -206,7 +217,16 @@ class KeyEventRouter:
                 self._deferred_chord = _DeferredChord(chord, event, key_down_binding)
                 return AppKeyEventResult.HANDLED_STOP
             self._buffered_inputs.clear()
-            return key_down_binding.handler(event)
+            result = key_down_binding.handler(event)
+            if result in (AppKeyEventResult.HANDLED_STOP, AppKeyEventResult.HANDLED_CONTINUE):
+                self._own_chord(chord, key_down_binding,
+                                self._bindings.get((chord, KeyTrigger.KEY_UP)))
+            return result
+        key_up_binding = self._bindings.get((chord, KeyTrigger.KEY_UP)) if chord else None
+        if key_up_binding is not None and not prefix:
+            self._buffered_inputs.clear()
+            self._own_chord(chord, None, key_up_binding)
+            return AppKeyEventResult.HANDLED_STOP
         if prefix:
             return AppKeyEventResult.HANDLED_STOP
         if not self._buffered_inputs:
@@ -216,6 +236,22 @@ class KeyEventRouter:
     def _handle_key_up(
         self, event: KeyEvent, original_event: KeyEventInput
     ) -> AppKeyEventResult:
+        owned = next((item for item in self._owned_chords if event.usage in item.physical_usages), None)
+        if owned is not None:
+            if not owned.key_up_fired:
+                owned.key_up_fired = True
+                if owned.key_up_binding is not None:
+                    result = owned.key_up_binding.handler(event)
+                else:
+                    result = AppKeyEventResult.HANDLED_STOP
+            else:
+                result = AppKeyEventResult.HANDLED_STOP
+            owned.physical_usages.discard(event.usage)
+            self._pressed_usages.discard(event.usage)
+            self._pressed_modifier_usages.discard(event.usage)
+            if not owned.physical_usages:
+                self._owned_chords.remove(owned)
+            return result
         usages = self._pressed_usages if event.usage in _MODIFIER_BY_USAGE else (*self._pressed_usages, event.usage)
         state = _MatchState(
             usages=frozenset(usages),
@@ -223,25 +259,30 @@ class KeyEventRouter:
         )
         chord = KeyChord(state.usages, state.modifiers) if state.usages else None
         if chord is not None and self._deferred_chord is not None and self._deferred_chord.chord == chord:
-            pending = self._pending_long_presses.pop(event.usage, None)
+            pending = self._pending_long_presses.pop(chord, None)
             if pending is not None:
                 pending.timer.cancel()
             if self._deferred_chord.key_down_binding is not None:
                 self._deferred_chord.key_down_binding.handler(
                     self._deferred_chord.completion_event
                 )
+            self._own_chord(
+                chord, self._deferred_chord.key_down_binding,
+                self._bindings.get((chord, KeyTrigger.KEY_UP)),
+            )
             self._clear_prefix_state()
             self._pressed_usages.discard(event.usage)
             self._pressed_modifier_usages.discard(event.usage)
             return AppKeyEventResult.HANDLED_STOP
-        pending = self._pending_long_presses.pop(event.usage, None)
+        pending = next((p for p in self._pending_long_presses.values() if event.usage in p.physical_usages), None)
         if pending is not None:
             pending.timer.cancel()
+            self._pending_long_presses.pop(pending.chord, None)
             self._pressed_usages.discard(event.usage)
             self._pressed_modifier_usages.discard(event.usage)
             self._clear_prefix_state()
             if not pending.fired and pending.key_down_binding is not None:
-                pending.key_down_binding.handler(pending.event)
+                pending.key_down_binding.handler(pending.completion_event)
             return AppKeyEventResult.HANDLED_STOP
         if self._buffered_inputs:
             self._buffered_inputs.append(_BufferedInput(original_event, event))
@@ -286,18 +327,25 @@ class KeyEventRouter:
     ) -> None:
         def fire() -> None:
             with self._state_lock:
-                pending = self._pending_long_presses.get(event.usage)
+                pending = self._pending_long_presses.get(chord)
                 if pending is None or pending.chord != chord:
                     return
                 pending.fired = True
-                long_press_binding.handler(event)
+                long_press_binding.handler(pending.completion_event)
+                self._own_chord(chord, pending.key_down_binding)
 
         timer = self._delayed_scheduler.schedule(
             long_press_binding.duration_seconds, fire
         )
-        self._pending_long_presses[event.usage] = _PendingLongPress(
+        physical_usages = set(chord.usages)
+        physical_usages.update(
+            usage for usage, modifier in _MODIFIER_BY_USAGE.items()
+            if modifier in chord.modifiers and usage in self._pressed_modifier_usages
+        )
+        self._pending_long_presses[chord] = _PendingLongPress(
             chord=chord,
-            event=event,
+            completion_event=event,
+            physical_usages=physical_usages,
             timer=timer,
             key_down_binding=key_down_binding,
             long_press_binding=long_press_binding,
@@ -321,16 +369,27 @@ class KeyEventRouter:
         )
 
     def _cancel_long_presses_requiring(self, modifier: Modifier) -> None:
-        for usage, pending in tuple(self._pending_long_presses.items()):
+        for chord, pending in tuple(self._pending_long_presses.items()):
             if modifier in pending.chord.modifiers:
                 pending.timer.cancel()
-                del self._pending_long_presses[usage]
+                del self._pending_long_presses[chord]
 
     def _cancel_obsolete_long_presses(self, chord: KeyChord) -> None:
-        for usage, pending in tuple(self._pending_long_presses.items()):
+        for chord_key, pending in tuple(self._pending_long_presses.items()):
             if pending.chord != chord and pending.chord.usages <= chord.usages and pending.chord.modifiers <= chord.modifiers:
                 pending.timer.cancel()
-                del self._pending_long_presses[usage]
+                del self._pending_long_presses[chord_key]
+
+    def _own_chord(
+        self, chord: KeyChord, key_down_binding: KeyBinding | None,
+        key_up_binding: KeyBinding | None = None,
+    ) -> None:
+        physical_usages = set(chord.usages)
+        physical_usages.update(
+            usage for usage, modifier in _MODIFIER_BY_USAGE.items()
+            if modifier in chord.modifiers and usage in self._pressed_modifier_usages
+        )
+        self._owned_chords.append(_OwnedChord(chord, physical_usages, key_up_binding))
 
     def _handle_fallback(self, event: KeyEventInput) -> AppKeyEventResult:
         if self._fallback is None:
