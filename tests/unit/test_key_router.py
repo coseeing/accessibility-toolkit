@@ -20,6 +20,11 @@ class FakeDelayedScheduler:
         return call
 
 
+class FalseyDelayedScheduler(FakeDelayedScheduler):
+    def __bool__(self):
+        return False
+
+
 class FakeScheduledCall:
     def __init__(self, callback) -> None:
         self._callback = callback
@@ -137,6 +142,30 @@ def test_long_press_uses_injected_scheduler_instead_of_threading_timer(monkeypat
         "accessibility_toolkit.input.router.threading.Timer", unexpected_timer
     )
     scheduler = FakeDelayedScheduler()
+    router = KeyEventRouter(
+        bindings=(
+            KeyBinding(
+                chord=KeyChord(HID.A),
+                trigger=KeyTrigger.LONG_PRESS,
+                duration_seconds=1.25,
+                handler=lambda _event: AppKeyEventResult.HANDLED_STOP,
+            ),
+        ),
+        delayed_scheduler=scheduler,
+    )
+
+    assert router.handle(key(HID.A)) is AppKeyEventResult.HANDLED_STOP
+    assert scheduler.calls[0][0] == 1.25
+
+
+def test_long_press_preserves_falsey_injected_scheduler(monkeypatch):
+    def unexpected_timer(*_args, **_kwargs):
+        raise AssertionError("threading.Timer should not be used")
+
+    monkeypatch.setattr(
+        "accessibility_toolkit.input.router.threading.Timer", unexpected_timer
+    )
+    scheduler = FalseyDelayedScheduler()
     router = KeyEventRouter(
         bindings=(
             KeyBinding(

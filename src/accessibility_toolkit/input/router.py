@@ -102,7 +102,11 @@ class KeyEventRouter:
     ) -> None:
         self._bindings = self._index_bindings(bindings)
         self._fallback = fallback
-        self._delayed_scheduler = delayed_scheduler or _ThreadingDelayedScheduler()
+        self._delayed_scheduler = (
+            _ThreadingDelayedScheduler()
+            if delayed_scheduler is None
+            else delayed_scheduler
+        )
         self._state_lock = threading.RLock()
         self._pressed_modifier_usages: set[int] = set()
         self._pending_long_presses: dict[int, _PendingLongPress] = {}
