@@ -246,6 +246,9 @@ class KeyEventRouter:
                                 self._bindings.get((chord, KeyTrigger.KEY_UP)))
             return result
         key_up_binding = self._bindings.get((chord, KeyTrigger.KEY_UP)) if chord else None
+        if key_up_binding is not None and prefix:
+            self._deferred_chord = _DeferredChord(chord, event, None)
+            return AppKeyEventResult.HANDLED_STOP
         if key_up_binding is not None and not prefix:
             self._buffered_inputs.clear()
             self._own_chord(chord, None, key_up_binding)
@@ -289,12 +292,16 @@ class KeyEventRouter:
             generation = self._state_generation
             if deferred.key_down_binding is not None:
                 deferred.key_down_binding.handler(deferred.completion_event)
+            key_up_binding = self._bindings.get((chord, KeyTrigger.KEY_UP))
+            if self._state_generation == generation and key_up_binding is not None:
+                key_up_binding.handler(event)
             if self._state_generation == generation:
                 self._own_chord(
                     chord,
                     deferred.key_down_binding,
-                    self._bindings.get((chord, KeyTrigger.KEY_UP)),
+                    key_up_binding,
                     excluding={event.usage},
+                    key_up_fired=key_up_binding is not None,
                 )
             self._clear_prefix_state()
             self._pressed_usages.discard(event.usage)
@@ -310,12 +317,18 @@ class KeyEventRouter:
             generation = self._state_generation
             if not pending.fired and pending.key_down_binding is not None:
                 pending.key_down_binding.handler(pending.completion_event)
+            key_up_binding = self._bindings.get(
+                (pending.chord, KeyTrigger.KEY_UP)
+            )
+            if self._state_generation == generation and key_up_binding is not None:
+                key_up_binding.handler(event)
             if self._state_generation == generation:
                 self._own_chord(
                     pending.chord,
                     pending.key_down_binding,
-                    self._bindings.get((pending.chord, KeyTrigger.KEY_UP)),
+                    key_up_binding,
                     excluding={event.usage},
+                    key_up_fired=key_up_binding is not None,
                 )
             return AppKeyEventResult.HANDLED_STOP
         if self._buffered_inputs:
@@ -433,6 +446,7 @@ class KeyEventRouter:
         key_up_binding: KeyBinding | None = None,
         *,
         excluding: set[int] | None = None,
+        key_up_fired: bool = False,
     ) -> None:
         physical_usages = set(chord.usages)
         physical_usages.update(
@@ -442,7 +456,12 @@ class KeyEventRouter:
         physical_usages.difference_update(excluding or ())
         if physical_usages:
             self._owned_chords.append(
-                _OwnedChord(chord, physical_usages, key_up_binding)
+                _OwnedChord(
+                    chord,
+                    physical_usages,
+                    key_up_binding,
+                    key_up_fired=key_up_fired,
+                )
             )
 
     def _handle_fallback(self, event: KeyEventInput) -> AppKeyEventResult:
