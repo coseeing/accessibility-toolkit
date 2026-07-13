@@ -2,7 +2,10 @@ import pytest
 
 from accessibility_toolkit.input import HID, KeyEvent
 from accessibility_toolkit.input.windows.hid_map import key_event_from_windows
-from apps.nvda_remote.legacy_key_payload import key_event_to_legacy_remote_payload
+from apps.nvda_remote.legacy_key_payload import (
+    _USAGE_TO_LEGACY,
+    key_event_to_legacy_remote_payload,
+)
 
 
 def test_hid_a_maps_to_legacy_remote_payload():
@@ -391,3 +394,19 @@ def test_jis_keys_are_explicitly_unsupported_for_legacy_remote_payload():
             assert False, f"Expected ValueError for {usage_name}"
         except ValueError as exc:
             assert usage_name in str(exc)
+
+
+def test_supported_legacy_payload_mappings_round_trip_through_windows_hid_map():
+    for usage in _USAGE_TO_LEGACY:
+        event = KeyEvent(usage_page=HID.KEYBOARD_PAGE, usage=usage, pressed=True)
+        payload = key_event_to_legacy_remote_payload(event)
+
+        remapped = key_event_from_windows(
+            vk_code=payload["vk_code"],
+            scan_code=payload["scan_code"],
+            extended=payload["extended"],
+            pressed=payload["pressed"],
+        )
+
+        assert remapped is not None
+        assert remapped.usage == usage
