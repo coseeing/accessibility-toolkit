@@ -264,7 +264,7 @@ class KeyEventRouter:
     ) -> AppKeyEventResult:
         owned = next((item for item in self._owned_chords if event.usage in item.physical_usages), None)
         if owned is not None:
-            if not owned.key_up_fired:
+            if not owned.key_up_fired and event.usage in owned.chord.usages:
                 owned.key_up_fired = True
                 if owned.key_up_binding is not None:
                     result = owned.key_up_binding.handler(event)
@@ -293,7 +293,10 @@ class KeyEventRouter:
             if deferred.key_down_binding is not None:
                 deferred.key_down_binding.handler(deferred.completion_event)
             key_up_binding = self._bindings.get((chord, KeyTrigger.KEY_UP))
-            if self._state_generation == generation and key_up_binding is not None:
+            key_up_fired = (
+                key_up_binding is not None and event.usage in chord.usages
+            )
+            if self._state_generation == generation and key_up_fired:
                 key_up_binding.handler(event)
             if self._state_generation == generation:
                 self._own_chord(
@@ -301,7 +304,7 @@ class KeyEventRouter:
                     deferred.key_down_binding,
                     key_up_binding,
                     excluding={event.usage},
-                    key_up_fired=key_up_binding is not None,
+                    key_up_fired=key_up_fired,
                 )
             self._clear_prefix_state()
             self._pressed_usages.discard(event.usage)
@@ -320,7 +323,11 @@ class KeyEventRouter:
             key_up_binding = self._bindings.get(
                 (pending.chord, KeyTrigger.KEY_UP)
             )
-            if self._state_generation == generation and key_up_binding is not None:
+            key_up_fired = (
+                key_up_binding is not None
+                and event.usage in pending.chord.usages
+            )
+            if self._state_generation == generation and key_up_fired:
                 key_up_binding.handler(event)
             if self._state_generation == generation:
                 self._own_chord(
@@ -328,7 +335,7 @@ class KeyEventRouter:
                     pending.key_down_binding,
                     key_up_binding,
                     excluding={event.usage},
-                    key_up_fired=key_up_binding is not None,
+                    key_up_fired=key_up_fired,
                 )
             return AppKeyEventResult.HANDLED_STOP
         if self._buffered_inputs:
@@ -388,7 +395,11 @@ class KeyEventRouter:
                 long_press_binding.handler(pending.completion_event)
                 if self._pending_long_presses.get(chord) is pending:
                     self._pending_long_presses.pop(chord)
-                    self._own_chord(chord, pending.key_down_binding)
+                    self._own_chord(
+                        chord,
+                        pending.key_down_binding,
+                        self._bindings.get((chord, KeyTrigger.KEY_UP)),
+                    )
 
         timer = self._delayed_scheduler.schedule(
             long_press_binding.duration_seconds, fire

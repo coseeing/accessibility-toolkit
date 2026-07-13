@@ -104,6 +104,40 @@ def test_handled_key_down_owns_all_member_key_ups():
     assert fallback == []
 
 
+def test_modifier_key_up_does_not_fire_multi_key_chord_key_up_handler():
+    fallback = []
+    up_calls = []
+    router = KeyEventRouter(
+        bindings=(
+            binding(
+                {HID.A},
+                KeyTrigger.KEY_DOWN,
+                handled,
+                modifiers={Modifier.CONTROL},
+            ),
+            binding(
+                {HID.A},
+                KeyTrigger.KEY_UP,
+                lambda event: up_calls.append(event.usage),
+                modifiers={Modifier.CONTROL},
+            ),
+        ),
+        fallback=lambda event: fallback.append(event)
+        or AppKeyEventResult.UNHANDLED,
+    )
+
+    router.handle(key(HID.LEFT_CONTROL))
+    router.handle(key(HID.A))
+
+    assert router.handle(key(HID.LEFT_CONTROL, pressed=False)) is AppKeyEventResult.HANDLED_STOP
+    assert up_calls == []
+    assert fallback == []
+
+    assert router.handle(key(HID.A, pressed=False)) is AppKeyEventResult.HANDLED_STOP
+    assert up_calls == [HID.A]
+    assert fallback == []
+
+
 def test_non_deferred_single_key_binding_dispatches_repeated_key_downs():
     calls = []
     router = KeyEventRouter(
@@ -173,6 +207,46 @@ def test_deferred_chord_fires_key_up_on_resolving_member_release():
     assert calls == [("down", HID.B), ("up", HID.B)]
     assert fallback == []
     assert router._owned_chords == []
+
+
+def test_deferred_chord_modifier_key_up_waits_for_general_key_up_handler():
+    calls = []
+    fallback = []
+    router = KeyEventRouter(
+        bindings=(
+            binding(
+                {HID.A},
+                KeyTrigger.KEY_DOWN,
+                lambda event: calls.append(("down", event.usage)),
+                modifiers={Modifier.CONTROL},
+            ),
+            binding(
+                {HID.A},
+                KeyTrigger.KEY_UP,
+                lambda event: calls.append(("up", event.usage)),
+                modifiers={Modifier.CONTROL},
+            ),
+            binding(
+                {HID.A, HID.B},
+                KeyTrigger.KEY_DOWN,
+                handled,
+                modifiers={Modifier.CONTROL},
+            ),
+        ),
+        fallback=lambda event: fallback.append(event)
+        or AppKeyEventResult.UNHANDLED,
+    )
+
+    router.handle(key(HID.LEFT_CONTROL))
+    router.handle(key(HID.A))
+
+    assert router.handle(key(HID.LEFT_CONTROL, pressed=False)) is AppKeyEventResult.HANDLED_STOP
+    assert calls == [("down", HID.A)]
+    assert fallback == []
+
+    assert router.handle(key(HID.A, pressed=False)) is AppKeyEventResult.HANDLED_STOP
+    assert calls == [("down", HID.A), ("up", HID.A)]
+    assert fallback == []
 
 
 def test_deferred_key_up_only_chord_fires_before_longer_chord_completes():
@@ -399,6 +473,101 @@ def test_cancelled_multi_key_long_press_fires_key_up_on_first_release(
         expected.insert(0, ("short", HID.B))
     assert calls == expected
     assert router._owned_chords == []
+
+
+def test_cancelled_long_press_modifier_key_up_waits_for_general_key_up_handler():
+    scheduler = FakeDelayedScheduler()
+    calls = []
+    fallback = []
+    chord = KeyChord(
+        usages=frozenset({HID.A}), modifiers=frozenset({Modifier.CONTROL})
+    )
+    router = KeyEventRouter(
+        bindings=(
+            KeyBinding(
+                chord=chord,
+                trigger=KeyTrigger.KEY_DOWN,
+                handler=lambda event: calls.append(("down", event.usage))
+                or AppKeyEventResult.HANDLED_STOP,
+            ),
+            KeyBinding(
+                chord=chord,
+                trigger=KeyTrigger.KEY_UP,
+                handler=lambda event: calls.append(("up", event.usage))
+                or AppKeyEventResult.HANDLED_STOP,
+            ),
+            KeyBinding(
+                chord=chord,
+                trigger=KeyTrigger.LONG_PRESS,
+                duration_seconds=1.5,
+                handler=lambda event: calls.append(("long", event.usage))
+                or AppKeyEventResult.HANDLED_STOP,
+            ),
+        ),
+        fallback=lambda event: fallback.append(event)
+        or AppKeyEventResult.UNHANDLED,
+        delayed_scheduler=scheduler,
+    )
+
+    router.handle(key(HID.LEFT_CONTROL))
+    router.handle(key(HID.A))
+
+    assert router.handle(key(HID.LEFT_CONTROL, pressed=False)) is AppKeyEventResult.HANDLED_STOP
+    assert calls == [("down", HID.A)]
+    assert fallback == []
+
+    assert router.handle(key(HID.A, pressed=False)) is AppKeyEventResult.HANDLED_STOP
+    assert calls == [("down", HID.A), ("up", HID.A)]
+    assert fallback == []
+
+
+def test_fired_long_press_owns_key_up_until_general_key_is_released():
+    scheduler = FakeDelayedScheduler()
+    calls = []
+    fallback = []
+    chord = KeyChord(
+        usages=frozenset({HID.A}), modifiers=frozenset({Modifier.CONTROL})
+    )
+    router = KeyEventRouter(
+        bindings=(
+            KeyBinding(
+                chord=chord,
+                trigger=KeyTrigger.KEY_DOWN,
+                handler=lambda event: calls.append(("down", event.usage))
+                or AppKeyEventResult.HANDLED_STOP,
+            ),
+            KeyBinding(
+                chord=chord,
+                trigger=KeyTrigger.KEY_UP,
+                handler=lambda event: calls.append(("up", event.usage))
+                or AppKeyEventResult.HANDLED_STOP,
+            ),
+            KeyBinding(
+                chord=chord,
+                trigger=KeyTrigger.LONG_PRESS,
+                duration_seconds=1.5,
+                handler=lambda event: calls.append(("long", event.usage))
+                or AppKeyEventResult.HANDLED_STOP,
+            ),
+        ),
+        fallback=lambda event: fallback.append(event)
+        or AppKeyEventResult.UNHANDLED,
+        delayed_scheduler=scheduler,
+    )
+
+    router.handle(key(HID.LEFT_CONTROL))
+    router.handle(key(HID.A))
+    scheduler.calls[0][1].fire()
+    scheduler.calls[0][1].fire()
+
+    assert calls == [("long", HID.A)]
+    assert router.handle(key(HID.LEFT_CONTROL, pressed=False)) is AppKeyEventResult.HANDLED_STOP
+    assert calls == [("long", HID.A)]
+    assert fallback == []
+
+    assert router.handle(key(HID.A, pressed=False)) is AppKeyEventResult.HANDLED_STOP
+    assert calls == [("long", HID.A), ("up", HID.A)]
+    assert fallback == []
 
 
 def test_multi_key_long_press_is_cancelled_when_extra_general_key_is_pressed():
