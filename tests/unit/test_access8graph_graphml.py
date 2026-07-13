@@ -8,7 +8,7 @@ from apps.access8graph.graphml import (
 )
 
 
-FIXTURE = Path("Access8Graph/tests/test.graphml")
+FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "access8graph" / "test.graphml"
 
 
 class _ReverseIterSet(set):

@@ -13,7 +13,7 @@ from accessibility_toolkit.input import HID, KeyEvent
 from accessibility_toolkit.output.speech import SpeechSequence
 
 
-FIXTURE = Path("Access8Graph/tests/test.graphml")
+FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "access8graph" / "test.graphml"
 
 
 class FakeSpeech:
