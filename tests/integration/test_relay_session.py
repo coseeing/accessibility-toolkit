@@ -1,3 +1,4 @@
+import importlib
 import socket
 import ssl
 
@@ -8,6 +9,7 @@ from accessibility_toolkit.remote.session import RemoteSession
 from accessibility_toolkit.remote.transport import RelayTransport
 
 from apps.nvda_remote.connections import ConnectionManager, JsonConnectionStore
+from tests.unit.test_app_wx import install_fake_wx
 from tests.unit.test_nvda_remote_app_service import build_service
 
 
@@ -156,7 +158,10 @@ def test_relay_transport_insecure_connection_still_uses_tls_without_verification
     ]
 
 
-def test_saved_connection_flows_from_json_catalog_to_relay_session(tmp_path):
+def test_saved_connection_flows_from_json_catalog_to_relay_session(tmp_path, monkeypatch):
+    install_fake_wx(monkeypatch)
+    MainFrame = importlib.import_module("ui.nvda_remote.main_frame").MainFrame
+
     store = JsonConnectionStore(tmp_path / "nvda_remote_connections.json")
     manager = ConnectionManager(store)
     saved = manager.add_connection(
@@ -168,7 +173,9 @@ def test_saved_connection_flows_from_json_catalog_to_relay_session(tmp_path):
         connection_manager=ConnectionManager(store)
     )
     service.bind()
-    service.connect_quick()
+    frame = MainFrame(controller=service)
+    assert frame.quick_connect_button.enabled is True
+    frame._on_quick_connect(None)
 
     assert transport.connected_to == ("example.com", 6837, True)
     assert (RemoteMessageType.JOIN, {"channel": "secret", "mode": "master"}) in transport.sent

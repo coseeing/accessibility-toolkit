@@ -58,3 +58,36 @@ repository environment command with `PYTHONPATH=src` succeeded.
 
 The pre-existing unrelated changes remain untouched in the working tree. Only
 Task 8 files and this report are included in the Task 8 commit.
+
+## P1 review-fix report
+
+### P1-1: Real MainFrame integration path
+
+The saved-catalog integration test now installs the repository’s fake wx
+environment, imports the real `ui.nvda_remote.main_frame.MainFrame`, constructs
+it with the real `NvdaRemoteAppService`, and invokes the frame’s Quick Connect
+button handler. The service still uses fake transport, output, capture, and
+hotkey boundaries, so no NVDA runtime is required. The test retains the JSON
+disk-reload assertion path, persisted `insecure` connection choice, relay
+transport target assertion, and JOIN message assertion. It also verifies that
+the frame exposes Quick Connect as enabled before the event is dispatched.
+
+### P1-2: Workflow documentation completeness
+
+Both README files now explicitly state that copied `nvdaremote` links are
+available, deleting the selected Quick Connect entry or making its default
+stale disables Quick Connect, and startup never auto-connects. They also state
+that the user initiates a connection from a saved target or Quick Connect.
+The Traditional Chinese copy retains the requested Taiwanese terminology.
+
+### P1-fix verification
+
+- Integration coverage:
+  `pytest tests/integration/test_relay_session.py -v`
+  - Result: **6 passed**.
+- Full repository suite:
+  `pytest tests/unit tests/integration -v`
+  - Result: **936 passed, 1 skipped**.
+- The fix changed only `README.md`, `docs/zh_TW/README.md`,
+  `tests/integration/test_relay_session.py`, and this report. No implementation
+  modules or unrelated documentation were changed.

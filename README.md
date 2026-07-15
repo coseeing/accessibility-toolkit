@@ -72,6 +72,10 @@ Connections**, create a group or connection, then activate the saved entry to
 connect. Optionally choose **Set as Quick Connect**; the main-window Quick Connect
 button remains disabled until a valid default is configured. Saved keys are kept
 in plain text in `nvda_remote_connections.json` beside the other runtime files.
+Copied `nvdaremote` links are available from the connection manager for sharing
+saved targets. Deleting the selected Quick Connect entry, or making that default
+stale, disables Quick Connect. Startup never auto-connects; the user initiates a
+connection by activating a saved target or using Quick Connect.
 
 ## Installation
 
