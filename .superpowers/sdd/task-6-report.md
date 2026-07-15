@@ -3,13 +3,15 @@
 ## Scope
 
 Implemented the searchable wxPython connection manager dialog and Task 6 UI test support.
-Only these Task 6 files were changed by this work:
+Task 6 changes span these scoped files:
 
 - `src/ui/nvda_remote/connection_manager_dialog.py`
+- `tests/unit/test_app_wx.py`
 - `tests/unit/test_nvda_remote_connection_ui.py`
+- `.superpowers/sdd/task-6-report.md`
 
-The requested fake-wx extensions are local to the Task 6 UI test helper, preserving
-the prior shared fake-wx test file.
+The shared fake-wx surface contains the report-list and context-menu behavior used
+by the Task 6 tests.
 
 ## RED evidence
 
@@ -114,3 +116,48 @@ git diff --check
 ```
 
 Both completed without errors before the review-fix commit.
+
+## Final review fix
+
+The final review fix changed the tests to invoke the stored wx event handlers
+instead of calling private action methods directly. The coverage now dispatches
+Enter, Shift+Enter, Alt+Up, Alt+Down, F2, Delete, single-selection Ctrl+C, and
+the context-menu event through the fake wx bindings. It also verifies context-menu
+cleanup after destruction. The production dialog clears its transient menu
+reference in a `finally` block after `Destroy()`.
+
+Review-fix verification:
+
+```text
+pytest tests/unit/test_nvda_remote_connection_ui.py -v
+18 passed in 0.24s
+
+pytest tests/unit/test_app_wx.py -v
+32 passed in 0.17s
+
+pytest tests/unit tests/integration -v
+940 passed, 1 skipped in 3.33s
+```
+
+These commands completed successfully before the final review-fix commit.
+
+## Re-review fix evidence
+
+The final re-review fix was verified after all test changes:
+
+```text
+pytest tests/unit/test_nvda_remote_connection_ui.py -v
+19 passed in 0.14s
+
+pytest tests/unit/test_app_wx.py -v
+32 passed in 0.18s
+
+pytest tests/unit tests/integration -v
+941 passed, 1 skipped in 2.28s
+```
+
+The final focused tests dispatch Enter, Alt+Up, Alt+Down, F2, Delete, and
+single-selection Ctrl+C via the stored `EVT_CHAR_HOOK` binding, and dispatch the
+context-menu test via the stored `EVT_CONTEXT_MENU` binding. `git diff --check`
+and `python3 -m compileall -q src/ui/nvda_remote/connection_manager_dialog.py`
+also completed without errors.

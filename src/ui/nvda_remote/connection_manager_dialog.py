@@ -269,9 +269,12 @@ class ConnectionManagerDialog(wx.Dialog):
             item.Enable(enabled)
             menu.Bind(wx.EVT_MENU, handler, id=item.GetId())
         popup = getattr(self, "PopupMenu", None)
-        if popup is not None:
-            popup(menu)
-        menu.Destroy()
+        try:
+            if popup is not None:
+                popup(menu)
+        finally:
+            menu.Destroy()
+            self.context_menu = None
 
     def _on_delete(self, _event) -> None:
         self._delete_selected()

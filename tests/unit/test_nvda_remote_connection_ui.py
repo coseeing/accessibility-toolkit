@@ -198,9 +198,9 @@ def test_connection_manager_filters_name_or_host_case_insensitively(tmp_path, mo
 
 
 def test_connection_manager_double_click_connects_selected_entry(tmp_path, monkeypatch):
-    _fake_wx, dialog, controller, saved = build_dialog_with_one_connection(tmp_path, monkeypatch)
+    fake_wx, dialog, controller, saved = build_dialog_with_one_connection(tmp_path, monkeypatch)
     dialog.connection_list.Select(0)
-    dialog._on_connect(None)
+    dialog.connection_list.bindings[fake_wx.EVT_LIST_ITEM_ACTIVATED](None)
     assert controller.connect_saved_calls == [saved.id]
 
 
@@ -210,41 +210,59 @@ def test_set_quick_and_delete_refresh_main_window(tmp_path, monkeypatch):
     changed = []
     dialog.on_changed = lambda: changed.append(True)
     dialog.connection_list.Select(0)
-    dialog._on_set_quick(None)
+    dialog.quick_button.bindings[fake_wx.EVT_BUTTON](None)
     assert controller.connection_manager.quick_connection == saved
-    dialog._delete_selected(confirm=True)
+    dialog.delete_button.bindings[fake_wx.EVT_BUTTON](None)
     assert controller.connection_manager.quick_connection is None
     assert changed == [True, True]
 
 
 def test_filtered_alt_down_swaps_adjacent_visible_entries(tmp_path, monkeypatch):
-    _fake_wx, dialog, controller, first, hidden, second = build_filtered_dialog(tmp_path, monkeypatch)
+    fake_wx, dialog, controller, first, hidden, second = build_filtered_dialog(tmp_path, monkeypatch)
     dialog.connection_list.Select(0)
-    dialog._move_selected(1)
+    dialog.connection_list.bindings[fake_wx.EVT_CHAR_HOOK](FakeKeyEvent(fake_wx.WXK_DOWN, alt=True))
     assert controller.connection_manager.connections("Default") == (second, hidden, first)
+    dialog.connection_list.bindings[fake_wx.EVT_CHAR_HOOK](FakeKeyEvent(fake_wx.WXK_UP, alt=True))
+    assert controller.connection_manager.connections("Default") == (first, hidden, second)
 
 
 def test_ctrl_c_copies_only_single_selection(tmp_path, monkeypatch):
-    _fake_wx, dialog, controller, saved = build_dialog_with_one_connection(tmp_path, monkeypatch)
+    fake_wx, dialog, controller, saved = build_dialog_with_one_connection(tmp_path, monkeypatch)
     dialog.connection_list.Select(0)
-    dialog._copy_selected()
+    dialog.connection_list.bindings[fake_wx.EVT_CHAR_HOOK](FakeKeyEvent(ord("C"), control=True))
     assert controller.copy_link_calls == [saved.id]
 
 
 def test_plain_enter_connects_but_shift_enter_has_no_reversed_action(tmp_path, monkeypatch):
     fake_wx, dialog, controller, saved = build_dialog_with_one_connection(tmp_path, monkeypatch)
     dialog.connection_list.Select(0)
-    dialog._on_list_key(FakeKeyEvent(fake_wx.WXK_RETURN))
+    char_hook = dialog.connection_list.bindings[fake_wx.EVT_CHAR_HOOK]
+    plain_enter = FakeKeyEvent(fake_wx.WXK_RETURN)
+    char_hook(plain_enter)
     assert controller.connect_saved_calls == [saved.id]
-    dialog._on_list_key(FakeKeyEvent(fake_wx.WXK_RETURN, shift=True))
+    char_hook(FakeKeyEvent(fake_wx.WXK_RETURN, shift=True))
     assert controller.connect_saved_calls == [saved.id]
+    assert plain_enter.skipped is False
+
+
+def test_bound_f2_and_delete_keyboard_actions(tmp_path, monkeypatch):
+    fake_wx, dialog, controller, saved = build_dialog_with_one_connection(tmp_path, monkeypatch)
+    char_hook = dialog.connection_list.bindings[fake_wx.EVT_CHAR_HOOK]
+    f2 = FakeKeyEvent(fake_wx.WXK_F2)
+    dialog.connection_list.Select(0)
+    char_hook(f2)
+    assert f2.skipped is False
+    fake_wx.message_box_result = fake_wx.YES
+    char_hook(FakeKeyEvent(fake_wx.WXK_DELETE))
+    assert controller.connection_manager.find_connection(saved.id) is None
 
 
 def test_context_menu_uses_real_wx_ids_and_selection_guards(tmp_path, monkeypatch):
     fake_wx, dialog, controller, first, hidden, second = build_filtered_dialog(tmp_path, monkeypatch)
     dialog.connection_list.Select(0)
-    dialog._on_context_menu(None)
-    items = {item.GetItemLabelText(): item for item in dialog.context_menu.GetMenuItems()}
+    dialog.PopupMenu = lambda menu: setattr(dialog, "shown_menu", menu)
+    dialog.connection_list.bindings[fake_wx.EVT_CONTEXT_MENU](None)
+    items = {item.GetItemLabelText(): item for item in dialog.shown_menu.GetMenuItems()}
     assert len({item.GetId() for item in items.values()}) == 7
     assert items["Connect"].enabled is True
     assert items["Edit"].enabled is True
@@ -253,15 +271,17 @@ def test_context_menu_uses_real_wx_ids_and_selection_guards(tmp_path, monkeypatc
     assert items["Move Up"].enabled is False
     assert items["Move Down"].enabled is True
     assert items["Delete"].enabled is True
-    dialog.context_menu.bindings[items["Copy Link"].GetId()](None)
+    dialog.shown_menu.bindings[items["Copy Link"].GetId()](None)
     assert controller.copy_link_calls == [first.id]
+    assert dialog.context_menu is None
 
 
 def test_context_menu_disables_single_selection_actions_without_selection(tmp_path, monkeypatch):
-    _fake_wx, dialog, _controller, _saved = build_dialog_with_one_connection(tmp_path, monkeypatch)
+    fake_wx, dialog, _controller, _saved = build_dialog_with_one_connection(tmp_path, monkeypatch)
     dialog.connection_list.Select(0, select=False)
-    dialog._on_context_menu(None)
-    items = {item.GetItemLabelText(): item for item in dialog.context_menu.GetMenuItems()}
+    dialog.PopupMenu = lambda menu: setattr(dialog, "shown_menu", menu)
+    dialog.connection_list.bindings[fake_wx.EVT_CONTEXT_MENU](None)
+    items = {item.GetItemLabelText(): item for item in dialog.shown_menu.GetMenuItems()}
     assert all(items[label].enabled is False for label in ("Connect", "Edit", "Copy Link", "Set as Quick Connect"))
     assert items["Move Up"].enabled is False
     assert items["Move Down"].enabled is False
