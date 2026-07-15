@@ -1,39 +1,67 @@
-# Task 5 Report
+# Task 5: Connection editor and group manager dialogs
 
-Status: complete with known baseline concern.
+## Scope
 
-## Changes
+Implemented only the Task 5 UI work:
 
-- Updated NVDA Remote application consumers to use the public `accessibility_toolkit.remote` APIs.
-- Updated protocol, routing, session, and relay integration tests to require the public remote package APIs.
-- Confirmed the remote package, routing/session/transport exports, and remote dependency boundary.
-- Added the required raw NVDA Remote Right Ctrl regression test covering the physical HID usage and native Windows context payload.
-- Marked Task 5 complete in the implementation plan.
+- `src/ui/nvda_remote/connection_editor.py`
+- `src/ui/nvda_remote/group_manager_dialog.py`
+- `tests/unit/test_nvda_remote_connection_ui.py`
+- Task 5 fake-wx extensions in `tests/unit/test_app_wx.py`
+
+Later `connection_manager_dialog.py` and `main_frame.py` work was not implemented.
+
+## TDD evidence
+
+### RED
+
+Command:
+
+```text
+pytest tests/unit/test_nvda_remote_connection_ui.py -k 'generate_key or editor or group_manager' -v
+```
+
+Result: 5 tests collected and 5 failed with `ModuleNotFoundError` for the missing
+`ui.nvda_remote.connection_editor` and `ui.nvda_remote.group_manager_dialog`
+modules.
+
+### GREEN
+
+After the minimal implementations, the same command completed with:
+
+```text
+5 passed in 0.06s
+```
+
+The dialogs now provide the requested seven-digit secure key generation,
+validated/trimmed editor results, masked key input, TLS-validation opt-out,
+default-group protection, group add/rename/delete controls, one-shot delete
+confirmation, connection movement to `Default`, and change callbacks.
 
 ## Verification
 
-- Focused command: `pytest tests/unit/test_key_router.py tests/unit/test_mode_manager.py tests/unit/test_key_echo_app_service.py tests/unit/test_nvda_remote_app_service.py tests/unit/test_access8graph_input.py tests/unit/test_access8graph_use_cases.py -q` — `124 passed` (123 prior tests plus the new regression).
-- Full command: `pytest tests/unit tests/integration -q` — `839 passed, 1 skipped, 14 expected fixture failures` (838 prior tests plus the new regression).
-- All 14 expected fixture failures are caused by missing `Access8Graph/tests/test.graphml`.
-- `git diff --check`: passed with no output.
-- Dependency boundary scan: no `accessibility_toolkit.remote` imports under input, output, scheduling, interaction, or events.
-- Placeholder/type self-review: no unfinished placeholders found. Existing `typing.Any` protocol payload annotations and empty event dataclasses are intentional.
+```text
+git diff --check
+```
+
+Result: passed with no whitespace errors.
+
+```text
+pytest tests/unit tests/integration -v
+```
+
+Result: `927 passed, 1 skipped in 2.42s`.
+
+## Self-review
+
+- Fake wx constants, events, controls, and module-cache entries match the brief.
+- `ConnectionEditorDialog` consumes `SavedConnection.create` for domain validation.
+- `GroupManagerDialog` calls only `ConnectionManager` group APIs.
+- The non-removable `Default` group cannot be renamed or deleted.
+- No later Task 5-excluded dialogs or main-frame integration were added.
+- Existing unrelated working-tree changes were preserved.
 
 ## Concerns
 
-The ignored `Access8Graph/tests/test.graphml` fixture remains absent and causes the same 14 expected failures. No unrelated test failures were observed.
-
-## Review Fixes
-
-- Added the raw physical Right Ctrl/native-context regression test with the existing app-service fixtures and transport payload shape.
-- Corrected the focused and full verification counts and recorded the exact commands.
-- Updated the plan checkboxes for completed Tasks 1–5 steps.
-- Relevant implementation commits: `73d8aec`, `0987a67`, `d6fb193`, `5667c9e`, `9b76b86`, `bb5c42f`.
-
-## Remaining Review Fix Verification
-
-- Adjusted the embedded placeholder scan in `docs/superpowers/plans/2026-07-12-mode-key-router.md` to use equivalent non-self-matching regex syntax; real placeholder text remains matched.
-- Placeholder scan command: `rg -n 'T[B]D|T[O]DO|implement[[:space:]]+later|fill[[:space:]]+in[[:space:]]+details|appropriate[[:space:]]+error[[:space:]]+handling|Similar[[:space:]]+to[[:space:]]+Task' docs/superpowers/specs/2026-07-12-mode-key-router-design_zh-TW.md docs/superpowers/plans/2026-07-12-mode-key-router.md` — exit `1`, no matches (clean scan).
-- Planned-type scan: found `KeyChord`, `_PendingLongPress`, `_OwnedChord`, and `KeyEventRouter` — exit `0`.
-- `git diff --check` — exit `0`, no output.
-- Focused tests: not run; documentation-only change.
+None identified within the Task 5 scope. The dialogs intentionally do not provide
+connection-manager list actions, which belong to the later task.

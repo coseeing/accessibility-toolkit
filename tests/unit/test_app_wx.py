@@ -20,6 +20,9 @@ UI_MODULES = (
     "ui.main_frame",
     "ui.nvda_remote.app",
     "ui.nvda_remote.main_frame",
+    "ui.nvda_remote.connection_editor",
+    "ui.nvda_remote.group_manager_dialog",
+    "ui.nvda_remote.connection_manager_dialog",
     "ui.echo.app",
     "ui.echo.main_frame",
     "accessibility_toolkit_wx.speech.speech_controls",
@@ -100,17 +103,29 @@ def install_fake_wx(monkeypatch):
     fake_wx = types.ModuleType("wx")
     fake_wx.ID_ANY = -1
     fake_wx.ID_EXIT = 5000
+    fake_wx.ID_OK = 5100
+    fake_wx.ID_CANCEL = 5101
+    fake_wx.ID_CLOSE = 5102
     fake_wx.VERTICAL = 1
+    fake_wx.HORIZONTAL = 2
     fake_wx.EXPAND = 2
     fake_wx.ALL = 4
+    fake_wx.ALIGN_CENTER_VERTICAL = 8
     fake_wx.EVT_BUTTON = object()
     fake_wx.EVT_CHOICE = object()
     fake_wx.EVT_TEXT = object()
     fake_wx.EVT_SLIDER = object()
     fake_wx.EVT_CLOSE = object()
     fake_wx.EVT_MENU = object()
+    fake_wx.EVT_CHECKBOX = object()
+    fake_wx.EVT_LISTBOX = object()
     fake_wx.OK = 16
     fake_wx.ICON_ERROR = 32
+    fake_wx.YES = 64
+    fake_wx.NO = 128
+    fake_wx.YES_NO = fake_wx.YES | fake_wx.NO
+    fake_wx.ICON_WARNING = 256
+    fake_wx.TE_PASSWORD = 512
     fake_wx.ART_INFORMATION = 1
     fake_wx.ART_OTHER = 2
 
@@ -175,9 +190,10 @@ def install_fake_wx(monkeypatch):
             self.children.append((widget, proportion, flags, border))
 
     class TextCtrl:
-        def __init__(self, parent, value=""):
+        def __init__(self, parent, value="", style=0):
             self.parent = parent
             self._value = value
+            self.style = style
             self.enabled = True
             self.bindings = {}
 
@@ -195,6 +211,26 @@ def install_fake_wx(monkeypatch):
 
         def Bind(self, event, handler):
             self.bindings[event] = handler
+
+    class Dialog(Frame):
+        def __init__(self, parent=None, title="", size=None):
+            super().__init__(parent=parent, title=title)
+            self.size = size
+            self.modal_result = fake_wx.ID_CANCEL
+            self.closed = False
+
+        def ShowModal(self):
+            return self.modal_result
+
+        def EndModal(self, result):
+            self.modal_result = result
+            self.closed = True
+
+        def Close(self):
+            self.closed = True
+
+        def Destroy(self):
+            self.closed = True
 
     class Slider:
         def __init__(self, parent, value=0, minValue=0, maxValue=100):
@@ -250,6 +286,26 @@ def install_fake_wx(monkeypatch):
         def Bind(self, event, handler):
             self.bindings[event] = handler
 
+    class SpinCtrl(TextCtrl):
+        def __init__(self, parent, value="6837", min=1, max=65535):
+            super().__init__(parent, value=value)
+            self.minimum = min
+            self.maximum = max
+
+        def GetValue(self):
+            return int(super().GetValue())
+
+    class CheckBox(Button):
+        def __init__(self, parent, label=""):
+            super().__init__(parent, label)
+            self.value = False
+
+        def SetValue(self, value):
+            self.value = bool(value)
+
+        def GetValue(self):
+            return self.value
+
     class Choice:
         def __init__(self, parent, choices):
             self.parent = parent
@@ -270,6 +326,16 @@ def install_fake_wx(monkeypatch):
         def SetSelection(self, index):
             self.selection = index
 
+        def GetStringSelection(self):
+            return self.choices[self.selection] if self.selection >= 0 else ""
+
+        def SetStringSelection(self, value):
+            self.selection = self.choices.index(value)
+
+        def Set(self, choices):
+            self.choices = list(choices)
+            self.selection = 0 if self.choices else -1
+
         def Clear(self):
             self.choices = []
             self.selection = -1
@@ -287,6 +353,49 @@ def install_fake_wx(monkeypatch):
 
         def Bind(self, event, handler):
             self.bindings[event] = handler
+
+    class ListBox:
+        def __init__(self, parent, choices=(), style=0):
+            self.parent = parent
+            self.choices = list(choices)
+            self.style = style
+            self.selections = []
+            self.selection = -1
+            self.bindings = {}
+            self.enabled = True
+
+        def Set(self, choices):
+            self.choices = list(choices)
+            self.selections = []
+            self.selection = -1
+
+        def GetSelections(self):
+            return tuple(self.selections)
+
+        def GetString(self, index):
+            return self.choices[index]
+
+        def SetSelection(self, index, select=True):
+            self.selection = index
+            if select:
+                self.selections = [index]
+            elif index in self.selections:
+                self.selections.remove(index)
+
+        def FindString(self, value):
+            try:
+                return self.choices.index(value)
+            except ValueError:
+                return -1
+
+        def Bind(self, event, handler):
+            self.bindings[event] = handler
+
+        def Enable(self, enabled=True):
+            self.enabled = enabled
+
+        def Disable(self):
+            self.enabled = False
 
     class Menu:
         def __init__(self):
@@ -330,25 +439,36 @@ def install_fake_wx(monkeypatch):
 
     fake_wx.GetApp = GetApp
 
+    fake_wx.message_box_result = 0
+
     def MessageBox(message, caption, style):
         fake_wx.message_box_calls.append((message, caption, style))
-        return 0
+        return fake_wx.message_box_result
+
+    def GetTextFromUser(message, caption, default_value="", parent=None):
+        del message, caption, parent
+        return default_value
 
     def CallAfter(callback, *args, **kwargs):
         fake_wx.call_after_calls.append((callback, args, kwargs))
         return callback(*args, **kwargs)
 
     fake_wx.Frame = Frame
+    fake_wx.Dialog = Dialog
     fake_wx.Panel = Panel
     fake_wx.StaticText = StaticText
     fake_wx.BoxSizer = BoxSizer
     fake_wx.TextCtrl = TextCtrl
+    fake_wx.SpinCtrl = SpinCtrl
+    fake_wx.CheckBox = CheckBox
     fake_wx.Slider = Slider
     fake_wx.Button = Button
     fake_wx.Choice = Choice
+    fake_wx.ListBox = ListBox
     fake_wx.Menu = Menu
     fake_wx.App = App
     fake_wx.MessageBox = MessageBox
+    fake_wx.GetTextFromUser = GetTextFromUser
     fake_wx.CallAfter = CallAfter
 
     fake_adv = types.ModuleType("wx.adv")
