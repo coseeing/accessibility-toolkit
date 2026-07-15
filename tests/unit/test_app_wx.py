@@ -1,5 +1,4 @@
 import importlib
-import ssl
 import sys
 import types
 
@@ -11,6 +10,7 @@ from accessibility_toolkit.events import ErrorRaised, SpeechEngineChanged
 from accessibility_toolkit.output.speech import SpeechEngineOption, SpeechNumericSetting
 from apps.key_echo.events import EchoStateChanged
 from apps.nvda_remote.events import RemoteConnectionChanged
+from apps.nvda_remote.connections import ConnectionManager, JsonConnectionStore
 from accessibility_toolkit.input import HID
 
 
@@ -651,9 +651,10 @@ def install_fake_wx(monkeypatch):
 
 
 class FakeController:
-    def __init__(self):
+    def __init__(self, connection_manager=None):
         self.connected_to = None
         self.connect_calls = []
+        self.connect_quick_calls = 0
         self.disconnect_calls = 0
         self.started_control = 0
         self.stopped_control = 0
@@ -676,6 +677,7 @@ class FakeController:
         self.pitch_calls = []
         self.volume_calls = []
         self.clipboard_available = True
+        self.connection_manager = connection_manager
 
     def connect(self, host, port, key, insecure=False):
         self.connect_calls.append((host, port, key, insecure))
@@ -684,6 +686,9 @@ class FakeController:
         self.state.control_state = "connected"
         if self.status_listener is not None:
             self.status_listener(RemoteConnectionChanged("connected"))
+
+    def connect_quick(self):
+        self.connect_quick_calls += 1
 
     def disconnect(self):
         if self.state.control_state == "controlling":
@@ -850,84 +855,81 @@ class FakeEchoController:
         self.volume = value
 
 
-def test_main_frame_exposes_connect_controls(monkeypatch):
+def build_manager(tmp_path):
+    return ConnectionManager(JsonConnectionStore(tmp_path / "connections.json"))
+
+
+def test_main_frame_exposes_saved_connection_actions_not_manual_fields(monkeypatch, tmp_path):
     install_fake_wx(monkeypatch)
     MainFrame = importlib.import_module("ui.nvda_remote.main_frame").MainFrame
 
-    frame = MainFrame(controller=None)
+    controller = FakeController(connection_manager=build_manager(tmp_path))
+    frame = MainFrame(controller=controller)
 
     assert frame.GetTitle() == "NVDA Remote Client"
-    assert frame.host_ctrl.GetValue() == ""
-    assert frame.port_ctrl.GetValue() == "6837"
-    assert frame.key_ctrl.GetValue() == ""
-    assert frame.connect_button.GetLabel() == "Connect"
+    assert not hasattr(frame, "host_ctrl")
+    assert not hasattr(frame, "port_ctrl")
+    assert not hasattr(frame, "key_ctrl")
+    assert frame.manage_connections_button.GetLabel() == "Manage Connections..."
+    assert frame.quick_connect_button.GetLabel() == "Quick Connect"
+    assert frame.disconnect_button.GetLabel() == "Disconnect"
+    assert frame.quick_connect_button.enabled is False
+    assert frame.disconnect_button.enabled is False
     assert frame.control_button.GetLabel() == "Start Control"
     assert frame.control_button.enabled is False
     assert frame.clipboard_button.GetLabel() == "Push Clipboard"
     assert frame.clipboard_button.enabled is False
-    assert frame.host_ctrl.enabled is True
-    assert frame.port_ctrl.enabled is True
-    assert frame.key_ctrl.enabled is True
 
 
-def test_main_frame_dispatches_button_actions(monkeypatch):
+def test_main_frame_enables_quick_only_for_valid_default_while_idle(monkeypatch, tmp_path):
+    install_fake_wx(monkeypatch)
+    MainFrame = importlib.import_module("ui.nvda_remote.main_frame").MainFrame
+    manager = build_manager(tmp_path)
+    saved = manager.add_connection(
+        "Default", name="Office", host="relay.example", port=6837, key="secret"
+    )
+    manager.set_quick_connect(saved.id)
+    controller = FakeController(connection_manager=manager)
+    frame = MainFrame(controller=controller)
+
+    assert frame.quick_connect_button.enabled is True
+    frame._on_quick_connect(None)
+    assert controller.connect_quick_calls == 1
+
+
+def test_main_frame_action_states_for_connecting_connected_and_idle(monkeypatch, tmp_path):
+    install_fake_wx(monkeypatch)
+    MainFrame = importlib.import_module("ui.nvda_remote.main_frame").MainFrame
+    controller = FakeController(connection_manager=build_manager(tmp_path))
+    frame = MainFrame(controller=controller)
+
+    controller.state.connection_state = "connecting"
+    frame._sync_connection_actions()
+    assert frame.manage_connections_button.enabled is False
+    assert frame.quick_connect_button.enabled is False
+    assert frame.disconnect_button.enabled is True
+    controller.state.connection_state = "connected"
+    frame._sync_connection_actions()
+    assert frame.manage_connections_button.enabled is True
+    assert frame.quick_connect_button.enabled is False
+    assert frame.disconnect_button.enabled is True
+
+
+def test_main_frame_control_button_toggles_start_and_stop(monkeypatch):
     install_fake_wx(monkeypatch)
     MainFrame = importlib.import_module("ui.nvda_remote.main_frame").MainFrame
     controller = FakeController()
     frame = MainFrame(controller=controller)
-    frame.host_ctrl.SetValue("relay.example")
-    frame.port_ctrl.SetValue("7000")
-    frame.key_ctrl.SetValue("secret")
 
-    frame._on_connect(None)
+    controller.state.connection_state = "connected"
+    frame._sync_all_controls()
     frame._on_start_control(None)
-    frame._on_push_clipboard(None)
+    frame._on_start_control(None)
 
-    assert controller.connected_to == ("relay.example", 7000, "secret", False)
     assert controller.started_control == 1
-    assert controller.pushed_clipboard == 1
-    assert frame.connect_button.GetLabel() == "Disconnect"
-    assert frame.control_button.GetLabel() == "Stop Control"
-    assert frame.control_button.enabled is True
-    assert frame.clipboard_button.enabled is True
-    assert frame.host_ctrl.enabled is False
-    assert frame.port_ctrl.enabled is False
-    assert frame.key_ctrl.enabled is False
-
-
-def test_main_frame_toggles_disconnect_when_already_connected(monkeypatch):
-    install_fake_wx(monkeypatch)
-    MainFrame = importlib.import_module("ui.nvda_remote.main_frame").MainFrame
-    controller = FakeController()
-    frame = MainFrame(controller=controller)
-
-    frame._on_connect(None)
-    frame._on_connect(None)
-
-    assert controller.connect_calls == [("", 6837, "", False)]
-    assert controller.disconnect_calls == 1
-    assert frame.connect_button.GetLabel() == "Connect"
+    assert controller.stopped_control == 1
     assert frame.control_button.GetLabel() == "Start Control"
-    assert frame.control_button.enabled is False
-    assert frame.clipboard_button.enabled is False
-    assert frame.host_ctrl.enabled is True
-    assert frame.port_ctrl.enabled is True
-    assert frame.key_ctrl.enabled is True
-
-
-def test_main_frame_control_button_is_disabled_until_connected(monkeypatch):
-    install_fake_wx(monkeypatch)
-    MainFrame = importlib.import_module("ui.nvda_remote.main_frame").MainFrame
-    controller = FakeController()
-    frame = MainFrame(controller=controller)
-
-    assert frame.control_button.enabled is False
-
-    frame._on_connect(None)
-
     assert frame.control_button.enabled is True
-    assert frame.control_button.GetLabel() == "Start Control"
-    assert frame.clipboard_button.enabled is True
 
 
 def test_main_frame_disables_clipboard_button_when_clipboard_unavailable(monkeypatch):
@@ -937,8 +939,8 @@ def test_main_frame_disables_clipboard_button_when_clipboard_unavailable(monkeyp
     controller.clipboard_available = False
     frame = MainFrame(controller=controller)
 
-    frame._on_connect(None)
-
+    controller.state.connection_state = "connected"
+    frame._sync_all_controls()
     assert frame.control_button.enabled is True
     assert frame.clipboard_button.enabled is False
 
@@ -953,116 +955,6 @@ def test_main_frame_shows_input_error_from_controller_status(monkeypatch):
 
     assert fake_wx.message_box_calls == [
         ("permissions missing", "Input Error", fake_wx.OK | fake_wx.ICON_ERROR)
-    ]
-
-
-def test_main_frame_locks_connection_fields_while_connected(monkeypatch):
-    install_fake_wx(monkeypatch)
-    MainFrame = importlib.import_module("ui.nvda_remote.main_frame").MainFrame
-    controller = FakeController()
-    frame = MainFrame(controller=controller)
-
-    frame._on_connect(None)
-
-    assert frame.host_ctrl.enabled is False
-    assert frame.port_ctrl.enabled is False
-    assert frame.key_ctrl.enabled is False
-
-    frame._on_connect(None)
-
-    assert frame.host_ctrl.enabled is True
-    assert frame.port_ctrl.enabled is True
-    assert frame.key_ctrl.enabled is True
-
-
-def test_main_frame_control_button_toggles_start_and_stop(monkeypatch):
-    install_fake_wx(monkeypatch)
-    MainFrame = importlib.import_module("ui.nvda_remote.main_frame").MainFrame
-    controller = FakeController()
-    frame = MainFrame(controller=controller)
-
-    frame._on_connect(None)
-    frame._on_start_control(None)
-    frame._on_start_control(None)
-
-    assert controller.started_control == 1
-    assert controller.stopped_control == 1
-    assert frame.control_button.GetLabel() == "Start Control"
-    assert frame.control_button.enabled is True
-
-
-def test_main_frame_disconnect_stops_control_first(monkeypatch):
-    install_fake_wx(monkeypatch)
-    MainFrame = importlib.import_module("ui.nvda_remote.main_frame").MainFrame
-    controller = FakeController()
-    frame = MainFrame(controller=controller)
-
-    frame._on_connect(None)
-    frame._on_start_control(None)
-    frame._on_connect(None)
-
-    assert controller.stopped_control == 1
-    assert controller.disconnect_calls == 1
-    assert frame.control_button.GetLabel() == "Start Control"
-    assert frame.control_button.enabled is False
-
-
-def test_main_frame_syncs_buttons_after_control_stops_outside_ui(monkeypatch):
-    install_fake_wx(monkeypatch)
-    MainFrame = importlib.import_module("ui.nvda_remote.main_frame").MainFrame
-    controller = FakeController()
-    frame = MainFrame(controller=controller)
-
-    frame._on_connect(None)
-    frame._on_start_control(None)
-    controller.stop_control()
-
-    assert frame.connect_button.GetLabel() == "Disconnect"
-    assert frame.control_button.GetLabel() == "Start Control"
-    assert frame.control_button.enabled is True
-
-
-def test_main_frame_retries_self_signed_certificate_in_insecure_mode(monkeypatch):
-    fake_wx = install_fake_wx(monkeypatch)
-    MainFrame = importlib.import_module("ui.nvda_remote.main_frame").MainFrame
-
-    class SelfSignedController(FakeController):
-        def connect(self, host, port, key, insecure=False):
-            self.connect_calls.append((host, port, key, insecure))
-            if not insecure:
-                raise ssl.SSLCertVerificationError("self-signed certificate")
-            self.connected_to = (host, port, key, insecure)
-
-    controller = SelfSignedController()
-    frame = MainFrame(controller=controller)
-    frame.host_ctrl.SetValue("114.34.83.41")
-    frame.port_ctrl.SetValue("6837")
-    frame.key_ctrl.SetValue("secret")
-
-    frame._on_connect(None)
-
-    assert controller.connect_calls == [
-        ("114.34.83.41", 6837, "secret", False),
-        ("114.34.83.41", 6837, "secret", True),
-    ]
-    assert controller.connected_to == ("114.34.83.41", 6837, "secret", True)
-    assert fake_wx.message_box_calls == []
-
-
-def test_main_frame_shows_connection_error_for_invalid_port(monkeypatch):
-    fake_wx = install_fake_wx(monkeypatch)
-    MainFrame = importlib.import_module("ui.nvda_remote.main_frame").MainFrame
-    controller = FakeController()
-    frame = MainFrame(controller=controller)
-    frame.host_ctrl.SetValue("relay.example")
-    frame.port_ctrl.SetValue("bad-port")
-    frame.key_ctrl.SetValue("secret")
-
-    frame._on_connect(None)
-
-    assert controller.connect_calls == []
-    assert fake_wx.message_box_calls == [
-        ("invalid literal for int() with base 10: 'bad-port'", "Connection Error", fake_wx.OK | fake_wx.ICON_ERROR)
     ]
 
 

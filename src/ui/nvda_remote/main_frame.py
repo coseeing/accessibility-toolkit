@@ -1,8 +1,9 @@
-import ssl
-
 import wx
 
 from accessibility_toolkit.events import ErrorRaised
+from apps.nvda_remote.state import ConnectionState
+
+from .connection_manager_dialog import ConnectionManagerDialog
 
 
 class MainFrame(wx.Frame):
@@ -17,18 +18,18 @@ class MainFrame(wx.Frame):
         panel = wx.Panel(self)
         sizer = wx.BoxSizer(wx.VERTICAL)
 
-        self.host_ctrl = wx.TextCtrl(panel)
-        self.port_ctrl = wx.TextCtrl(panel, value="6837")
-        self.key_ctrl = wx.TextCtrl(panel)
-        self.connect_button = wx.Button(panel, label="Connect")
+        self.manage_connections_button = wx.Button(
+            panel, label="Manage Connections..."
+        )
+        self.quick_connect_button = wx.Button(panel, label="Quick Connect")
+        self.disconnect_button = wx.Button(panel, label="Disconnect")
         self.control_button = wx.Button(panel, label="Start Control")
         self.clipboard_button = wx.Button(panel, label="Push Clipboard")
 
         for widget in (
-            self.host_ctrl,
-            self.port_ctrl,
-            self.key_ctrl,
-            self.connect_button,
+            self.manage_connections_button,
+            self.quick_connect_button,
+            self.disconnect_button,
             self.control_button,
             self.clipboard_button,
         ):
@@ -36,40 +37,55 @@ class MainFrame(wx.Frame):
 
         panel.SetSizer(sizer)
 
-        self.connect_button.Bind(wx.EVT_BUTTON, self._on_connect)
+        self.manage_connections_button.Bind(wx.EVT_BUTTON, self._on_manage_connections)
+        self.quick_connect_button.Bind(wx.EVT_BUTTON, self._on_quick_connect)
+        self.disconnect_button.Bind(wx.EVT_BUTTON, self._on_disconnect)
         self.control_button.Bind(wx.EVT_BUTTON, self._on_start_control)
         self.clipboard_button.Bind(wx.EVT_BUTTON, self._on_push_clipboard)
-        self._sync_connect_button_label()
-        self._sync_control_button()
-        self._sync_connection_fields()
-        self._sync_clipboard_button()
+        self._sync_all_controls()
 
     def _show_error(self, message: str, caption: str) -> None:
         wx.MessageBox(message, caption, wx.OK | wx.ICON_ERROR)
 
-    def _on_connect(self, _event):
+    def _connection_state(self) -> str:
+        if self.controller is None or not hasattr(self.controller, "state"):
+            return ConnectionState.IDLE
+        return getattr(self.controller.state, "connection_state", ConnectionState.IDLE)
+
+    def _sync_connection_actions(self) -> None:
+        state = self._connection_state()
+        is_idle = state == ConnectionState.IDLE
+        is_connecting = state == ConnectionState.CONNECTING
+        manager = getattr(self.controller, "connection_manager", None)
+        has_quick = bool(manager is not None and manager.quick_connection is not None)
+        self.manage_connections_button.Enable(not is_connecting)
+        self.quick_connect_button.Enable(is_idle and has_quick)
+        self.disconnect_button.Enable(not is_idle)
+
+    def _on_manage_connections(self, _event) -> None:
         if self.controller is None:
             return
-        if self._is_connected():
-            self.controller.disconnect()
-            self._sync_connect_button_label()
-            self._sync_control_button()
-            self._sync_connection_fields()
-            self._sync_clipboard_button()
+        dialog = ConnectionManagerDialog(
+            self, self.controller, self._sync_connection_actions
+        )
+        dialog.ShowModal()
+        dialog.Destroy()
+        self._sync_connection_actions()
+
+    def _on_quick_connect(self, _event) -> None:
+        if self.controller is None:
             return
         try:
-            host = self.host_ctrl.GetValue()
-            port = int(self.port_ctrl.GetValue())
-            key = self.key_ctrl.GetValue()
-            self.controller.connect(host, port, key)
-        except ssl.SSLCertVerificationError:
-            self.controller.connect(host, port, key, insecure=True)
+            self.controller.connect_quick()
         except Exception as error:
             self._show_error(str(error), "Connection Error")
-        self._sync_connect_button_label()
-        self._sync_control_button()
-        self._sync_connection_fields()
-        self._sync_clipboard_button()
+        self._sync_all_controls()
+
+    def _on_disconnect(self, _event) -> None:
+        if self.controller is None:
+            return
+        self.controller.disconnect()
+        self._sync_all_controls()
 
     def _on_start_control(self, _event):
         if self.controller is None:
@@ -91,17 +107,12 @@ class MainFrame(wx.Frame):
         self.controller.push_clipboard()
 
     def _is_connected(self) -> bool:
-        if self.controller is None or not hasattr(self.controller, "state"):
-            return False
-        return getattr(self.controller.state, "connection_state", "idle") != "idle"
+        return self._connection_state() == ConnectionState.CONNECTED
 
     def _is_controlling(self) -> bool:
         if self.controller is None or not hasattr(self.controller, "state"):
             return False
         return getattr(self.controller.state, "control_state", "idle") == "controlling"
-
-    def _sync_connect_button_label(self) -> None:
-        self.connect_button.SetLabel("Disconnect" if self._is_connected() else "Connect")
 
     def _sync_control_button(self) -> None:
         if not self._is_connected():
@@ -113,12 +124,6 @@ class MainFrame(wx.Frame):
             "Stop Control" if self._is_controlling() else "Start Control"
         )
 
-    def _sync_connection_fields(self) -> None:
-        enabled = not self._is_connected()
-        self.host_ctrl.Enable(enabled)
-        self.port_ctrl.Enable(enabled)
-        self.key_ctrl.Enable(enabled)
-
     def _sync_clipboard_button(self) -> None:
         clipboard_available = True
         if self.controller is not None and hasattr(
@@ -127,13 +132,15 @@ class MainFrame(wx.Frame):
             clipboard_available = bool(self.controller.is_clipboard_available())
         self.clipboard_button.Enable(self._is_connected() and clipboard_available)
 
+    def _sync_all_controls(self) -> None:
+        self._sync_connection_actions()
+        self._sync_control_button()
+        self._sync_clipboard_button()
+
     def _on_controller_status(self, status) -> None:
         if isinstance(status, ErrorRaised) and status.message:
             self._show_error(status.message, "Input Error")
-        self._sync_connect_button_label()
-        self._sync_control_button()
-        self._sync_connection_fields()
-        self._sync_clipboard_button()
+        self._sync_all_controls()
 
     def _on_close(self, event) -> None:
         self.Hide()
