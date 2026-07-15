@@ -50,3 +50,24 @@ Passed with no whitespace errors.
 ## Concerns
 
 None identified for Task 7. Pre-existing unrelated worktree changes were left untouched and are not part of the Task 7 commit.
+
+## Review-fix evidence
+
+Fixed both review findings:
+
+- Disconnect is now enabled only for `ConnectionState.CONNECTED`; it remains disabled while connecting.
+- Main-frame initialization explicitly focuses `manage_connections_button`, and fake-wx coverage asserts that deterministic default focus.
+
+RED after adding the regression assertions:
+
+```text
+pytest tests/unit/test_app_wx.py -k 'main_frame' -v
+2 failed, 8 passed, 16 deselected
+```
+
+GREEN after the fixes:
+
+```text
+pytest tests/unit/test_app_wx.py -k 'main_frame' -v
+10 passed, 16 deselected
+```

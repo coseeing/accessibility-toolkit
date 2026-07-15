@@ -875,6 +875,7 @@ def test_main_frame_exposes_saved_connection_actions_not_manual_fields(monkeypat
     assert frame.disconnect_button.GetLabel() == "Disconnect"
     assert frame.quick_connect_button.enabled is False
     assert frame.disconnect_button.enabled is False
+    assert frame.manage_connections_button.has_focus is True
     assert frame.control_button.GetLabel() == "Start Control"
     assert frame.control_button.enabled is False
     assert frame.clipboard_button.GetLabel() == "Push Clipboard"
@@ -907,7 +908,7 @@ def test_main_frame_action_states_for_connecting_connected_and_idle(monkeypatch,
     frame._sync_connection_actions()
     assert frame.manage_connections_button.enabled is False
     assert frame.quick_connect_button.enabled is False
-    assert frame.disconnect_button.enabled is True
+    assert frame.disconnect_button.enabled is False
     controller.state.connection_state = "connected"
     frame._sync_connection_actions()
     assert frame.manage_connections_button.enabled is True

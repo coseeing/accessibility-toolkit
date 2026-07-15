@@ -43,6 +43,7 @@ class MainFrame(wx.Frame):
         self.control_button.Bind(wx.EVT_BUTTON, self._on_start_control)
         self.clipboard_button.Bind(wx.EVT_BUTTON, self._on_push_clipboard)
         self._sync_all_controls()
+        self.manage_connections_button.SetFocus()
 
     def _show_error(self, message: str, caption: str) -> None:
         wx.MessageBox(message, caption, wx.OK | wx.ICON_ERROR)
@@ -60,7 +61,7 @@ class MainFrame(wx.Frame):
         has_quick = bool(manager is not None and manager.quick_connection is not None)
         self.manage_connections_button.Enable(not is_connecting)
         self.quick_connect_button.Enable(is_idle and has_quick)
-        self.disconnect_button.Enable(not is_idle)
+        self.disconnect_button.Enable(state == ConnectionState.CONNECTED)
 
     def _on_manage_connections(self, _event) -> None:
         if self.controller is None:
