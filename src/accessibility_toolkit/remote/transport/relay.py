@@ -47,6 +47,7 @@ class RelayTransport:
                 server_hostname=hostname,
             )
         self._socket = raw_socket
+        self._recv_buffer = b""
         self.connected = True
         self.connected_to = (hostname, port, insecure)
 
@@ -85,24 +86,35 @@ class RelayTransport:
         if not self.connected or self._socket is None:
             raise RuntimeError("Transport is not connected")
 
+        try:
+            payload, self._recv_buffer = self._receive_once_from_socket(
+                self._socket,
+                self._recv_buffer,
+            )
+        except ConnectionError:
+            self.connected = False
+            raise
+        return payload
+
+    def _receive_once_from_socket(
+        self,
+        reader_socket: socket.socket,
+        recv_buffer: bytes,
+    ) -> tuple[dict[str, Any], bytes]:
         while True:
-            if self.serializer.SEP in self._recv_buffer:
-                frame, self._recv_buffer = self._recv_buffer.split(
-                    self.serializer.SEP,
-                    1,
-                )
+            if self.serializer.SEP in recv_buffer:
+                frame, recv_buffer = recv_buffer.split(self.serializer.SEP, 1)
                 if not frame:
                     continue
                 logger.debug("Relay transport received frame: %r", frame)
                 payload = self.serializer.deserialize(frame)
                 logger.debug("Relay transport decoded payload type=%r", payload.get("type"))
-                return payload
+                return payload, recv_buffer
 
-            chunk = self._socket.recv(4096)
+            chunk = reader_socket.recv(4096)
             if chunk == b"":
-                self.connected = False
                 raise ConnectionError("Relay connection closed")
-            self._recv_buffer += chunk
+            recv_buffer += chunk
 
     def set_message_handler(
         self,
@@ -119,10 +131,11 @@ class RelayTransport:
             self._reader_generation += 1
             generation = self._reader_generation
             reader_stop = threading.Event()
+            reader_socket = self._socket
             self._reader_stop = reader_stop
             self._reader_thread = threading.Thread(
                 target=self._read_loop,
-                args=(generation, reader_stop),
+                args=(generation, reader_stop, reader_socket),
                 daemon=True,
             )
             self._reader_thread.start()
@@ -142,10 +155,21 @@ class RelayTransport:
             if self._reader_thread is reader_thread:
                 self._reader_thread = None
 
-    def _read_loop(self, generation: int, reader_stop: threading.Event) -> None:
+    def _read_loop(
+        self,
+        generation: int,
+        reader_stop: threading.Event,
+        reader_socket: socket.socket | None,
+    ) -> None:
+        recv_buffer = b""
         while not reader_stop.is_set():
             try:
-                payload = self.receive_once()
+                if reader_socket is None:
+                    raise RuntimeError("Transport is not connected")
+                payload, recv_buffer = self._receive_once_from_socket(
+                    reader_socket,
+                    recv_buffer,
+                )
             except (ConnectionError, OSError, RuntimeError):
                 break
             if not self._publish_if_current(generation, reader_stop, payload):

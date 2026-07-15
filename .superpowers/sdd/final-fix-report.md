@@ -21,9 +21,11 @@ occurring between validation and publication. `close()` and `stop_reader()`
 invalidate the generation before joining, while retaining the existing bounded
 join behavior.
 
-Added `test_replacement_reader_cannot_publish_delayed_old_disconnect`, which
-holds the old reader beyond the join timeout, starts a replacement reader, and
-asserts that only the replacement reader's message is delivered.
+Added `test_replacement_reader_owns_socket_and_partial_buffer`, which uses two
+real socket pairs, holds the old reader beyond the one-second join timeout,
+injects a partial old frame, starts a replacement reader, and asserts that the
+replacement frame is delivered without stale disconnect state or buffer
+contamination.
 
 ### 2. Main-frame Disconnect state
 
@@ -92,3 +94,51 @@ pytest tests/unit/test_relay_transport.py -v
 The full suite reports one pre-existing/expected skipped test. The worktree
 also contains unrelated pre-existing changes in `.superpowers/sdd/task-1-report.md`
 and untracked plan/spec documentation; these were not staged or modified.
+
+## Follow-up review fix: per-reader socket and buffer ownership
+
+The reader loop now captures the socket belonging to its generation and keeps a
+generation-local receive buffer. The public `receive_once()` API retains its
+shared synchronous behavior, while reader EOF handling no longer mutates shared
+transport state unless the reader is still current. Connecting a new target
+also clears the synchronous receive buffer. This prevents delayed old readers
+from polling the replacement socket, combining old partial frames with new
+traffic, or setting `connected=False` for the replacement generation.
+
+Exact follow-up verification output:
+
+Command:
+
+```text
+pytest tests/unit/test_relay_transport.py -v
+```
+
+Output:
+
+```text
+============================== 1 passed in 2.04s ===============================
+```
+
+Command:
+
+```text
+pytest tests/integration/test_relay_session.py -v
+```
+
+Output:
+
+```text
+============================== 6 passed in 0.10s ===============================
+```
+
+Command:
+
+```text
+pytest tests/unit tests/integration -v
+```
+
+Output:
+
+```text
+======================== 942 passed, 1 skipped in 4.20s ========================
+```
