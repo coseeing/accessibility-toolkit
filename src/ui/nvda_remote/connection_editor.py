@@ -29,6 +29,11 @@ class ConnectionEditorDialog(wx.Dialog):
         self.insecure_ctrl = wx.CheckBox(panel, label="Disable TLS certificate validation")
         if initial:
             self.insecure_ctrl.SetValue(initial.insecure)
+        self.name_ctrl.SetName("Connection name")
+        self.host_ctrl.SetName("Connection host")
+        self.port_ctrl.SetName("Connection port")
+        self.key_ctrl.SetName("Connection key")
+        self.insecure_ctrl.SetName("Disable TLS certificate validation")
 
         for label, control in (
             ("Name", self.name_ctrl),
@@ -43,9 +48,9 @@ class ConnectionEditorDialog(wx.Dialog):
         sizer.Add(self.insecure_ctrl, 0, wx.ALL, 4)
 
         button_row = wx.BoxSizer(wx.HORIZONTAL)
-        self.generate_button = wx.Button(panel, label="Generate Key")
-        self.ok_button = wx.Button(panel, label="OK")
-        self.cancel_button = wx.Button(panel, label="Cancel")
+        self.generate_button = wx.Button(panel, wx.ID_ANY, "&Generate Key")
+        self.ok_button = wx.Button(panel, wx.ID_OK, "&OK")
+        self.cancel_button = wx.Button(panel, wx.ID_CANCEL, "&Cancel")
         for button in (self.generate_button, self.ok_button, self.cancel_button):
             button_row.Add(button, 0, wx.ALL, 4)
         sizer.Add(button_row, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, 4)
@@ -54,6 +59,9 @@ class ConnectionEditorDialog(wx.Dialog):
         self.generate_button.Bind(wx.EVT_BUTTON, self._on_generate_key)
         self.ok_button.Bind(wx.EVT_BUTTON, self._on_ok)
         self.cancel_button.Bind(wx.EVT_BUTTON, self._on_cancel)
+        self.ok_button.SetDefault()
+        self.SetEscapeId(wx.ID_CANCEL)
+        self.name_ctrl.SetFocus()
 
     def _on_generate_key(self, _event) -> None:
         self.key_ctrl.SetValue(generate_key())

@@ -15,14 +15,15 @@ class GroupManagerDialog(wx.Dialog):
 
         panel = wx.Panel(self)
         sizer = wx.BoxSizer(wx.VERTICAL)
-        self.group_list = wx.ListBox(panel)
+        self.group_list = wx.ListBox(panel, style=wx.LB_EXTENDED)
+        self.group_list.SetName("Groups")
         sizer.Add(self.group_list, 1, wx.EXPAND | wx.ALL, 4)
 
         button_row = wx.BoxSizer(wx.HORIZONTAL)
-        self.add_button = wx.Button(panel, label="Add")
-        self.rename_button = wx.Button(panel, label="Rename")
-        self.delete_button = wx.Button(panel, label="Delete")
-        self.close_button = wx.Button(panel, label="Close")
+        self.add_button = wx.Button(panel, wx.ID_ANY, "&Add")
+        self.rename_button = wx.Button(panel, wx.ID_ANY, "&Rename")
+        self.delete_button = wx.Button(panel, wx.ID_ANY, "&Delete")
+        self.close_button = wx.Button(panel, wx.ID_CLOSE, "&Close")
         for button in (self.add_button, self.rename_button, self.delete_button, self.close_button):
             button_row.Add(button, 0, wx.ALL, 4)
         sizer.Add(button_row, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, 4)
@@ -33,7 +34,10 @@ class GroupManagerDialog(wx.Dialog):
         self.rename_button.Bind(wx.EVT_BUTTON, self._on_rename)
         self.delete_button.Bind(wx.EVT_BUTTON, self._on_delete)
         self.close_button.Bind(wx.EVT_BUTTON, self._on_close)
+        self.close_button.SetDefault()
+        self.SetEscapeId(wx.ID_CLOSE)
         self._refresh_groups()
+        self.group_list.SetFocus()
 
     def _selected_group_names(self) -> tuple[str, ...]:
         return tuple(self.group_list.GetString(index) for index in self.group_list.GetSelections())
@@ -50,7 +54,7 @@ class GroupManagerDialog(wx.Dialog):
         selected = self._selected_group_names()
         can_edit = len(selected) == 1 and selected[0] != self.manager.DEFAULT_GROUP
         self.rename_button.Enable(can_edit)
-        self.delete_button.Enable(bool(selected) and self.manager.DEFAULT_GROUP not in selected)
+        self.delete_button.Enable(any(name != self.manager.DEFAULT_GROUP for name in selected))
 
     def _on_group_selected(self, _event) -> None:
         selected = self._selected_group_names()

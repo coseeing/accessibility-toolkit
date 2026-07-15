@@ -126,6 +126,7 @@ def install_fake_wx(monkeypatch):
     fake_wx.YES_NO = fake_wx.YES | fake_wx.NO
     fake_wx.ICON_WARNING = 256
     fake_wx.TE_PASSWORD = 512
+    fake_wx.LB_EXTENDED = 1024
     fake_wx.ART_INFORMATION = 1
     fake_wx.ART_OTHER = 2
 
@@ -162,6 +163,12 @@ def install_fake_wx(monkeypatch):
         def Bind(self, event, handler):
             self.bindings[event] = handler
 
+        def SetFocus(self):
+            self.has_focus = True
+
+        def SetName(self, name):
+            self.name = name
+
     class Panel:
         def __init__(self, parent):
             self.parent = parent
@@ -196,6 +203,8 @@ def install_fake_wx(monkeypatch):
             self.style = style
             self.enabled = True
             self.bindings = {}
+            self.name = ""
+            self.has_focus = False
 
         def GetValue(self):
             return self._value
@@ -211,6 +220,12 @@ def install_fake_wx(monkeypatch):
 
         def Bind(self, event, handler):
             self.bindings[event] = handler
+
+        def SetFocus(self):
+            self.has_focus = True
+
+        def SetName(self, name):
+            self.name = name
 
     class Dialog(Frame):
         def __init__(self, parent=None, title="", size=None):
@@ -231,6 +246,9 @@ def install_fake_wx(monkeypatch):
 
         def Destroy(self):
             self.closed = True
+
+        def SetEscapeId(self, id_):
+            self.escape_id = id_
 
     class Slider:
         def __init__(self, parent, value=0, minValue=0, maxValue=100):
@@ -265,11 +283,16 @@ def install_fake_wx(monkeypatch):
             self.page_size = size
 
     class Button:
-        def __init__(self, parent, label):
+        def __init__(self, parent, id=fake_wx.ID_ANY, label=""):
+            if isinstance(id, str) and not label:
+                label = id
+                id = fake_wx.ID_ANY
             self.parent = parent
+            self.id = id
             self._label = label
             self.bindings = {}
             self.enabled = True
+            self.is_default = False
 
         def GetLabel(self):
             return self._label
@@ -285,6 +308,15 @@ def install_fake_wx(monkeypatch):
 
         def Bind(self, event, handler):
             self.bindings[event] = handler
+
+        def SetFocus(self):
+            self.has_focus = True
+
+        def SetName(self, name):
+            self.name = name
+
+        def SetDefault(self):
+            self.is_default = True
 
     class SpinCtrl(TextCtrl):
         def __init__(self, parent, value="6837", min=1, max=65535):
@@ -363,6 +395,8 @@ def install_fake_wx(monkeypatch):
             self.selection = -1
             self.bindings = {}
             self.enabled = True
+            self.name = ""
+            self.has_focus = False
 
         def Set(self, choices):
             self.choices = list(choices)
@@ -378,7 +412,11 @@ def install_fake_wx(monkeypatch):
         def SetSelection(self, index, select=True):
             self.selection = index
             if select:
-                self.selections = [index]
+                if self.style & fake_wx.LB_EXTENDED:
+                    if index not in self.selections:
+                        self.selections.append(index)
+                else:
+                    self.selections = [index]
             elif index in self.selections:
                 self.selections.remove(index)
 
@@ -396,6 +434,12 @@ def install_fake_wx(monkeypatch):
 
         def Disable(self):
             self.enabled = False
+
+        def SetFocus(self):
+            self.has_focus = True
+
+        def SetName(self, name):
+            self.name = name
 
     class Menu:
         def __init__(self):

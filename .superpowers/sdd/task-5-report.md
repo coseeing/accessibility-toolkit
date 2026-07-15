@@ -65,3 +65,38 @@ Result: `927 passed, 1 skipped in 2.42s`.
 
 None identified within the Task 5 scope. The dialogs intentionally do not provide
 connection-manager list actions, which belong to the later task.
+
+## Reviewer fix report
+
+The reviewer findings were addressed without changing unrelated files:
+
+- Added accessible control names, mnemonic button labels, standard `ID_OK`,
+  `ID_CANCEL`, and `ID_CLOSE` buttons, explicit default buttons, escape IDs, and
+  initial focus for both dialogs.
+- Added `wx.LB_EXTENDED` to the group list and changed delete enablement so any
+  selected non-`Default` group permits deletion, including when `Default` is
+  selected too.
+- Extended fake-wx with public selection, naming, focus, default-button, and
+  escape-ID behavior. The multi-group deletion test now selects groups through
+  `SetSelection` rather than assigning internal selection state.
+
+### Fix TDD evidence
+
+RED was observed in the new covering tests: the accessibility/default assertions
+failed because the production controls had no names/default IDs/focus, and the
+public-API multi-selection test failed because the production list used single
+selection.
+
+GREEN:
+
+```text
+pytest tests/unit/test_nvda_remote_connection_ui.py -v
+8 passed in 0.21s
+```
+
+Full verification:
+
+```text
+pytest tests/unit tests/integration -v
+930 passed, 1 skipped in 2.75s
+```
