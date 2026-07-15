@@ -1,5 +1,4 @@
 import importlib
-import types
 from unittest.mock import patch
 
 from apps.nvda_remote.connections import ConnectionManager, JsonConnectionStore
@@ -46,110 +45,6 @@ class FakeKeyEvent:
 
 def load_manager_dialog(monkeypatch):
     fake_wx = install_fake_wx(monkeypatch)
-    original_choice = fake_wx.Choice
-
-    class Choice(original_choice):
-        def SetName(self, name):
-            self.name = name
-
-    fake_wx.Choice = Choice
-    fake_wx.LC_REPORT = 2048
-    fake_wx.LIST_AUTOSIZE = 1
-    fake_wx.LIST_AUTOSIZE_USEHEADER = 2
-    fake_wx.EVT_LIST_ITEM_ACTIVATED = object()
-    fake_wx.EVT_LIST_ITEM_SELECTED = object()
-    fake_wx.EVT_LIST_ITEM_DESELECTED = object()
-    fake_wx.EVT_CONTEXT_MENU = object()
-    fake_wx.EVT_CHAR_HOOK = object()
-    fake_wx.WXK_RETURN = 13
-    fake_wx.WXK_NUMPAD_ENTER = 271
-    fake_wx.WXK_UP = 315
-    fake_wx.WXK_DOWN = 317
-    fake_wx.WXK_F2 = 113
-    fake_wx.WXK_DELETE = 127
-
-    class ListCtrl:
-        def __init__(self, parent, style=0):
-            self.parent = parent
-            self.style = style
-            self.rows = []
-            self.columns = []
-            self.selected = []
-            self.focused = -1
-            self.bindings = {}
-
-        def InsertColumn(self, index, label):
-            self.columns.insert(index, label)
-
-        def InsertItem(self, index, text):
-            self.rows.insert(index, [text])
-            return index
-
-        def SetItem(self, row, column, text):
-            while len(self.rows[row]) <= column:
-                self.rows[row].append("")
-            self.rows[row][column] = text
-
-        def DeleteAllItems(self):
-            self.rows.clear()
-            self.selected.clear()
-            self.focused = -1
-
-        def GetItemCount(self):
-            return len(self.rows)
-
-        def GetFirstSelected(self):
-            return min(self.selected) if self.selected else -1
-
-        def GetNextSelected(self, index):
-            return next((item for item in sorted(self.selected) if item > index), -1)
-
-        def Select(self, index, select=True):
-            if select and index not in self.selected:
-                self.selected.append(index)
-            elif not select and index in self.selected:
-                self.selected.remove(index)
-
-        def Focus(self, index):
-            self.focused = index
-
-        def SetFocus(self):
-            self.has_focus = True
-
-        def SetName(self, name):
-            self.name = name
-
-        def Bind(self, event, handler):
-            self.bindings[event] = handler
-
-    fake_wx.ListCtrl = ListCtrl
-
-    class Menu:
-        def __init__(self):
-            self.items = []
-            self.bindings = {}
-
-        def Append(self, id_, label):
-            item = types.SimpleNamespace(id=id_, label=label, enabled=True)
-            item.GetItemLabelText = lambda: label
-            self.items.append(item)
-            return item
-
-        def AppendSeparator(self):
-            self.items.append(None)
-
-        def Enable(self, id_, enabled):
-            for item in self.items:
-                if item is not None and item.id == id_:
-                    item.enabled = enabled
-
-        def Bind(self, event, handler, id_=None):
-            self.bindings[id_] = handler
-
-        def Destroy(self):
-            self.destroyed = True
-
-    fake_wx.Menu = Menu
     module = importlib.import_module("ui.nvda_remote.connection_manager_dialog")
     return fake_wx, module.ConnectionManagerDialog
 
@@ -343,3 +238,59 @@ def test_plain_enter_connects_but_shift_enter_has_no_reversed_action(tmp_path, m
     assert controller.connect_saved_calls == [saved.id]
     dialog._on_list_key(FakeKeyEvent(fake_wx.WXK_RETURN, shift=True))
     assert controller.connect_saved_calls == [saved.id]
+
+
+def test_context_menu_uses_real_wx_ids_and_selection_guards(tmp_path, monkeypatch):
+    fake_wx, dialog, controller, first, hidden, second = build_filtered_dialog(tmp_path, monkeypatch)
+    dialog.connection_list.Select(0)
+    dialog._on_context_menu(None)
+    items = {item.GetItemLabelText(): item for item in dialog.context_menu.GetMenuItems()}
+    assert len({item.GetId() for item in items.values()}) == 7
+    assert items["Connect"].enabled is True
+    assert items["Edit"].enabled is True
+    assert items["Copy Link"].enabled is True
+    assert items["Set as Quick Connect"].enabled is True
+    assert items["Move Up"].enabled is False
+    assert items["Move Down"].enabled is True
+    assert items["Delete"].enabled is True
+    dialog.context_menu.bindings[items["Copy Link"].GetId()](None)
+    assert controller.copy_link_calls == [first.id]
+
+
+def test_context_menu_disables_single_selection_actions_without_selection(tmp_path, monkeypatch):
+    _fake_wx, dialog, _controller, _saved = build_dialog_with_one_connection(tmp_path, monkeypatch)
+    dialog.connection_list.Select(0, select=False)
+    dialog._on_context_menu(None)
+    items = {item.GetItemLabelText(): item for item in dialog.context_menu.GetMenuItems()}
+    assert all(items[label].enabled is False for label in ("Connect", "Edit", "Copy Link", "Set as Quick Connect"))
+    assert items["Move Up"].enabled is False
+    assert items["Move Down"].enabled is False
+    assert items["Delete"].enabled is False
+
+
+def test_keyboard_binding_selects_only_visible_rows_and_rejects_multi_copy(tmp_path, monkeypatch):
+    fake_wx, dialog, controller, _first, _hidden, _second = build_filtered_dialog(tmp_path, monkeypatch)
+    dialog.connection_list.Select(0, select=False)
+    char_hook = dialog.connection_list.bindings[fake_wx.EVT_CHAR_HOOK]
+    char_hook(FakeKeyEvent(ord("A"), control=True))
+    assert dialog.connection_list.selected == [0, 1]
+    char_hook(FakeKeyEvent(ord("C"), control=True))
+    assert controller.copy_link_calls == []
+
+
+def test_group_choice_binding_filters_connections_and_dialog_is_accessible(tmp_path, monkeypatch):
+    fake_wx, dialog_class = load_manager_dialog(monkeypatch)
+    manager = build_manager(tmp_path)
+    manager.create_group("Work")
+    manager.add_connection("Work", name="Office", host="relay.example", port=6837, key="one")
+    controller = ConnectionControllerStub(manager)
+    dialog = dialog_class(None, controller, lambda: None)
+    dialog.group_choice.SetStringSelection("Work")
+    dialog.group_choice.bindings[fake_wx.EVT_CHOICE](None)
+    assert [row[0] for row in dialog.connection_list.rows] == ["Office"]
+    assert dialog.group_choice.name == "Connection group"
+    assert dialog.search_ctrl.name == "Search connections"
+    assert dialog.connection_list.name == "Connections"
+    assert dialog.connection_list.has_focus is True
+    assert dialog.close_button.is_default is True
+    assert dialog.escape_id == fake_wx.ID_CLOSE

@@ -73,3 +73,44 @@ Both completed without errors.
   behavior was verified through the repository's fake-wx tests.
 - Existing unrelated worktree changes were preserved and excluded from the Task 6
   commit.
+
+## Review fix report
+
+The review identified three Task 6 issues. The fixes are included in the follow-up
+commit:
+
+1. Context-menu bindings now use the real wxPython API shape:
+   `item.GetId()` and `menu.Bind(wx.EVT_MENU, handler, id=item.GetId())`.
+   The shared fake implements unique generated menu IDs, `GetId()`, item
+   enabling, separators, destruction, and callback storage.
+2. Context-menu items are enabled from the current selection: Connect, Edit,
+   Copy Link, and Quick Connect require one selection; Delete requires at least
+   one; Move Up/Down require one selected visible row with a valid adjacent
+   target. Boundary no-op actions are disabled.
+3. Focused UI tests now use the shared fake wx surface and invoke bound event
+   handlers for context-menu and keyboard behavior. Coverage includes unique
+   menu IDs and callbacks, selection guards, visible-only Ctrl+A, multi-selection
+   Ctrl+C rejection, group filtering, accessible names/focus, default button,
+   and Escape behavior.
+
+## Review-fix test evidence
+
+```text
+pytest tests/unit/test_nvda_remote_connection_ui.py -v
+18 passed in 0.24s
+
+pytest tests/unit/test_app_wx.py -v
+32 passed in 0.17s
+
+pytest tests/unit tests/integration -v
+940 passed, 1 skipped in 3.33s
+```
+
+Additional checks:
+
+```text
+python3 -m compileall -q src/ui/nvda_remote/connection_manager_dialog.py
+git diff --check
+```
+
+Both completed without errors before the review-fix commit.

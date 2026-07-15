@@ -119,6 +119,20 @@ def install_fake_wx(monkeypatch):
     fake_wx.EVT_MENU = object()
     fake_wx.EVT_CHECKBOX = object()
     fake_wx.EVT_LISTBOX = object()
+    fake_wx.EVT_LIST_ITEM_ACTIVATED = object()
+    fake_wx.EVT_LIST_ITEM_SELECTED = object()
+    fake_wx.EVT_LIST_ITEM_DESELECTED = object()
+    fake_wx.EVT_CONTEXT_MENU = object()
+    fake_wx.EVT_CHAR_HOOK = object()
+    fake_wx.LC_REPORT = 2048
+    fake_wx.LIST_AUTOSIZE = 4096
+    fake_wx.LIST_AUTOSIZE_USEHEADER = 8192
+    fake_wx.WXK_RETURN = 13
+    fake_wx.WXK_NUMPAD_ENTER = 271
+    fake_wx.WXK_UP = 315
+    fake_wx.WXK_DOWN = 317
+    fake_wx.WXK_F2 = 113
+    fake_wx.WXK_DELETE = 127
     fake_wx.OK = 16
     fake_wx.ICON_ERROR = 32
     fake_wx.YES = 64
@@ -386,6 +400,9 @@ def install_fake_wx(monkeypatch):
         def Bind(self, event, handler):
             self.bindings[event] = handler
 
+        def SetName(self, name):
+            self.name = name
+
     class ListBox:
         def __init__(self, parent, choices=(), style=0):
             self.parent = parent
@@ -441,17 +458,94 @@ def install_fake_wx(monkeypatch):
         def SetName(self, name):
             self.name = name
 
+    class ListCtrl:
+        def __init__(self, parent, style=0):
+            self.parent = parent
+            self.style = style
+            self.rows = []
+            self.columns = []
+            self.selected = []
+            self.focused = -1
+            self.bindings = {}
+            self.name = ""
+            self.has_focus = False
+
+        def InsertColumn(self, index, label):
+            self.columns.insert(index, label)
+
+        def InsertItem(self, index, text):
+            self.rows.insert(index, [text])
+            return index
+
+        def SetItem(self, row, column, text):
+            while len(self.rows[row]) <= column:
+                self.rows[row].append("")
+            self.rows[row][column] = text
+
+        def DeleteAllItems(self):
+            self.rows.clear()
+            self.selected.clear()
+            self.focused = -1
+
+        def GetItemCount(self):
+            return len(self.rows)
+
+        def GetFirstSelected(self):
+            return min(self.selected) if self.selected else -1
+
+        def GetNextSelected(self, index):
+            return next((item for item in sorted(self.selected) if item > index), -1)
+
+        def Select(self, index, select=True):
+            if select and index not in self.selected:
+                self.selected.append(index)
+            elif not select and index in self.selected:
+                self.selected.remove(index)
+
+        def Focus(self, index):
+            self.focused = index
+
+        def Bind(self, event, handler):
+            self.bindings[event] = handler
+
+        def SetFocus(self):
+            self.has_focus = True
+
+        def SetName(self, name):
+            self.name = name
+
     class Menu:
         def __init__(self):
             self.items = []
+            self.bindings = {}
+            self.destroyed = False
 
         def Append(self, id_, label):
-            item = type("MenuItem", (), {"id": id_, "label": label, "GetItemLabelText": lambda s=label: s})()
+            if id_ == fake_wx.ID_ANY:
+                id_ = fake_wx.NewIdRef()
+            item = type("MenuItem", (), {})()
+            item.id = id_
+            item.label = label
+            item.enabled = True
+            item.GetId = lambda: item.id
+            item.GetItemLabelText = lambda: item.label
+            item.Enable = lambda enabled=True: setattr(item, "enabled", enabled)
             self.items.append(item)
             return item
 
-        def Bind(self, event, handler, id_=None):
-            pass
+        def AppendSeparator(self):
+            self.items.append(None)
+
+        def Bind(self, event, handler, id=None):
+            self.bindings[id] = handler
+
+        def Enable(self, id_, enabled):
+            for item in self.items:
+                if item is not None and item.id == id_:
+                    item.Enable(enabled)
+
+        def Destroy(self):
+            self.destroyed = True
 
         def GetMenuItems(self):
             return self.items
@@ -510,10 +604,20 @@ def install_fake_wx(monkeypatch):
     fake_wx.Choice = Choice
     fake_wx.ListBox = ListBox
     fake_wx.Menu = Menu
+    fake_wx.ListCtrl = ListCtrl
     fake_wx.App = App
     fake_wx.MessageBox = MessageBox
     fake_wx.GetTextFromUser = GetTextFromUser
     fake_wx.CallAfter = CallAfter
+
+    next_menu_id = 6000
+
+    def NewIdRef():
+        nonlocal next_menu_id
+        next_menu_id += 1
+        return next_menu_id
+
+    fake_wx.NewIdRef = NewIdRef
 
     fake_adv = types.ModuleType("wx.adv")
     fake_adv.EVT_TASKBAR_LEFT_DOWN = object()

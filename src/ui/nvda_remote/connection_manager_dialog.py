@@ -247,17 +247,27 @@ class ConnectionManagerDialog(wx.Dialog):
     def _on_context_menu(self, _event) -> None:
         menu = wx.Menu()
         self.context_menu = menu
-        for label, handler in (
-            ("Connect", self._on_connect),
-            ("Edit", self._on_edit),
-            ("Copy Link", lambda _event: self._copy_selected()),
-            ("Set as Quick Connect", self._on_set_quick),
-            ("Move Up", lambda _event: self._move_selected(-1)),
-            ("Move Down", lambda _event: self._move_selected(1)),
-            ("Delete", self._on_delete),
-        ):
+        selected = self._selected_connections()
+        single = len(selected) == 1
+        if single:
+            index = self._visible_connections.index(selected[0])
+            can_move_up = index > 0
+            can_move_down = index < len(self._visible_connections) - 1
+        else:
+            can_move_up = can_move_down = False
+        actions = (
+            ("Connect", self._on_connect, single),
+            ("Edit", self._on_edit, single),
+            ("Copy Link", lambda _event: self._copy_selected(), single),
+            ("Set as Quick Connect", self._on_set_quick, single),
+            ("Move Up", lambda _event: self._move_selected(-1), can_move_up),
+            ("Move Down", lambda _event: self._move_selected(1), can_move_down),
+            ("Delete", self._on_delete, bool(selected)),
+        )
+        for label, handler, enabled in actions:
             item = menu.Append(wx.ID_ANY, label)
-            menu.Bind(wx.EVT_MENU, handler, item.id)
+            item.Enable(enabled)
+            menu.Bind(wx.EVT_MENU, handler, id=item.GetId())
         popup = getattr(self, "PopupMenu", None)
         if popup is not None:
             popup(menu)
