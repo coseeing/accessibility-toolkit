@@ -63,6 +63,14 @@ python -m apps.access8graph.main
 python -m apps.nvda_remote.main
 ```
 
+### NVDA Remote 已儲存的連線
+
+NVDA Remote 主視窗只會透過已儲存的項目進行連線。開啟「連線管理器」，建立群組或
+連線，填入主機與連接埠等設定，然後啟用已儲存的項目以進行連線。你也可以選擇「設定
+為快速連線」；在設定有效的預設值之前，主視窗的「快速連線」按鈕會維持停用。這些
+設定會保存為設定檔；已儲存的金鑰會以純文字保存於 `nvda_remote_connections.json`，
+位置與其他執行期檔案相同，無論使用 Python 或 Windows 執行檔啟動皆適用。
+
 ## 安裝
 
 需求：

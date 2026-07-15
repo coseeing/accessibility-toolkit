@@ -7,6 +7,9 @@ from accessibility_toolkit.remote import ConnectionInfo, JSONSerializer, RemoteM
 from accessibility_toolkit.remote.session import RemoteSession
 from accessibility_toolkit.remote.transport import RelayTransport
 
+from apps.nvda_remote.connections import ConnectionManager, JsonConnectionStore
+from tests.unit.test_nvda_remote_app_service import build_service
+
 
 def _recv_line(sock: socket.socket, buffer: bytearray) -> bytes:
     while b"\n" not in buffer:
@@ -151,3 +154,21 @@ def test_relay_transport_insecure_connection_still_uses_tls_without_verification
     assert fake_context.calls == [
         (fake_socket, "example.com", False, ssl.CERT_NONE),
     ]
+
+
+def test_saved_connection_flows_from_json_catalog_to_relay_session(tmp_path):
+    store = JsonConnectionStore(tmp_path / "nvda_remote_connections.json")
+    manager = ConnectionManager(store)
+    saved = manager.add_connection(
+        "Default", name="Office", host="example.com", port=6837, key="secret", insecure=True
+    )
+    manager.set_quick_connect(saved.id)
+
+    service, transport, _capture, _hotkey, _dispatch_calls = build_service(
+        connection_manager=ConnectionManager(store)
+    )
+    service.bind()
+    service.connect_quick()
+
+    assert transport.connected_to == ("example.com", 6837, True)
+    assert (RemoteMessageType.JOIN, {"channel": "secret", "mode": "master"}) in transport.sent

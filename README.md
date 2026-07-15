@@ -65,6 +65,14 @@ python -m apps.access8graph.main
 python -m apps.nvda_remote.main
 ```
 
+### NVDA Remote saved connections
+
+The NVDA Remote main window connects only through saved entries. Open **Manage
+Connections**, create a group or connection, then activate the saved entry to
+connect. Optionally choose **Set as Quick Connect**; the main-window Quick Connect
+button remains disabled until a valid default is configured. Saved keys are kept
+in plain text in `nvda_remote_connections.json` beside the other runtime files.
+
 ## Installation
 
 Requirements:
