@@ -61,7 +61,7 @@ class MainFrame(wx.Frame):
         has_quick = bool(manager is not None and manager.quick_connection is not None)
         self.manage_connections_button.Enable(not is_connecting)
         self.quick_connect_button.Enable(is_idle and has_quick)
-        self.disconnect_button.Enable(state == ConnectionState.CONNECTED)
+        self.disconnect_button.Enable(not is_idle)
 
     def _on_manage_connections(self, _event) -> None:
         if self.controller is None:

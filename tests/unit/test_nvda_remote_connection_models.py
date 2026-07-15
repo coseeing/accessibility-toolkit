@@ -59,8 +59,9 @@ def test_catalog_rejects_duplicate_connection_ids_across_groups():
         ConnectionCatalog.from_dict(payload)
 
 
-def test_catalog_rejects_boolean_format_version():
+@pytest.mark.parametrize("format_version", [True, 1.0, "1"])
+def test_catalog_rejects_non_integer_format_version(format_version):
     payload = ConnectionCatalog.default().to_dict()
-    payload["format_version"] = True
+    payload["format_version"] = format_version
     with pytest.raises(ValueError, match="format"):
         ConnectionCatalog.from_dict(payload)

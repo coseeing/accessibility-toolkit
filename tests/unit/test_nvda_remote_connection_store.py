@@ -22,9 +22,10 @@ def test_corrupt_store_loads_default_without_overwriting_source(tmp_path, caplog
     assert "Failed to load saved connections" in caplog.text
 
 
-def test_wrong_format_version_is_treated_as_invalid(tmp_path):
+@pytest.mark.parametrize("format_version", [99, True, 1.0, "1"])
+def test_non_exact_format_version_is_treated_as_invalid(tmp_path, format_version):
     path = tmp_path / "connections.json"
-    path.write_text(json.dumps({"format_version": 99, "groups": {"Default": []}}), encoding="utf-8")
+    path.write_text(json.dumps({"format_version": format_version, "groups": {"Default": []}}), encoding="utf-8")
     assert JsonConnectionStore(path).load() == ConnectionCatalog.default()
 
 

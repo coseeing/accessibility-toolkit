@@ -92,7 +92,7 @@ class ConnectionCatalog:
         if not isinstance(payload, dict):
             raise ValueError("connection catalog must be an object")
         version = payload.get("format_version")
-        if isinstance(version, bool) or version != FORMAT_VERSION:
+        if type(version) is not int or version != FORMAT_VERSION:
             raise ValueError("unsupported connection catalog format")
         raw_groups = payload.get("groups")
         if not isinstance(raw_groups, dict) or DEFAULT_GROUP not in raw_groups:

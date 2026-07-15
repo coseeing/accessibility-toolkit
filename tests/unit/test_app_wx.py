@@ -908,7 +908,7 @@ def test_main_frame_action_states_for_connecting_connected_and_idle(monkeypatch,
     frame._sync_connection_actions()
     assert frame.manage_connections_button.enabled is False
     assert frame.quick_connect_button.enabled is False
-    assert frame.disconnect_button.enabled is False
+    assert frame.disconnect_button.enabled is True
     controller.state.connection_state = "connected"
     frame._sync_connection_actions()
     assert frame.manage_connections_button.enabled is True
