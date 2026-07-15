@@ -4,6 +4,7 @@ from enum import StrEnum
 
 class ConnectionState(StrEnum):
     IDLE = "idle"
+    CONNECTING = "connecting"
     CONNECTED = "connected"
 
 

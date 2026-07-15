@@ -1,3 +1,8 @@
+import tempfile
+from pathlib import Path
+
+import pytest
+
 from accessibility_toolkit.input.events import CapturedKeyEvent
 from accessibility_toolkit.input.windows.native_key_context import WindowsNativeKeyContext
 from accessibility_toolkit.events import ErrorRaised, ModeChanged, SpeechEngineChanged
@@ -21,6 +26,7 @@ from apps.nvda_remote.events import (
 )
 from apps.nvda_remote.service import NvdaRemoteAppService
 from apps.nvda_remote.state import ConnectionState
+from apps.nvda_remote.connections import ConnectionManager, JsonConnectionStore
 
 
 class FakeTransport:
@@ -29,6 +35,9 @@ class FakeTransport:
         self.message_handler = None
         self.reader_started = 0
         self.reader_stopped = 0
+        self.connected_to = None
+        self.connect_error = None
+        self.closed = 0
 
     def send(self, message_type, **payload):
         self.sent.append((message_type, payload))
@@ -41,6 +50,14 @@ class FakeTransport:
 
     def stop_reader(self):
         self.reader_stopped += 1
+
+    def connect(self, host, port, insecure=False):
+        if self.connect_error is not None:
+            raise self.connect_error
+        self.connected_to = (host, port, insecure)
+
+    def close(self):
+        self.closed += 1
 
 
 class FakeCapture:
@@ -169,6 +186,12 @@ def build_service(*, dispatch=None, use_windows_native_key_payload=False, **serv
         return callback()
 
     tone = FakeToneService()
+    service_kwargs.setdefault(
+        "connection_manager",
+        ConnectionManager(
+            JsonConnectionStore(Path(tempfile.mkdtemp()) / "connections.json")
+        ),
+    )
     service = NvdaRemoteAppService(
         transport=transport,
         input_capture=capture,
@@ -180,6 +203,66 @@ def build_service(*, dispatch=None, use_windows_native_key_payload=False, **serv
         **service_kwargs,
     )
     return service, transport, capture, hotkey, dispatch_calls
+
+
+def build_connection_manager(tmp_path):
+    return ConnectionManager(JsonConnectionStore(tmp_path / "connections.json"))
+
+
+def test_connect_saved_uses_persisted_tls_choice(tmp_path):
+    manager = build_connection_manager(tmp_path)
+    saved = manager.add_connection(
+        "Default", name="Office", host="relay.example", port=7000, key="secret", insecure=True
+    )
+    service, transport, *_ = build_service(connection_manager=manager)
+    service.bind()
+    service.connect_saved(saved.id)
+    assert service.state.connection_state == ConnectionState.CONNECTING
+    assert transport.connected_to == ("relay.example", 7000, True)
+
+
+def test_connect_saved_replaces_active_connection(tmp_path):
+    manager = build_connection_manager(tmp_path)
+    saved = manager.add_connection("Default", name="Office", host="relay.example", port=6837, key="secret")
+    service, transport, *_ = build_service(connection_manager=manager)
+    service.state.connection_state = ConnectionState.CONNECTED
+    service.connect_saved(saved.id)
+    assert transport.reader_stopped == 1
+    assert transport.reader_started == 1
+
+
+def test_connect_quick_rejects_missing_or_stale_default(tmp_path):
+    manager = build_connection_manager(tmp_path)
+    service, *_ = build_service(connection_manager=manager)
+    with pytest.raises(LookupError, match="Quick Connect"):
+        service.connect_quick()
+
+    saved = manager.add_connection(
+        "Default", name="Office", host="relay.example", port=6837, key="secret"
+    )
+    manager.set_quick_connect(saved.id)
+    manager.delete_connections("Default", [saved.id])
+    with pytest.raises(LookupError, match="Quick Connect"):
+        service.connect_quick()
+
+
+def test_immediate_connect_failure_returns_to_idle(tmp_path):
+    manager = build_connection_manager(tmp_path)
+    saved = manager.add_connection("Default", name="Office", host="relay.example", port=6837, key="secret")
+    service, transport, *_ = build_service(connection_manager=manager)
+    transport.connect_error = OSError("offline")
+    with pytest.raises(OSError, match="offline"):
+        service.connect_saved(saved.id)
+    assert service.state.connection_state == ConnectionState.IDLE
+
+
+def test_copy_connection_link_writes_clipboard_and_returns_url(tmp_path):
+    manager = build_connection_manager(tmp_path)
+    saved = manager.add_connection("Default", name="Office", host="relay.example", port=6837, key="secret")
+    service, *_ = build_service(connection_manager=manager)
+    url = service.copy_connection_link(saved.id)
+    assert url == "nvdaremote://relay.example?key=secret&mode=slave"
+    assert service.clipboard.text == url
 
 
 def test_nvda_remote_service_forwards_keys_when_controlling():

@@ -948,6 +948,7 @@ def test_nvda_remote_main_build_runtime_composes_app_service_and_gui(monkeypatch
         def __init__(
             self,
             *,
+            connection_manager,
             transport,
             input_capture,
             hotkey_capture,
@@ -956,6 +957,7 @@ def test_nvda_remote_main_build_runtime_composes_app_service_and_gui(monkeypatch
             main_thread_dispatch,
             use_windows_native_key_payload,
         ):
+            self.connection_manager = connection_manager
             self.transport = transport
             self.input_capture = input_capture
             self.hotkey_capture = hotkey_capture
@@ -1028,7 +1030,11 @@ def test_nvda_remote_main_build_runtime_composes_app_service_and_gui(monkeypatch
     monkeypatch.setattr(nvda_remote_main, "KeyboardInputService", FakeKeyboardInputService)
     monkeypatch.setattr(nvda_remote_main, "NvdaRemoteAppService", FakeAppService)
     monkeypatch.setattr(nvda_remote_main, "NvdaRemoteApp", FakeApp)
-    monkeypatch.setattr(nvda_remote_main, "default_config_path", lambda: "config.json")
+    monkeypatch.setattr(
+        nvda_remote_main,
+        "default_config_path",
+        lambda app_name="accessibility-toolkit": f"{app_name}.json",
+    )
 
     runtime = nvda_remote_main.build_runtime()
 
@@ -1045,6 +1051,9 @@ def test_nvda_remote_main_build_runtime_composes_app_service_and_gui(monkeypatch
     assert runtime.app_service.capabilities.speech is runtime.speaker
     assert runtime.app_service.capabilities.tone is tone_output
     assert runtime.app_service.main_thread_dispatch is FakeApp.dispatch
+    assert runtime.app_service.connection_manager is runtime.connection_manager
+    assert runtime.config_store.path == "accessibility-toolkit.json"
+    assert runtime.connection_manager._store.path.name == "nvda_remote_connections.json"
     assert runtime.app_service.bind_calls == 1
     assert runtime.input_service.capture is runtime.input_capture
     assert runtime.input_service.handler is runtime.app_service
@@ -1206,7 +1215,11 @@ def test_nvda_remote_main_build_runtime_reloads_saved_settings_when_engine_chang
     monkeypatch.setattr(nvda_remote_main, "KeyboardInputService", FakeKeyboardInputService)
     monkeypatch.setattr(nvda_remote_main, "NvdaRemoteAppService", FakeAppService)
     monkeypatch.setattr(nvda_remote_main, "NvdaRemoteApp", FakeApp)
-    monkeypatch.setattr(nvda_remote_main, "default_config_path", lambda: "config.json")
+    monkeypatch.setattr(
+        nvda_remote_main,
+        "default_config_path",
+        lambda app_name="accessibility-toolkit": f"{app_name}.json",
+    )
 
     runtime = nvda_remote_main.build_runtime()
 
@@ -1370,7 +1383,11 @@ def test_nvda_remote_build_runtime_uses_mode_enter_hotkey_as_single_source_of_tr
     monkeypatch.setattr(nvda_remote_main, "KeyboardInputService", FakeKeyboardInputService)
     monkeypatch.setattr(nvda_remote_main, "NvdaRemoteAppService", FakeAppService)
     monkeypatch.setattr(nvda_remote_main, "NvdaRemoteApp", FakeApp)
-    monkeypatch.setattr(nvda_remote_main, "default_config_path", lambda: "config.json")
+    monkeypatch.setattr(
+        nvda_remote_main,
+        "default_config_path",
+        lambda app_name="accessibility-toolkit": f"{app_name}.json",
+    )
 
     nvda_remote_main.build_runtime()
 
@@ -1516,7 +1533,11 @@ def test_build_runtime_uses_macos_input_and_hotkey_on_darwin(monkeypatch):
     monkeypatch.setattr(nvda_remote_main, "KeyboardInputService", FakeKeyboardInputService)
     monkeypatch.setattr(nvda_remote_main, "NvdaRemoteAppService", FakeAppService)
     monkeypatch.setattr(nvda_remote_main, "NvdaRemoteApp", FakeApp)
-    monkeypatch.setattr(nvda_remote_main, "default_config_path", lambda: "config.json")
+    monkeypatch.setattr(
+        nvda_remote_main,
+        "default_config_path",
+        lambda app_name="accessibility-toolkit": f"{app_name}.json",
+    )
     monkeypatch.setattr(accessibility_toolkit.runtime.platform.sys, "platform", "darwin")
 
     runtime = nvda_remote_main.build_runtime()
@@ -1660,7 +1681,11 @@ def test_build_runtime_uses_safe_clipboard_on_darwin(monkeypatch):
     monkeypatch.setattr(nvda_remote_main, "KeyboardInputService", FakeKeyboardInputService)
     monkeypatch.setattr(nvda_remote_main, "NvdaRemoteAppService", FakeAppService)
     monkeypatch.setattr(nvda_remote_main, "NvdaRemoteApp", FakeApp)
-    monkeypatch.setattr(nvda_remote_main, "default_config_path", lambda: "config.json")
+    monkeypatch.setattr(
+        nvda_remote_main,
+        "default_config_path",
+        lambda app_name="accessibility-toolkit": f"{app_name}.json",
+    )
     monkeypatch.setattr(accessibility_toolkit.runtime.platform.sys, "platform", "darwin")
 
     runtime = nvda_remote_main.build_runtime()
@@ -1828,7 +1853,11 @@ def test_nvda_remote_main_build_runtime_falls_back_for_unknown_engine(monkeypatc
     monkeypatch.setattr(nvda_remote_main, "KeyboardInputService", FakeKeyboardInputService)
     monkeypatch.setattr(nvda_remote_main, "NvdaRemoteAppService", FakeAppService)
     monkeypatch.setattr(nvda_remote_main, "NvdaRemoteApp", FakeApp)
-    monkeypatch.setattr(nvda_remote_main, "default_config_path", lambda: "config.json")
+    monkeypatch.setattr(
+        nvda_remote_main,
+        "default_config_path",
+        lambda app_name="accessibility-toolkit": f"{app_name}.json",
+    )
 
     runtime = nvda_remote_main.build_runtime()
 
@@ -1976,7 +2005,11 @@ def test_nvda_remote_main_build_runtime_enables_windows_native_payload_from_env(
     monkeypatch.setattr(nvda_remote_main, "KeyboardInputService", FakeKeyboardInputService)
     monkeypatch.setattr(nvda_remote_main, "NvdaRemoteAppService", FakeAppService)
     monkeypatch.setattr(nvda_remote_main, "NvdaRemoteApp", FakeApp)
-    monkeypatch.setattr(nvda_remote_main, "default_config_path", lambda: "config.json")
+    monkeypatch.setattr(
+        nvda_remote_main,
+        "default_config_path",
+        lambda app_name="accessibility-toolkit": f"{app_name}.json",
+    )
     monkeypatch.setenv("NVDA_REMOTE_USE_WINDOWS_NATIVE_KEY_PAYLOAD", "1")
 
     runtime = nvda_remote_main.build_runtime()

@@ -34,6 +34,7 @@ from apps.nvda_remote.use_cases import (
     NvdaRemoteControlModeUseCase,
     NvdaRemoteInputForwardingUseCase,
 )
+from apps.nvda_remote.connections import ConnectionManager, format_connection_url
 from apps.nvda_remote.events import (
     NvdaRemoteEvent,
     RemoteTransportDisconnected,
@@ -83,6 +84,7 @@ class NvdaRemoteAppService(KeyEventHandler):
     def __init__(
         self,
         *,
+        connection_manager: ConnectionManager,
         transport: Transport,
         input_capture: InputCapture,
         hotkey_capture: HotkeyCapture,
@@ -91,6 +93,7 @@ class NvdaRemoteAppService(KeyEventHandler):
         main_thread_dispatch: Callable[[Callable[[], None]], None] | None = None,
         use_windows_native_key_payload: bool = False,
     ) -> None:
+        self.connection_manager = connection_manager
         self.transport = transport
         self.input_capture = input_capture
         self.hotkey_capture = hotkey_capture
@@ -185,10 +188,44 @@ class NvdaRemoteAppService(KeyEventHandler):
         self.transport.set_message_handler(self._handle_transport_message)
 
     def connect(self, host: str, port: int, key: str, insecure: bool = False) -> None:
-        self.session.connect(
-            ConnectionInfo(hostname=host, port=port, key=key, insecure=insecure)
-        )
-        self.transport.start_reader()
+        if self.state.connection_state == ConnectionState.CONNECTING:
+            raise RuntimeError("A connection attempt is already in progress")
+        self.state.connection_state = ConnectionState.CONNECTING
+        try:
+            self.session.connect(
+                ConnectionInfo(hostname=host, port=port, key=key, insecure=insecure)
+            )
+            self.transport.start_reader()
+        except Exception:
+            self.transport.stop_reader()
+            self.session.disconnect()
+            raise
+
+    def connect_saved(self, connection_id: str) -> None:
+        connection = self.connection_manager.find_connection(connection_id)
+        if connection is None:
+            raise LookupError("Saved connection no longer exists")
+        if self.state.connection_state == ConnectionState.CONNECTING:
+            raise RuntimeError("A connection attempt is already in progress")
+        if self.state.connection_state == ConnectionState.CONNECTED:
+            self.disconnect()
+        self.connect(connection.host, connection.port, connection.key, connection.insecure)
+
+    def connect_quick(self) -> None:
+        if self.state.connection_state != ConnectionState.IDLE:
+            raise RuntimeError("Quick Connect is available only while disconnected")
+        connection = self.connection_manager.quick_connection
+        if connection is None:
+            raise LookupError("Quick Connect is not configured")
+        self.connect_saved(connection.id)
+
+    def copy_connection_link(self, connection_id: str) -> str:
+        connection = self.connection_manager.find_connection(connection_id)
+        if connection is None:
+            raise LookupError("Saved connection no longer exists")
+        url = format_connection_url(connection)
+        self.clipboard.set_text(url)
+        return url
 
     def disconnect(self) -> None:
         if self.state.control_state == ControlState.CONTROLLING:

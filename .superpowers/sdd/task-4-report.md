@@ -1,68 +1,81 @@
-# Task 4 Report
+# Task 4 Report: Saved-connection application service and runtime composition
 
-## Files changed
+## Scope
 
-- `src/accessibility_toolkit/input/router.py`
-  - Added owned chord records covering all physical members and one-shot key-up dispatch.
-  - Generalized pending long-press state from a single usage to a complete chord.
-  - Added cancellation for member release, modifier loss, extra keys, reset, and mode exit reset.
-  - Long-press completion now uses the key that completes the chord and establishes ownership.
-- `tests/unit/test_key_router.py`
-  - Added ownership, key-up-only, unhandled-down, multi-key long-press, and cancellation coverage.
-- `tests/unit/test_mode_manager.py`
-  - Added mode-exit pending long-press cancellation coverage.
+Implemented only the Task 4 files listed in `task-4-brief.md`:
 
-## Full test output
+- `src/apps/nvda_remote/state.py`
+- `src/apps/nvda_remote/service.py`
+- `src/apps/nvda_remote/main.py`
+- `tests/unit/test_nvda_remote_app_service.py`
+- `tests/unit/test_app_wx.py`
 
-```text
-.......................................                                  [100%]
-39 passed in 0.12s
-```
+Existing Task 1 changes and user documentation were preserved. No later-task UI dialog files or unrelated documentation were changed.
 
-Command:
+## Implementation
 
-```text
-pytest tests/unit/test_key_router.py tests/unit/test_mode_manager.py -q
-```
+- Added `ConnectionState.CONNECTING`.
+- Injected and exposed `ConnectionManager` through `NvdaRemoteAppService.connection_manager`.
+- Added saved-connection orchestration for persisted TLS choices, replacement of active connections, Quick Connect, stale/missing defaults, and link copying.
+- Made immediate connection failures clean up transport/session state and return to `IDLE`.
+- Added the independent `nvda_remote_connections.json` runtime store and exposed its manager on `NvdaRemoteRuntime`.
+- Updated service/runtime test fakes and assertions for the new dependency and separate config path.
 
-Additional verification: `git diff --check` passed.
-# Task 4 Report: Long-Press Callback Ownership and Fired-State Cleanup
+## TDD evidence
 
-## Status
-
-Implemented in the shared `mode-key-router` worktree.
-
-## Changes
-
-- Removed a fired pending long-press entry after its handler completes.
-- Checked that the same pending entry still belongs to the router before creating chord ownership.
-- Prevented a long-press handler that calls `router.reset()` from recreating ownership after reset.
-- Added regressions for fired-state cleanup and reset-from-handler key-up behavior.
-
-## Test-first evidence
-
-The new regressions initially failed:
-
-```text
-2 failed, 27 deselected
-```
-
-The failures showed the fired pending entry remained in the router and reset was followed by recreated ownership that swallowed the key-up.
-
-## Final verification
+### RED
 
 Command:
 
-```bash
-pytest tests/unit/test_key_router.py tests/unit/test_mode_manager.py -q
+```text
+pytest tests/unit/test_nvda_remote_app_service.py -k 'saved or quick or copy_connection or immediate_connect' -v
 ```
 
-Output:
+Result before production changes:
 
 ```text
-40 passed in 0.07s
+5 failed, 29 deselected
+TypeError: NvdaRemoteAppService.__init__() got an unexpected keyword argument 'connection_manager'
 ```
 
-## Concerns
+The failure was caused by the intentionally missing Task 4 constructor dependency.
 
-- The focused suite does not exercise platform-specific timer implementations.
+### GREEN
+
+Focused service tests after implementation:
+
+```text
+5 passed, 29 deselected
+```
+
+Required service/runtime selection:
+
+```text
+pytest tests/unit/test_nvda_remote_app_service.py tests/unit/test_nvda_remote_use_cases.py tests/unit/test_app_wx.py -k 'nvda_remote_main_build_runtime or saved or quick or copy_connection or immediate_connect or connection' -v
+```
+
+Result:
+
+```text
+12 passed, 63 deselected
+```
+
+Full verification:
+
+```text
+pytest tests/unit tests/integration -q
+```
+
+Result:
+
+```text
+922 passed, 1 skipped
+```
+
+Additional verification:
+
+```text
+git diff --check
+```
+
+Result: no whitespace errors.

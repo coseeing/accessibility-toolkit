@@ -12,6 +12,7 @@ from accessibility_toolkit.output.speech import (
 from accessibility_toolkit.output.speech.json_settings_store import JsonSpeechSettingsStore
 from accessibility_toolkit.scheduling import Scheduler
 from apps.nvda_remote.service import NvdaRemoteAppService
+from apps.nvda_remote.connections import ConnectionManager, JsonConnectionStore
 from accessibility_toolkit.runtime.runtime_parts import build_app_runtime_parts
 from accessibility_toolkit.runtime.platform import PlatformProvider
 from accessibility_toolkit.runtime.environment import configure_logging, default_config_path
@@ -23,6 +24,7 @@ from ui.nvda_remote.app import NvdaRemoteApp
 @dataclass(frozen=True)
 class NvdaRemoteRuntime:
     config_store: JsonSpeechSettingsStore
+    connection_manager: ConnectionManager
     transport: RelayTransport
     input_capture: InputCapture
     hotkey_capture: HotkeyCapture
@@ -47,6 +49,10 @@ def _use_windows_native_key_payload() -> bool:
 
 def build_runtime() -> NvdaRemoteRuntime:
     config_store = JsonSpeechSettingsStore(default_config_path())
+    connection_store = JsonConnectionStore(
+        default_config_path(app_name="nvda_remote_connections")
+    )
+    connection_manager = ConnectionManager(connection_store)
     coordinator = SpeechRuntimeSettingsCoordinator(config_store=config_store)
     provider = PlatformProvider()
     default_engine_id = provider.default_speech_engine_id()
@@ -69,6 +75,7 @@ def build_runtime() -> NvdaRemoteRuntime:
 
     transport = RelayTransport(JSONSerializer())
     app_service = NvdaRemoteAppService(
+        connection_manager=connection_manager,
         transport=transport,
         input_capture=parts.input_capture,
         hotkey_capture=parts.hotkey_capture,
@@ -97,6 +104,7 @@ def build_runtime() -> NvdaRemoteRuntime:
     )
     return NvdaRemoteRuntime(
         config_store=config_store,
+        connection_manager=connection_manager,
         transport=transport,
         input_capture=parts.input_capture,
         hotkey_capture=parts.hotkey_capture,
