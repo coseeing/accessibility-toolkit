@@ -65,6 +65,43 @@ pytest tests/unit/test_key_router.py -q
 Output:
 
 ```text
-.......................                                                  [100%]
+.......................                                                     [100%]
 23 passed in 0.08s
 ```
+
+# Task 3 Report: Transactional connection manager
+
+## Implementation
+
+- Added `ConnectionManager` with transactional catalog mutations: changes are made to a deep copy and published in memory only after `JsonConnectionStore.save` succeeds.
+- Added group selection, creation, renaming, deletion-to-Default, connection CRUD, search, filtered-order swapping, lookup, and preference APIs.
+- Exported `ConnectionManager` from `apps.nvda_remote.connections`.
+
+## Tests
+
+### RED evidence
+
+- `pytest tests/unit/test_nvda_remote_connection_manager.py -v`
+  - Failed during collection with `ImportError: cannot import name 'ConnectionManager'` because the manager was not yet exported.
+
+### GREEN evidence
+
+- `pytest tests/unit/test_nvda_remote_connection_manager.py -v`
+  - `7 passed`.
+- `pytest tests/unit tests/integration -v`
+  - `917 passed, 1 skipped`.
+- `git diff --check`
+  - Passed with no whitespace errors.
+
+## Task 3 files
+
+- `src/apps/nvda_remote/connections/manager.py`
+- `src/apps/nvda_remote/connections/__init__.py`
+- `tests/unit/test_nvda_remote_connection_manager.py`
+- `.superpowers/sdd/task-3-report.md`
+
+Unrelated existing worktree changes were not modified or staged.
+
+## Concerns
+
+None identified within transactional connection-manager scope.
