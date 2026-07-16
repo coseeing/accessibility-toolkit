@@ -138,6 +138,7 @@ def test_editor_pairs_visible_mnemonic_labels_with_fields(monkeypatch):
     editor_module, _group_module = load_editor_ui(monkeypatch)
     dialog = editor_module.ConnectionEditorDialog(None)
 
+    assert isinstance(dialog.field_labels, tuple)
     assert [label.GetLabel() for label, _control in dialog.field_labels] == [
         "&Name:",
         "&Host:",
