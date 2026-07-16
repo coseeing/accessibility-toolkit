@@ -16,7 +16,8 @@ class ConnectionEditorDialog(wx.Dialog):
         super().__init__(parent, title="Connection", size=(420, 300))
         self.result: dict[str, object] | None = None
 
-        panel = wx.Panel(self)
+        self.panel = wx.Panel(self)
+        panel = self.panel
         sizer = wx.BoxSizer(wx.VERTICAL)
         self.name_ctrl = wx.TextCtrl(panel, value=initial.name if initial else "")
         self.host_ctrl = wx.TextCtrl(panel, value=initial.host if initial else "")
@@ -35,14 +36,18 @@ class ConnectionEditorDialog(wx.Dialog):
         self.key_ctrl.SetName("Connection key")
         self.insecure_ctrl.SetName("Disable TLS certificate validation")
 
-        for label, control in (
-            ("Name", self.name_ctrl),
-            ("Host", self.host_ctrl),
-            ("Port", self.port_ctrl),
-            ("Key", self.key_ctrl),
-        ):
+        self.field_labels = tuple(
+            (wx.StaticText(panel, label=label), control)
+            for label, control in (
+                ("&Name:", self.name_ctrl),
+                ("&Host:", self.host_ctrl),
+                ("&Port:", self.port_ctrl),
+                ("&Key:", self.key_ctrl),
+            )
+        )
+        for label, control in self.field_labels:
             row = wx.BoxSizer(wx.HORIZONTAL)
-            row.Add(wx.StaticText(panel, label=label), 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, 4)
+            row.Add(label, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, 4)
             row.Add(control, 1, wx.EXPAND | wx.ALL, 4)
             sizer.Add(row, 0, wx.EXPAND, 0)
         sizer.Add(self.insecure_ctrl, 0, wx.ALL, 4)

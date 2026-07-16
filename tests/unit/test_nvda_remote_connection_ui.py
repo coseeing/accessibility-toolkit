@@ -134,6 +134,29 @@ def test_editor_uses_accessible_names_and_standard_keyboard_defaults(monkeypatch
     assert dialog.name_ctrl.has_focus is True
 
 
+def test_editor_pairs_visible_mnemonic_labels_with_fields(monkeypatch):
+    editor_module, _group_module = load_editor_ui(monkeypatch)
+    dialog = editor_module.ConnectionEditorDialog(None)
+
+    assert [label.GetLabel() for label, _control in dialog.field_labels] == [
+        "&Name:",
+        "&Host:",
+        "&Port:",
+        "&Key:",
+    ]
+    assert [control for _label, control in dialog.field_labels] == [
+        dialog.name_ctrl,
+        dialog.host_ctrl,
+        dialog.port_ctrl,
+        dialog.key_ctrl,
+    ]
+
+    field_rows = [entry[0] for entry in dialog.panel.sizer.children[:4]]
+    for row, (label, control) in zip(field_rows, dialog.field_labels, strict=True):
+        assert row.children[0][0] is label
+        assert row.children[1][0] is control
+
+
 def test_group_manager_disables_rename_and_delete_for_default(tmp_path, monkeypatch):
     _editor_module, group_module = load_editor_ui(monkeypatch)
     dialog = group_module.GroupManagerDialog(None, build_manager(tmp_path), lambda: None)
