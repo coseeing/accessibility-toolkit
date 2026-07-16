@@ -1,5 +1,4 @@
 import importlib
-from unittest.mock import patch
 
 from apps.nvda_remote.connections import ConnectionManager, JsonConnectionStore
 from tests.unit.test_app_wx import install_fake_wx
@@ -87,10 +86,11 @@ def load_editor_ui(monkeypatch):
     return editor_module, group_module
 
 
-def test_generate_key_is_seven_decimal_digits(monkeypatch):
+def test_editor_does_not_expose_generate_key_button(monkeypatch):
     editor_module, _group_module = load_editor_ui(monkeypatch)
-    with patch.object(editor_module.secrets, "randbelow", return_value=42):
-        assert editor_module.generate_key() == "1000042"
+    dialog = editor_module.ConnectionEditorDialog(None)
+
+    assert not hasattr(dialog, "generate_button")
 
 
 def test_editor_rejects_blank_fields_without_result(monkeypatch):

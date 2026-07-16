@@ -1,15 +1,8 @@
 from __future__ import annotations
 
-import secrets
-
 import wx
 
 from apps.nvda_remote.connections import SavedConnection
-
-
-def generate_key() -> str:
-    return str(1_000_000 + secrets.randbelow(9_000_000))
-
 
 class ConnectionEditorDialog(wx.Dialog):
     def __init__(self, parent, initial: SavedConnection | None = None):
@@ -54,23 +47,18 @@ class ConnectionEditorDialog(wx.Dialog):
         sizer.Add(self.insecure_ctrl, 0, wx.ALL, 4)
 
         button_row = wx.BoxSizer(wx.HORIZONTAL)
-        self.generate_button = wx.Button(panel, wx.ID_ANY, "&Generate Key")
         self.ok_button = wx.Button(panel, wx.ID_OK, "&OK")
         self.cancel_button = wx.Button(panel, wx.ID_CANCEL, "&Cancel")
-        for button in (self.generate_button, self.ok_button, self.cancel_button):
+        for button in (self.ok_button, self.cancel_button):
             button_row.Add(button, 0, wx.ALL, 4)
         sizer.Add(button_row, 0, wx.ALL, 4)
         panel.SetSizer(sizer)
 
-        self.generate_button.Bind(wx.EVT_BUTTON, self._on_generate_key)
         self.ok_button.Bind(wx.EVT_BUTTON, self._on_ok)
         self.cancel_button.Bind(wx.EVT_BUTTON, self._on_cancel)
         self.ok_button.SetDefault()
         self.SetEscapeId(wx.ID_CANCEL)
         self.name_ctrl.SetFocus()
-
-    def _on_generate_key(self, _event) -> None:
-        self.key_ctrl.SetValue(generate_key())
 
     def _on_ok(self, _event) -> None:
         try:
