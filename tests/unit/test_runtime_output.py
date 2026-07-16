@@ -71,6 +71,15 @@ def test_build_output_services_wires_scheduler_speech_speaker_and_capabilities()
         services.speaker.shutdown()
 
 
+def test_capabilities_preserves_legacy_braille_positional_argument():
+    braille_output = object()
+
+    capabilities = Capabilities(object(), object(), braille_output)
+
+    assert capabilities.braille is braille_output
+    assert capabilities.wave is None
+
+
 def test_build_output_services_includes_tone_capability():
     tone_output = object()
 

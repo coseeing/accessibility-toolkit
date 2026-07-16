@@ -8,5 +8,5 @@ from accessibility_toolkit.output.ports import SpeechServicePort
 class Capabilities:
     speech: SpeechServicePort
     tone: ToneOutput | None = None
-    wave: WaveOutput | None = None
     braille: BrailleOutput | None = None
+    wave: WaveOutput | None = None
