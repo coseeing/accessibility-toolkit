@@ -69,7 +69,9 @@ src/apps/nvda_remote/waves/disconnected.wav
 They originate from `ref/nvda/source/waves/`. The app package configuration must
 include them in built distributions. A notice next to the assets must identify NVDA
 as the source and preserve the GPL v2-or-later licensing information applicable to
-those copied files. Distribution of the resulting project must remain GPL-compatible.
+those copied files. A verbatim copy of `ref/nvda/copying.txt` must be packaged beside
+the assets as `NVDA-COPYING.txt`, so offline distributions include the authoritative
+license terms. Distribution of the resulting project must remain GPL-compatible.
 
 The app-level cue mapping is intentionally fixed; this change does not add the
 TeleNVDA-style preference that substitutes generated tones for WAV files.
@@ -85,6 +87,17 @@ The lifecycle and control use cases own notification timing. This guarantees a
 single cue per actual state transition regardless of whether the transition was
 started through a UI button, F11, replacement connection, or transport disconnect.
 The UI remains a state consumer and must not emit duplicate audio feedback.
+
+A lifecycle notification is emitted only when the previous state differs from the
+target state: repeated connected events while already connected, repeated
+disconnect events while already idle, repeated start-control calls while already
+controlling, and repeated stop-control calls while already in local control are
+no-ops for both state and cues.
+
+The disconnected wave and speech cue require the previous connection state to be
+`CONNECTED`. A failed connection attempt that returns from `CONNECTING` to `IDLE`
+still performs cleanup and publishes the idle state, but does not present a
+disconnected cue because no session was established.
 
 Speech uses the configured local speech capability. Cue WAV files are played only on
 the local client and are not sent through the remote protocol.
@@ -110,6 +123,8 @@ the local client and are not sent through the remote protocol.
   back when speech output reports a failure.
 - Repeated `stop_control()` calls and duplicate disconnect notifications retain their
   existing idempotence and must not add duplicate announcements.
+- Repeated connected and start-control notifications are likewise idempotent and
+  must not add duplicate wave or speech output.
 
 ## Testing and Acceptance Criteria
 
@@ -119,11 +134,12 @@ the local client and are not sent through the remote protocol.
    runtime parts and `Capabilities`; callers can omit it safely.
 3. Default wave playback delegates asynchronously to the platform backend and turns
    playback failures into warnings rather than exceptions.
-4. Packaged distributions include both NVDA cue WAV files and their source/license
-   notice.
+4. Packaged distributions include both NVDA cue WAV files, their source notice, and
+   the byte-identical `NVDA-COPYING.txt` license file.
 5. A successful session connection produces exactly one connected WAV request.
 6. A real disconnection produces exactly one disconnected WAV request and one
    `Disconnected` speech sequence.
+   A failed `CONNECTING` to `IDLE` transition produces neither cue.
 7. Entering and leaving remote control produces respectively the remote/local speech
    phrases, whether driven by the visible control button or F11.
 8. The focused unit tests and the complete `pytest tests/unit tests/integration -v`
