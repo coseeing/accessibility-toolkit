@@ -12,6 +12,7 @@ from accessibility_toolkit.runtime.platform import (
     create_hotkey_capture,
     create_clipboard_service,
     create_tone_output,
+    create_wave_output,
     default_speech_engine_id,
     default_speech_engine_options,
     PlatformProvider,
@@ -43,6 +44,7 @@ def test_isolated_import_keeps_output_implementations_lazy():
                 "import accessibility_toolkit.runtime.platform; "
                 "forbidden = {"
                 "'accessibility_toolkit.output.tone', "
+                "'accessibility_toolkit.output.wave', "
                 "'accessibility_toolkit.output.speech.drivers.pyttsx3', "
                 "'accessibility_toolkit.output.speech.windows.nvda_controller', "
                 "'accessibility_toolkit.output.windows.clipboard'}; "
@@ -295,6 +297,15 @@ class TestCreateToneOutput:
         assert isinstance(tone, DefaultToneOutput)
 
 
+class TestCreateWaveOutput:
+    def test_returns_default_wave_output(self):
+        from accessibility_toolkit.output.wave import DefaultWaveOutput
+
+        wave = create_wave_output()
+
+        assert isinstance(wave, DefaultWaveOutput)
+
+
 class TestPlatformProvider:
     def test_build_services_on_linux_uses_fallback_platform_services(self, monkeypatch):
         monkeypatch.setattr(sys, "platform", "linux")
@@ -305,4 +316,5 @@ class TestPlatformProvider:
         assert not services.hotkey_capture.running
         assert services.clipboard.get_text() == ""
         assert services.tone_output is not None
+        assert services.wave_output is not None
         assert PlatformProvider().default_speech_engine_id() == "Pyttsx3"

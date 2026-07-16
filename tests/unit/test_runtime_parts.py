@@ -27,6 +27,11 @@ class FakeTone:
         del hz, length, left, right
 
 
+class FakeWave:
+    def play(self, path):
+        del path
+
+
 class FakeSpeechOutput:
     def speak(self, sequence):
         del sequence
@@ -71,12 +76,14 @@ class FakeProvider:
         self.hotkey_capture = FakeCapture()
         self.clipboard = FakeClipboard()
         self.tone_output = FakeTone()
+        self.wave_output = FakeWave()
         self.hotkey_usage = None
         self.scheduler = None
         self.clipboard_calls = 0
         self.input_calls = 0
         self.hotkey_calls = []
         self.tone_calls = 0
+        self.wave_calls = 0
 
     def build_services(self, hotkey_usage):
         self.hotkey_usage = hotkey_usage
@@ -101,6 +108,10 @@ class FakeProvider:
     def create_tone_output(self):
         self.tone_calls += 1
         return self.tone_output
+
+    def create_wave_output(self):
+        self.wave_calls += 1
+        return self.wave_output
 
     def default_speech_engine_id(self):
         return "default"
@@ -128,14 +139,17 @@ def test_build_app_runtime_parts_wires_platform_and_output_services():
         assert provider.hotkey_calls == [HID.ENTER]
         assert provider.clipboard_calls == 1
         assert provider.tone_calls == 1
+        assert provider.wave_calls == 1
         assert parts.input_capture is provider.input_capture
         assert parts.hotkey_capture is provider.hotkey_capture
         assert parts.clipboard is provider.clipboard
         assert parts.tone_output is provider.tone_output
+        assert parts.wave_output is provider.wave_output
         assert parts.output.scheduler is provider.scheduler
         assert parts.output.speaker.get_selected_engine() == "selected"
         assert parts.output.capabilities.speech is parts.output.speaker
         assert parts.output.capabilities.tone is provider.tone_output
+        assert parts.output.capabilities.wave is provider.wave_output
     finally:
         parts.output.speaker.shutdown()
 
@@ -157,6 +171,22 @@ def test_build_app_runtime_parts_uses_default_engine_and_can_exclude_tone():
         assert parts.tone_output is None
         assert parts.output.speaker.get_selected_engine() == "default"
         assert parts.output.capabilities.tone is None
+    finally:
+        parts.output.speaker.shutdown()
+
+
+def test_build_app_runtime_parts_can_exclude_wave():
+    provider = FakeProvider()
+
+    parts = build_app_runtime_parts(
+        provider=provider,
+        hotkey_usage=HID.ENTER,
+        include_wave=False,
+    )
+    try:
+        assert provider.wave_calls == 0
+        assert parts.wave_output is None
+        assert parts.output.capabilities.wave is None
     finally:
         parts.output.speaker.shutdown()
 

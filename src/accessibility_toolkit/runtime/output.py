@@ -2,7 +2,7 @@ import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from accessibility_toolkit.output import Capabilities, QueuedService, ToneOutput
+from accessibility_toolkit.output import Capabilities, QueuedService, ToneOutput, WaveOutput
 from accessibility_toolkit.output.speech import SpeechEngineOption, SpeechService
 from accessibility_toolkit.scheduling import Scheduler
 
@@ -23,6 +23,7 @@ def build_output_services(
     selected_engine_id: str,
     fallback_engine_id: str | None = None,
     tone_output: ToneOutput | None = None,
+    wave_output: WaveOutput | None = None,
     on_engine_fallback: Callable[[str], None] | None = None,
 ) -> OutputServices:
     if selected_engine_id is None:
@@ -55,7 +56,11 @@ def build_output_services(
             scheduler=scheduler,
             speech=speech,
             speaker=speaker,
-            capabilities=Capabilities(speech=speaker, tone=tone_output),
+            capabilities=Capabilities(
+                speech=speaker,
+                tone=tone_output,
+                wave=wave_output,
+            ),
         )
     except Exception:
         scheduler.shutdown()

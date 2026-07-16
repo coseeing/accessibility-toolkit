@@ -66,6 +66,7 @@ def test_build_output_services_wires_scheduler_speech_speaker_and_capabilities()
         assert services.speaker.get_selected_engine() == "primary"
         assert services.capabilities.speech is services.speaker
         assert services.capabilities.tone is None
+        assert services.capabilities.wave is None
     finally:
         services.speaker.shutdown()
 
@@ -80,6 +81,20 @@ def test_build_output_services_includes_tone_capability():
     )
     try:
         assert services.capabilities.tone is tone_output
+    finally:
+        services.speaker.shutdown()
+
+
+def test_build_output_services_includes_wave_capability():
+    wave_output = object()
+
+    services = build_output_services(
+        engine_options_factory=engine_options_factory,
+        selected_engine_id="primary",
+        wave_output=wave_output,
+    )
+    try:
+        assert services.capabilities.wave is wave_output
     finally:
         services.speaker.shutdown()
 

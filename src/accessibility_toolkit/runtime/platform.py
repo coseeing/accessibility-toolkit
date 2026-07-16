@@ -5,7 +5,7 @@ from typing import Any
 
 from accessibility_toolkit.input.capture import HotkeyCapture, InputCapture
 from accessibility_toolkit.input import HID
-from accessibility_toolkit.output import ClipboardService, ToneOutput
+from accessibility_toolkit.output import ClipboardService, ToneOutput, WaveOutput
 from accessibility_toolkit.output.speech import SpeechEngineOption
 from accessibility_toolkit.scheduling import Scheduler
 
@@ -13,6 +13,7 @@ _logger = logging.getLogger(__name__)
 
 # --- lazy import cache variables ---
 _DefaultToneOutput: Any = None
+_DefaultWaveOutput: Any = None
 _Pyttsx3SpeechOutput: Any = None
 _WindowsKeyboardCapture: Any = None
 _WindowsHotkeyCapture: Any = None
@@ -40,6 +41,7 @@ class PlatformServices:
     hotkey_capture: HotkeyCapture
     clipboard: ClipboardService
     tone_output: ToneOutput
+    wave_output: WaveOutput
 
 
 # --- null / fallback implementations ---
@@ -103,6 +105,15 @@ def _get_default_tone_output_class() -> Any:
 
         _DefaultToneOutput = Output
     return _DefaultToneOutput
+
+
+def _get_default_wave_output_class() -> Any:
+    global _DefaultWaveOutput
+    if _DefaultWaveOutput is None:
+        from accessibility_toolkit.output.wave import DefaultWaveOutput as Output
+
+        _DefaultWaveOutput = Output
+    return _DefaultWaveOutput
 
 
 def _get_pyttsx3_speech_output_class() -> Any:
@@ -252,6 +263,10 @@ def create_tone_output() -> ToneOutput:
     return _get_default_tone_output_class().load_default()
 
 
+def create_wave_output() -> WaveOutput:
+    return _get_default_wave_output_class().load_default()
+
+
 def default_speech_engine_options(
     scheduler: Scheduler,
 ) -> tuple[SpeechEngineOption, ...]:
@@ -297,6 +312,9 @@ class PlatformProvider:
     def create_tone_output(self) -> ToneOutput:
         return create_tone_output()
 
+    def create_wave_output(self) -> WaveOutput:
+        return create_wave_output()
+
     def default_speech_engine_options(
         self, scheduler: Scheduler
     ) -> tuple[SpeechEngineOption, ...]:
@@ -313,4 +331,5 @@ class PlatformProvider:
             hotkey_capture=self.create_hotkey_capture(hotkey_usage),
             clipboard=self.create_clipboard_service(),
             tone_output=self.create_tone_output(),
+            wave_output=self.create_wave_output(),
         )

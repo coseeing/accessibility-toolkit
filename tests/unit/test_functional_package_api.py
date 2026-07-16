@@ -26,7 +26,7 @@ PUBLIC_SYMBOLS = {
         "RawMacKeyEvent",
         "key_event_from_macos",
     },
-    "accessibility_toolkit.output": {"Capabilities", "ClipboardService", "QueuedService"},
+    "accessibility_toolkit.output": {"Capabilities", "ClipboardService", "QueuedService", "WaveOutput"},
     "accessibility_toolkit.output.speech": {"SpeechSequence", "SpeechService", "SpeechEngineOption"},
     "accessibility_toolkit.interaction": {"ActivationMode", "ModeManager"},
     "accessibility_toolkit.remote": {"ConnectionInfo", "ConnectionMode", "JSONSerializer", "RemoteMessageType"},
