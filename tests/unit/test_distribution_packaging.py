@@ -85,3 +85,31 @@ def test_wx_sdist_rebuilds_wheel_with_only_wx_package(tmp_path):
         sdist_files = set(archive.getnames())
     assert any(name.endswith("/src/accessibility_toolkit_wx/__init__.py") for name in sdist_files)
     assert not any("/accessibility_toolkit/" in name for name in sdist_files)
+
+
+def test_nvda_remote_wave_assets_match_nvda_sources_and_include_notice():
+    app_waves = REPOSITORY_ROOT / "src" / "apps" / "nvda_remote" / "waves"
+    nvda_waves = REPOSITORY_ROOT / "ref" / "nvda" / "source" / "waves"
+
+    assert (app_waves / "connected.wav").read_bytes() == (
+        nvda_waves / "connected.wav"
+    ).read_bytes()
+    assert (app_waves / "disconnected.wav").read_bytes() == (
+        nvda_waves / "disconnected.wav"
+    ).read_bytes()
+    assert (app_waves / "NVDA-COPYING.txt").read_bytes() == (
+        REPOSITORY_ROOT / "ref" / "nvda" / "copying.txt"
+    ).read_bytes()
+    notice = (app_waves / "NOTICE.md").read_text(encoding="utf-8")
+    assert "NVDA" in notice
+    assert "GPL-2.0-or-later" in notice
+
+
+def test_pyinstaller_specs_include_nvda_remote_wave_assets():
+    for relative_path in (
+        "packaging/windows_apps.spec",
+        "packaging/macos_apps.spec",
+    ):
+        spec_text = (REPOSITORY_ROOT / relative_path).read_text(encoding="utf-8")
+        assert '"apps/nvda_remote/waves"' in spec_text
+        assert 'settings.get("datas", [])' in spec_text

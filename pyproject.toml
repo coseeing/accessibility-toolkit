@@ -22,6 +22,7 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 "accessibility_toolkit.output.speech.windows" = ["vendor/nvda/x64/*.dll"]
+"apps.nvda_remote" = ["waves/*.wav", "waves/NOTICE.md", "waves/NVDA-COPYING.txt"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src", "."]

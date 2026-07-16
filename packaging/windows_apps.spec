@@ -13,6 +13,7 @@ SRC = ROOT / "src"
 APP_TARGET = os.environ.get("APP_TARGET", "all").strip().lower()
 PYTTSX3_IMPORTS = collect_submodules("pyttsx3")
 NVDA_DLL = SRC / "accessibility_toolkit" / "output" / "speech" / "windows" / "vendor" / "nvda" / "x64" / "nvdaControllerClient.dll"
+NVDA_REMOTE_WAVES = SRC / "apps" / "nvda_remote" / "waves"
 
 
 APPS = {
@@ -43,6 +44,7 @@ APPS = {
             "accessibility_toolkit.output.windows.clipboard",
             "accessibility_toolkit.output.speech.windows.nvda_controller",
         ],
+        "datas": [(str(NVDA_REMOTE_WAVES), "apps/nvda_remote/waves")],
     },
 }
 
@@ -70,7 +72,7 @@ def build_app(target: str, settings: dict[str, object]):
         [entry],
         pathex=[str(SRC)],
         binaries=[(str(NVDA_DLL), "accessibility_toolkit/output/speech/windows/vendor/nvda/x64")],
-        datas=[],
+        datas=settings.get("datas", []),
         hiddenimports=hiddenimports,
         hookspath=[],
         hooksconfig={},

@@ -11,6 +11,7 @@ from PyInstaller.utils.hooks import collect_submodules
 
 ROOT = Path(SPECPATH).resolve().parent
 SRC = ROOT / "src"
+NVDA_REMOTE_WAVES = SRC / "apps" / "nvda_remote" / "waves"
 DIST = ROOT / "dist"
 BUILD = ROOT / "build" / "pyinstaller-macos"
 APP_TARGET = os.environ.get("APP_TARGET", "all").strip().lower()
@@ -50,6 +51,7 @@ APPS = {
             "accessibility_toolkit.input.macos.keyboard_hook",
             "accessibility_toolkit.input.macos.hotkey",
         ],
+        "datas": [(str(NVDA_REMOTE_WAVES), "apps/nvda_remote/waves")],
     },
 }
 
@@ -77,7 +79,7 @@ def build_app(target: str, settings: dict[str, object]):
         [entry],
         pathex=[str(SRC)],
         binaries=[],
-        datas=[],
+        datas=settings.get("datas", []),
         hiddenimports=hiddenimports,
         hookspath=[],
         hooksconfig={},

@@ -68,3 +68,11 @@ def test_package_data_uses_output_speech_windows_path():
     pd = data["tool"]["setuptools"]["package-data"]
     assert "accessibility_toolkit.output.speech.windows" in pd
     assert "adapters.windows" not in str(data)
+    root_data = tomllib.loads(
+        (Path(__file__).parents[2] / "pyproject.toml").read_text()
+    )["tool"]["setuptools"]["package-data"]
+    assert root_data["apps.nvda_remote"] == [
+        "waves/*.wav",
+        "waves/NOTICE.md",
+        "waves/NVDA-COPYING.txt",
+    ]
