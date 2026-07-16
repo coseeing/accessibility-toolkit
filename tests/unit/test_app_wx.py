@@ -1094,6 +1094,13 @@ def test_nvda_remote_main_build_runtime_composes_app_service_and_gui(monkeypatch
         def beep(self, hz, length, left=50, right=50):
             self.calls.append((hz, length, left, right))
 
+    class FakeWaveOutput:
+        def __init__(self) -> None:
+            self.paths = []
+
+        def play(self, path: str) -> None:
+            self.paths.append(path)
+
     class FakeKeyboardInputService:
         def __init__(self, capture, handler):
             self.capture = capture
@@ -1155,6 +1162,7 @@ def test_nvda_remote_main_build_runtime_composes_app_service_and_gui(monkeypatch
     hotkey_capture = FakeHotkeyCapture()
     clipboard = FakeClipboard()
     tone_output = FakeToneOutput()
+    wave_output = FakeWaveOutput()
     scheduler = FakeScheduler()
     speech = FakeSpeechService(
         engine_options=("engine",),
@@ -1162,7 +1170,11 @@ def test_nvda_remote_main_build_runtime_composes_app_service_and_gui(monkeypatch
         scheduler=scheduler,
     )
     speaker = FakeQueuedService(speech=speech)
-    capabilities = types.SimpleNamespace(speech=speaker, tone=tone_output)
+    capabilities = types.SimpleNamespace(
+        speech=speaker,
+        tone=tone_output,
+        wave=wave_output,
+    )
 
     def fake_build_app_runtime_parts(**kwargs):
         assert kwargs["hotkey_usage"] == FakeAppService.enter_usage
@@ -1175,6 +1187,7 @@ def test_nvda_remote_main_build_runtime_composes_app_service_and_gui(monkeypatch
             hotkey_capture=hotkey_capture,
             clipboard=clipboard,
             tone_output=tone_output,
+            wave_output=wave_output,
             output=types.SimpleNamespace(
                 scheduler=scheduler,
                 speech=speech,
@@ -1211,6 +1224,7 @@ def test_nvda_remote_main_build_runtime_composes_app_service_and_gui(monkeypatch
     assert runtime.speaker.speech is runtime.speech
     assert runtime.app_service.capabilities.speech is runtime.speaker
     assert runtime.app_service.capabilities.tone is tone_output
+    assert runtime.app_service.capabilities.wave is wave_output
     assert runtime.app_service.main_thread_dispatch is FakeApp.dispatch
     assert runtime.app_service.connection_manager is runtime.connection_manager
     assert runtime.config_store.path == "accessibility-toolkit.json"
