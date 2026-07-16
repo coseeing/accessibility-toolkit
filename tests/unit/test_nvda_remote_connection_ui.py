@@ -157,6 +157,13 @@ def test_editor_pairs_visible_mnemonic_labels_with_fields(monkeypatch):
         assert row.children[0][0] is label
         assert row.children[1][0] is control
 
+    assert dialog.panel.children[:8] == [
+        dialog.field_labels[0][0], dialog.name_ctrl,
+        dialog.field_labels[1][0], dialog.host_ctrl,
+        dialog.field_labels[2][0], dialog.port_ctrl,
+        dialog.field_labels[3][0], dialog.key_ctrl,
+    ]
+
 
 def test_group_manager_disables_rename_and_delete_for_default(tmp_path, monkeypatch):
     _editor_module, group_module = load_editor_ui(monkeypatch)

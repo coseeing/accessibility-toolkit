@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import subprocess
 import sys
+import threading
 from typing import Protocol
 
 
@@ -34,13 +35,42 @@ class DefaultWavePlaybackBackend:
             | winsound.SND_NODEFAULT,
         )
 
-    @staticmethod
-    def _play_macos(path: str) -> None:
-        subprocess.Popen(
-            ["afplay", path],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
+    def _play_macos(self, path: str) -> None:
+        try:
+            process = subprocess.Popen(
+                ["afplay", path],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        except OSError:
+            self._logger.warning(
+                "Failed to launch afplay",
+                extra={"path": path},
+                exc_info=True,
+            )
+            return
+        threading.Thread(
+            target=self._observe_macos_process,
+            args=(process, path),
+            daemon=True,
+        ).start()
+
+    def _observe_macos_process(self, process: subprocess.Popen, path: str) -> None:
+        try:
+            return_code = process.wait()
+        except Exception:
+            self._logger.warning(
+                "Failed to observe afplay",
+                extra={"path": path},
+                exc_info=True,
+            )
+            return
+        if return_code:
+            self._logger.warning(
+                "afplay exited with status %s",
+                return_code,
+                extra={"path": path},
+            )
 
 
 class DefaultWaveOutput:

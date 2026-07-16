@@ -41,7 +41,7 @@ class PlatformServices:
     hotkey_capture: HotkeyCapture
     clipboard: ClipboardService
     tone_output: ToneOutput
-    wave_output: WaveOutput
+    wave_output: WaveOutput | None = None
 
 
 # --- null / fallback implementations ---

@@ -5,7 +5,10 @@ from accessibility_toolkit.output.speech import (
 from accessibility_toolkit.output.speech.json_settings_store import (
     JsonSpeechSettingsStore,
 )
-from accessibility_toolkit.runtime.runtime_parts import build_app_runtime_parts
+from accessibility_toolkit.runtime.runtime_parts import (
+    AppRuntimeParts,
+    build_app_runtime_parts,
+)
 from accessibility_toolkit.input import HID
 from accessibility_toolkit.scheduling import Scheduler
 
@@ -123,6 +126,38 @@ class FakeProvider:
             SpeechEngineOption("default", "Default", lambda: FakeSpeechOutput()),
             SpeechEngineOption("selected", "Selected", lambda: FakeSpeechOutput()),
         )
+
+
+class LegacyProvider(FakeProvider):
+    create_wave_output = None
+
+
+def test_app_runtime_parts_preserves_legacy_positional_order():
+    input_capture = FakeCapture()
+    hotkey_capture = FakeCapture()
+    clipboard = FakeClipboard()
+    tone_output = FakeTone()
+    output = object()
+
+    parts = AppRuntimeParts(input_capture, hotkey_capture, clipboard, tone_output, output)
+
+    assert parts.input_capture is input_capture
+    assert parts.hotkey_capture is hotkey_capture
+    assert parts.clipboard is clipboard
+    assert parts.tone_output is tone_output
+    assert parts.output is output
+    assert parts.wave_output is None
+
+
+def test_build_app_runtime_parts_accepts_legacy_provider_without_wave_factory():
+    provider = LegacyProvider()
+
+    parts = build_app_runtime_parts(provider=provider, hotkey_usage=HID.ENTER)
+    try:
+        assert parts.wave_output is None
+        assert parts.output.capabilities.wave is None
+    finally:
+        parts.output.speaker.shutdown()
 
 
 def test_build_app_runtime_parts_wires_platform_and_output_services():

@@ -13,8 +13,8 @@ class AppRuntimeParts:
     hotkey_capture: HotkeyCapture
     clipboard: ClipboardService | None
     tone_output: ToneOutput | None
-    wave_output: WaveOutput | None
     output: OutputServices
+    wave_output: WaveOutput | None = None
 
 
 def build_app_runtime_parts(
@@ -33,7 +33,10 @@ def build_app_runtime_parts(
     hotkey_capture = provider.create_hotkey_capture(hotkey_usage)
     clipboard = provider.create_clipboard_service() if include_clipboard else None
     tone_output = provider.create_tone_output() if include_tone else None
-    wave_output = provider.create_wave_output() if include_wave else None
+    create_wave_output = getattr(provider, "create_wave_output", None)
+    wave_output = (
+        create_wave_output() if include_wave and callable(create_wave_output) else None
+    )
     default_engine_id = provider.default_speech_engine_id()
     output = build_output_services(
         engine_options_factory=provider.default_speech_engine_options,

@@ -19,9 +19,13 @@ class ConnectionEditorDialog(wx.Dialog):
         self.panel = wx.Panel(self)
         panel = self.panel
         sizer = wx.BoxSizer(wx.VERTICAL)
+        name_label = wx.StaticText(panel, label="&Name:")
         self.name_ctrl = wx.TextCtrl(panel, value=initial.name if initial else "")
+        host_label = wx.StaticText(panel, label="&Host:")
         self.host_ctrl = wx.TextCtrl(panel, value=initial.host if initial else "")
+        port_label = wx.StaticText(panel, label="&Port:")
         self.port_ctrl = wx.SpinCtrl(panel, value=str(initial.port if initial else 6837), min=1, max=65535)
+        key_label = wx.StaticText(panel, label="&Key:")
         self.key_ctrl = wx.TextCtrl(
             panel,
             value=initial.key if initial else "",
@@ -36,14 +40,11 @@ class ConnectionEditorDialog(wx.Dialog):
         self.key_ctrl.SetName("Connection key")
         self.insecure_ctrl.SetName("Disable TLS certificate validation")
 
-        self.field_labels = tuple(
-            (wx.StaticText(panel, label=label), control)
-            for label, control in (
-                ("&Name:", self.name_ctrl),
-                ("&Host:", self.host_ctrl),
-                ("&Port:", self.port_ctrl),
-                ("&Key:", self.key_ctrl),
-            )
+        self.field_labels = (
+            (name_label, self.name_ctrl),
+            (host_label, self.host_ctrl),
+            (port_label, self.port_ctrl),
+            (key_label, self.key_ctrl),
         )
         for label, control in self.field_labels:
             row = wx.BoxSizer(wx.HORIZONTAL)

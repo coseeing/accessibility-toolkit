@@ -1,6 +1,8 @@
 import logging
 import subprocess
 import sys
+import threading
+import time
 import types
 
 import accessibility_toolkit.output.wave as wave_module
@@ -58,7 +60,7 @@ def test_macos_backend_starts_afplay_without_waiting(monkeypatch) -> None:
 
     def fake_popen(command, **kwargs):
         calls.append((command, kwargs))
-        return object()
+        return types.SimpleNamespace(wait=lambda: 0)
 
     monkeypatch.setattr(wave_module.subprocess, "Popen", fake_popen)
 
@@ -69,6 +71,30 @@ def test_macos_backend_starts_afplay_without_waiting(monkeypatch) -> None:
         "stdout": subprocess.DEVNULL,
         "stderr": subprocess.DEVNULL,
     }
+
+
+def test_macos_backend_logs_nonzero_afplay_completion(monkeypatch, caplog) -> None:
+    completed = threading.Event()
+
+    class FakeProcess:
+        def wait(self):
+            completed.set()
+            return 3
+
+    monkeypatch.setattr(
+        wave_module.subprocess,
+        "Popen",
+        lambda *args, **kwargs: FakeProcess(),
+    )
+
+    with caplog.at_level(logging.WARNING):
+        DefaultWavePlaybackBackend()._play_macos("broken.wav")
+
+    assert completed.wait(timeout=1)
+    deadline = time.monotonic() + 1
+    while "afplay exited with status 3" not in caplog.text and time.monotonic() < deadline:
+        time.sleep(0.001)
+    assert "afplay exited with status 3" in caplog.text
 
 
 def test_unsupported_backend_logs_and_returns(monkeypatch, caplog) -> None:

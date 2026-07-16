@@ -16,6 +16,7 @@ from accessibility_toolkit.runtime.platform import (
     default_speech_engine_id,
     default_speech_engine_options,
     PlatformProvider,
+    PlatformServices,
 )
 from accessibility_toolkit.input import HID
 
@@ -307,6 +308,11 @@ class TestCreateWaveOutput:
 
 
 class TestPlatformProvider:
+    def test_platform_services_preserves_legacy_positional_order(self):
+        services = PlatformServices(object(), object(), object(), object())
+
+        assert services.wave_output is None
+
     def test_build_services_on_linux_uses_fallback_platform_services(self, monkeypatch):
         monkeypatch.setattr(sys, "platform", "linux")
 

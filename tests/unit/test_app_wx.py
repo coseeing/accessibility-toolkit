@@ -187,6 +187,7 @@ def install_fake_wx(monkeypatch):
         def __init__(self, parent):
             self.parent = parent
             self.sizer = None
+            self.children = []
 
         def SetSizer(self, sizer):
             self.sizer = sizer
@@ -195,6 +196,8 @@ def install_fake_wx(monkeypatch):
         def __init__(self, parent, label=""):
             self.parent = parent
             self._label = label
+            if hasattr(parent, "children"):
+                parent.children.append(self)
 
         def GetLabel(self):
             return self._label
@@ -219,6 +222,8 @@ def install_fake_wx(monkeypatch):
             self.bindings = {}
             self.name = ""
             self.has_focus = False
+            if hasattr(parent, "children"):
+                parent.children.append(self)
 
         def GetValue(self):
             return self._value
