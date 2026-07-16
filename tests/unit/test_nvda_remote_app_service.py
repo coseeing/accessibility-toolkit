@@ -8,6 +8,7 @@ from accessibility_toolkit.input.windows.native_key_context import WindowsNative
 from accessibility_toolkit.events import ErrorRaised, ModeChanged, SpeechEngineChanged
 from accessibility_toolkit.input import AppKeyEventResult, KeyboardPipelineResult
 from accessibility_toolkit.output import Capabilities
+from accessibility_toolkit.output.speech import SpeechSequence
 from accessibility_toolkit.input import HID, KeyEvent
 from accessibility_toolkit.remote.events import (
     RemotePeerMessageReceived,
@@ -117,6 +118,14 @@ class FakeToneService:
         self.calls.append((hz, length, left, right))
 
 
+class FakeWaveService:
+    def __init__(self) -> None:
+        self.paths = []
+
+    def play(self, path: str) -> None:
+        self.paths.append(path)
+
+
 class FakeSpeechService:
     def __init__(self):
         self.spoken = []
@@ -186,6 +195,7 @@ def build_service(*, dispatch=None, use_windows_native_key_payload=False, **serv
         return callback()
 
     tone = FakeToneService()
+    wave = FakeWaveService()
     service_kwargs.setdefault(
         "connection_manager",
         ConnectionManager(
@@ -197,7 +207,7 @@ def build_service(*, dispatch=None, use_windows_native_key_payload=False, **serv
         input_capture=capture,
         hotkey_capture=hotkey,
         clipboard=FakeClipboard(),
-        capabilities=Capabilities(speech=FakeSpeechService(), tone=tone),
+        capabilities=Capabilities(speech=FakeSpeechService(), tone=tone, wave=wave),
         main_thread_dispatch=dispatch_wrapper,
         use_windows_native_key_payload=use_windows_native_key_payload,
         **service_kwargs,
@@ -586,6 +596,24 @@ def test_nvda_remote_service_handles_transport_disconnected_message():
     ]
 
 
+def test_nvda_remote_service_presents_connection_cues_once():
+    service, _transport, _capture, _hotkey, _dispatch_calls = build_service()
+
+    service.state.connection_state = ConnectionState.CONNECTING
+    service._on_protocol_event(RemoteSessionConnected())
+    service._on_protocol_event(RemoteSessionConnected())
+    service._connection.handle_disconnected()
+    service._connection.handle_disconnected()
+
+    assert [Path(path).name for path in service._capabilities.wave.paths] == [
+        "connected.wav",
+        "disconnected.wav",
+    ]
+    assert service._capabilities.speech.spoken[-1] == SpeechSequence(
+        items=("Disconnected",)
+    )
+
+
 def test_nvda_remote_service_ignores_unknown_status_kinds_for_listener():
     service, _transport, _capture, _hotkey, _dispatch_calls = build_service()
     delivered = []
@@ -656,6 +684,21 @@ def test_nvda_remote_service_start_and_stop_control_dispatch_control_events() ->
         ModeChanged("remote_control", active=False),
     ]
     assert capture.running is False
+
+
+def test_nvda_remote_service_presents_control_cues_once():
+    service, _transport, _capture, _hotkey, _dispatch_calls = build_service()
+    service.state.connection_state = ConnectionState.CONNECTED
+
+    service.start_control()
+    service.start_control()
+    service.stop_control()
+    service.stop_control()
+
+    assert service._capabilities.speech.spoken[-2:] == [
+        SpeechSequence(items=("Controlling remote computer",)),
+        SpeechSequence(items=("Controlling local computer",)),
+    ]
 
 
 def test_nvda_remote_service_stop_control_handles_hotkey_start_failure():
@@ -784,7 +827,10 @@ def test_nvda_remote_service_routes_remote_tone_into_tone_output():
 
 def test_nvda_remote_service_ignores_remote_tone_when_tone_output_is_missing():
     service, transport, _capture, _hotkey, _dispatch_calls = build_service()
-    service._capabilities = Capabilities(speech=service._capabilities.speech)
+    service._capabilities = Capabilities(
+        speech=service._capabilities.speech,
+        wave=service._capabilities.wave,
+    )
     service.router = MessageRouter(
         on_speech=service._capabilities.speech.speak,
         on_cancel=service._capabilities.speech.cancel,

@@ -255,6 +255,55 @@ def test_remote_connection_use_case_sets_connected_state_and_requests_hotkey_sta
     ]
 
 
+def test_remote_connection_use_case_emits_cues_only_for_real_transitions():
+    from apps.nvda_remote.use_cases.connection import RemoteConnectionUseCase
+
+    state = RuntimeState(connection_state=ConnectionState.CONNECTING)
+    cues = []
+    use_case = RemoteConnectionUseCase(
+        state=state,
+        exit_active=lambda: None,
+        ensure_hotkey_started=lambda: None,
+        stop_capture=lambda: None,
+        stop_hotkey=lambda: None,
+        notify=lambda _event: None,
+        on_connected=lambda: cues.append("connected"),
+        on_disconnected=lambda: cues.append("disconnected"),
+    )
+
+    use_case.handle_connected()
+    use_case.handle_connected()
+    use_case.handle_disconnected()
+    use_case.handle_disconnected()
+
+    state.connection_state = ConnectionState.CONNECTING
+    use_case.handle_disconnected()
+
+    assert cues == ["connected", "disconnected"]
+
+
+def test_control_mode_use_case_emits_transition_speech_callbacks():
+    from apps.nvda_remote.use_cases.control_mode import NvdaRemoteControlModeUseCase
+
+    state = RuntimeState(
+        connection_state=ConnectionState.CONNECTED,
+        control_state=ControlState.CONNECTED,
+    )
+    cues = []
+    use_case = NvdaRemoteControlModeUseCase(
+        state=state,
+        notify_error=lambda _message: None,
+        notify_status=lambda _event: None,
+        on_started=lambda: cues.append("remote"),
+        on_stopped=lambda: cues.append("local"),
+    )
+
+    use_case.start_control()
+    use_case.stop_control()
+
+    assert cues == ["remote", "local"]
+
+
 def test_remote_protocol_event_handler_maps_remote_peer_messages():
     from apps.nvda_remote.use_cases.protocol_events import RemoteProtocolEventHandler
     from accessibility_toolkit.remote.events import RemotePeerMessageReceived, RemoteSessionConnected

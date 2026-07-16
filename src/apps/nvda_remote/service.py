@@ -28,6 +28,7 @@ from accessibility_toolkit.remote.session import RemoteSession
 from accessibility_toolkit.remote.transport import Transport
 
 from apps.nvda_remote.use_cases.connection import RemoteConnectionUseCase
+from apps.nvda_remote.cues import NvdaRemoteCues
 from apps.nvda_remote.use_cases.protocol_events import RemoteProtocolEventHandler
 from apps.nvda_remote.use_cases.status_presentation import RemoteStatusPresenter
 from apps.nvda_remote.use_cases import (
@@ -99,6 +100,7 @@ class NvdaRemoteAppService(KeyEventHandler):
         self.hotkey_capture = hotkey_capture
         self.clipboard = clipboard
         self._capabilities = capabilities
+        self._cues = NvdaRemoteCues(capabilities)
         self.state = RuntimeState()
         self._status_listener: Callable[[NvdaRemoteEvent], None] | None = None
         self._main_thread_dispatch = main_thread_dispatch or (lambda callback: callback())
@@ -121,6 +123,8 @@ class NvdaRemoteAppService(KeyEventHandler):
             state=self.state,
             notify_error=self._notify_error,
             notify_status=self._notify_status_listener,
+            on_started=self._cues.controlling_remote,
+            on_stopped=self._cues.controlling_local,
         )
         self._input_forwarding = NvdaRemoteInputForwardingUseCase(
             is_connected=lambda: self.state.connection_state != ConnectionState.IDLE,
@@ -162,6 +166,8 @@ class NvdaRemoteAppService(KeyEventHandler):
             stop_capture=self._stop_capture,
             stop_hotkey=self._stop_hotkey,
             notify=self._status_presenter.notify,
+            on_connected=self._cues.connected,
+            on_disconnected=self._cues.disconnected,
         )
 
         self._protocol_events = RemoteProtocolEventHandler(
