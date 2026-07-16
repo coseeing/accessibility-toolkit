@@ -211,6 +211,10 @@ def install_fake_wx(monkeypatch):
             self.children = []
 
         def Add(self, widget, proportion, flags, border):
+            if self.orient == fake_wx.VERTICAL and flags & fake_wx.ALIGN_CENTER_VERTICAL:
+                raise AssertionError(
+                    "vertical sizers cannot use ALIGN_CENTER_VERTICAL"
+                )
             self.children.append((widget, proportion, flags, border))
 
     class TextCtrl:

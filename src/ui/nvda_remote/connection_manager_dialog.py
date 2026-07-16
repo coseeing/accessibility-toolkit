@@ -52,7 +52,7 @@ class ConnectionManagerDialog(wx.Dialog):
         self.close_button = wx.Button(panel, wx.ID_CLOSE, "&Close")
         for button in (self.new_button, self.edit_button, self.delete_button, self.quick_button, self.close_button):
             action_row.Add(button, 0, wx.ALL, 4)
-        outer.Add(action_row, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, 4)
+        outer.Add(action_row, 0, wx.ALL, 4)
 
         self.close_on_connect = wx.CheckBox(panel, label="Close after connecting")
         self.close_on_connect.SetValue(self.manager.close_on_connect)

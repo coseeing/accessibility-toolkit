@@ -26,7 +26,7 @@ class GroupManagerDialog(wx.Dialog):
         self.close_button = wx.Button(panel, wx.ID_CLOSE, "&Close")
         for button in (self.add_button, self.rename_button, self.delete_button, self.close_button):
             button_row.Add(button, 0, wx.ALL, 4)
-        sizer.Add(button_row, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, 4)
+        sizer.Add(button_row, 0, wx.ALL, 4)
         panel.SetSizer(sizer)
 
         self.group_list.Bind(wx.EVT_LISTBOX, self._on_group_selected)

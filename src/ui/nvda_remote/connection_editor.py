@@ -59,7 +59,7 @@ class ConnectionEditorDialog(wx.Dialog):
         self.cancel_button = wx.Button(panel, wx.ID_CANCEL, "&Cancel")
         for button in (self.generate_button, self.ok_button, self.cancel_button):
             button_row.Add(button, 0, wx.ALL, 4)
-        sizer.Add(button_row, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, 4)
+        sizer.Add(button_row, 0, wx.ALL, 4)
         panel.SetSizer(sizer)
 
         self.generate_button.Bind(wx.EVT_BUTTON, self._on_generate_key)

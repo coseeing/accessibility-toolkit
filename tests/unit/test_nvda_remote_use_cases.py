@@ -304,6 +304,35 @@ def test_control_mode_use_case_emits_transition_speech_callbacks():
     assert cues == ["remote", "local"]
 
 
+def test_control_mode_use_case_only_notifies_for_real_control_transitions():
+    from apps.nvda_remote.use_cases.control_mode import NvdaRemoteControlModeUseCase
+
+    state = RuntimeState(
+        connection_state=ConnectionState.CONNECTED,
+        control_state=ControlState.CONNECTED,
+    )
+    cues = []
+    notifications: list[RemoteControlChanged] = []
+    use_case = NvdaRemoteControlModeUseCase(
+        state=state,
+        notify_error=lambda _message: None,
+        notify_status=notifications.append,
+        on_started=lambda: cues.append("remote"),
+        on_stopped=lambda: cues.append("local"),
+    )
+
+    use_case.start_control()
+    use_case.start_control()
+    use_case.stop_control()
+    use_case.stop_control()
+
+    assert cues == ["remote", "local"]
+    assert notifications == [
+        RemoteControlChanged(ControlState.CONTROLLING.value),
+        RemoteControlChanged(ControlState.CONNECTED.value),
+    ]
+
+
 def test_remote_protocol_event_handler_maps_remote_peer_messages():
     from apps.nvda_remote.use_cases.protocol_events import RemoteProtocolEventHandler
     from accessibility_toolkit.remote.events import RemotePeerMessageReceived, RemoteSessionConnected

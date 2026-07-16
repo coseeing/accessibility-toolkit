@@ -138,8 +138,8 @@ class NvdaRemoteAppService(KeyEventHandler):
         self._activation = InputActivationUseCase(
             input_capture=input_capture,
             hotkey_capture=hotkey_capture,
-            is_active=lambda: self.state.control_state == ControlState.CONTROLLING,
-            set_active=self._set_control_active,
+            is_active=lambda: self.input_capture.running,
+            set_active=lambda _active: None,
             notify_error=self._notify_error,
         )
         self._mode_manager = ModeManager(
@@ -174,11 +174,6 @@ class NvdaRemoteAppService(KeyEventHandler):
             on_connected=self._connection.handle_connected,
             on_disconnected=self._connection.handle_disconnected,
             notify_remote_message=self._status_presenter.notify,
-        )
-
-    def _set_control_active(self, active: bool) -> None:
-        self.state.control_state = (
-            ControlState.CONTROLLING if active else ControlState.CONNECTED
         )
 
     def _handle_idle_hotkey(self) -> None:
@@ -247,6 +242,8 @@ class NvdaRemoteAppService(KeyEventHandler):
         if self.state.connection_state == ConnectionState.IDLE:
             self._notify_error("Not connected")
             return
+        if self.state.control_state == ControlState.IDLE:
+            self.state.control_state = ControlState.CONNECTED
         self._mode_manager.activate_mode("remote_control")
 
     def stop_control(self) -> None:

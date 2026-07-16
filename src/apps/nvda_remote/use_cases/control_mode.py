@@ -21,11 +21,15 @@ class NvdaRemoteControlModeUseCase:
         self._on_stopped = on_stopped
 
     def start_control(self) -> None:
+        if self._state.control_state != ControlState.CONNECTED:
+            return
         self._state.control_state = ControlState.CONTROLLING
         self._on_started()
         self._notify_status(RemoteControlChanged(ControlState.CONTROLLING.value))
 
     def stop_control(self) -> None:
+        if self._state.control_state != ControlState.CONTROLLING:
+            return
         self._state.control_state = ControlState.CONNECTED
         self._on_stopped()
         self._notify_status(RemoteControlChanged(ControlState.CONNECTED.value))
